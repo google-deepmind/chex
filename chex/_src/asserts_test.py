@@ -32,6 +32,45 @@ def emplace(arrays):
   return arrays
 
 
+class ScalarAssertTest(parameterized.TestCase):
+
+  def test_scalar(self):
+    asserts.assert_scalar(1)
+    asserts.assert_scalar(1.)
+    with self.assertRaisesRegex(AssertionError, 'must be a scalar'):
+      asserts.assert_scalar(np.array(1.))  # pytype: disable=wrong-arg-types
+
+  def test_scalar_positive(self):
+    asserts.assert_scalar_positive(0.5)
+    with self.assertRaisesRegex(AssertionError, 'must be positive'):
+      asserts.assert_scalar_positive(-0.5)
+
+  def test_scalar_non_negative(self):
+    asserts.assert_scalar_non_negative(0.5)
+    asserts.assert_scalar_non_negative(0.)
+    with self.assertRaisesRegex(AssertionError, 'must be non negative'):
+      asserts.assert_scalar_non_negative(-0.5)
+
+  def test_scalar_negative(self):
+    asserts.assert_scalar_negative(-0.5)
+    with self.assertRaisesRegex(AssertionError, 'argument must be negative'):
+      asserts.assert_scalar_negative(0.5)
+
+  def test_scalar_in(self):
+    asserts.assert_scalar_in(0.5, 0, 1)
+    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+      asserts.assert_scalar_in(-0.5, 0, 1)
+    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+      asserts.assert_scalar_in(1.5, 0, 1)
+
+  def test_scalar_in_excluded(self):
+    asserts.assert_scalar_in(0.5, 0, 1, included=False)
+    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+      asserts.assert_scalar_in(0, 0, 1, included=False)
+    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+      asserts.assert_scalar_in(1, 0, 1, included=False)
+
+
 class EqualShapeAssertTest(parameterized.TestCase):
 
   @parameterized.named_parameters(

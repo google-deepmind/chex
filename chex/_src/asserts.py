@@ -39,6 +39,47 @@ def _num_devices_available(devtype: str, backend: Optional[str] = None):
   return sum(d.platform == devtype for d in jax.devices(backend))
 
 
+def assert_scalar(x: Scalar):
+  """Checks argument is a scalar, as defined in pytypes.py (int or float)."""
+  if not isinstance(x, (int, float)):
+    raise AssertionError(
+        "The argument must be a scalar, was {}".format(type(x)))
+
+
+def assert_scalar_in(
+    x: Scalar, min_: Scalar, max_: Scalar, included: bool = True):
+  assert_scalar(x)
+  if included:
+    if not min_ <= x <= max_:
+      raise AssertionError(
+          "The argument must be in [{}, {}], was {}".format(min_, max_, x))
+  else:
+    if not min_ < x < max_:
+      raise AssertionError(
+          "The argument must be in ({}, {}), was {}".format(min_, max_, x))
+
+
+def assert_scalar_positive(x: Scalar):
+  """Checks that the scalar is strictly positive."""
+  assert_scalar(x)
+  if x <= 0:
+    raise AssertionError("The argument must be positive, was {}".format(x))
+
+
+def assert_scalar_non_negative(x: Scalar):
+  """Checks that the scalar is non negative."""
+  assert_scalar(x)
+  if x < 0:
+    raise AssertionError("The argument must be non negative, was {}".format(x))
+
+
+def assert_scalar_negative(x: Scalar):
+  """Checks that the scalar is non negative."""
+  assert_scalar(x)
+  if x >= 0:
+    raise AssertionError("The argument must be negative, was {}".format(x))
+
+
 def assert_equal_shape(inputs: Sequence[Array]):
   """Checks that all arrays have the same shape.
 
@@ -56,9 +97,9 @@ def assert_equal_shape(inputs: Sequence[Array]):
       raise AssertionError(f"Arrays have different shapes: {shapes}.")
 
 
-def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-                 expected_shapes: Union[Sequence[int],
-                                        Sequence[Sequence[int]]]):
+def assert_shape(
+    inputs: Union[Scalar, Union[Array, Sequence[Array]]],
+    expected_shapes: Union[Sequence[int], Sequence[Sequence[int]]]):
   """Checks that the shape of all inputs matches specified expected_shapes.
 
   Valid usages include:
@@ -82,8 +123,9 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
                     if shape of `input` does not match `expected_shapes`.
   """
   if isinstance(expected_shapes, Array):
-    raise AssertionError("Error in shape compatibility check: Expected shapes "
-                         "should be a list or tuple of ints.")
+    raise AssertionError(
+        "Error in shape compatibility check:"
+        "Expected shapes should be a list or tuple of ints.")
 
   # Ensure inputs and expected shapes are sequences.
   if not isinstance(inputs, Sequence):
@@ -109,9 +151,9 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     raise AssertionError("Error in shape compatibility check: " + msg + ".")
 
 
-def assert_rank(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-                expected_ranks: Union[int, Set[int],
-                                      Sequence[Union[int, Set[int]]]]):
+def assert_rank(
+    inputs: Union[Scalar, Union[Array, Sequence[Array]]],
+    expected_ranks: Union[int, Set[int], Sequence[Union[int, Set[int]]]]):
   """Checks that the rank of all inputs matches specified expected_ranks.
 
   Valid usages include:
@@ -164,8 +206,9 @@ def assert_rank(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
 
     # Check against old usage where options could be any sequence
     if isinstance(expected, Sequence) and not isinstance(expected, Set):
-      raise ValueError("Error in rank compatibility check: "
-                       "Expected ranks should be integers or sets of integers.")
+      raise ValueError(
+          "Error in rank compatibility check: "
+          "Expected ranks should be integers or sets of integers.")
 
     options = expected if isinstance(expected, Set) else {expected}
 
@@ -180,8 +223,9 @@ def assert_rank(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     raise AssertionError("Error in rank compatibility check: " + msg + ".")
 
 
-def assert_type(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-                expected_types: Union[Type[Scalar], Sequence[Type[Scalar]]]):
+def assert_type(
+    inputs: Union[Scalar, Union[Array, Sequence[Array]]],
+    expected_types: Union[Type[Scalar], Sequence[Type[Scalar]]]):
   """Checks that the type of all `inputs` matches specified `expected_types`.
 
   Valid usages include:
@@ -237,11 +281,12 @@ def assert_type(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     raise AssertionError("Error in type compatibility check: " + msg + ".")
 
 
-def assert_numerical_grads(f: Callable[[Sequence[Array]], Array],
-                           f_args: Sequence[Array],
-                           order: int,
-                           atol: float = 0.01,
-                           **check_kwargs):
+def assert_numerical_grads(
+    f: Callable[[Sequence[Array]], Array],
+    f_args: Sequence[Array],
+    order: int,
+    atol: float = 0.01,
+    **check_kwargs):
   """Checks that autodiff and numerical gradients of a function match.
 
   Args:
@@ -265,10 +310,11 @@ def assert_numerical_grads(f: Callable[[Sequence[Array]], Array],
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
-def assert_tree_all_close(actual: ArrayTree,
-                          desired: ArrayTree,
-                          rtol: float = 1e-07,
-                          atol: float = 0):
+def assert_tree_all_close(
+    actual: ArrayTree,
+    desired: ArrayTree,
+    rtol: float = 1e-07,
+    atol: float = 0):
   """Assert two trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired to
@@ -297,10 +343,11 @@ def assert_tree_all_close(actual: ArrayTree,
   jax.tree_multimap(assert_fn, actual, desired)
 
 
-def assert_devices_available(n: int,
-                             devtype: str,
-                             backend: Optional[str] = None,
-                             not_less_than: bool = False):
+def assert_devices_available(
+    n: int,
+    devtype: str,
+    backend: Optional[str] = None,
+    not_less_than: bool = False):
   """Checks that `n` devices of a given type are available.
 
   Args:

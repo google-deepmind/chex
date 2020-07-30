@@ -20,6 +20,11 @@ from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_numerical_grads
 from chex._src.asserts import assert_rank
+from chex._src.asserts import assert_scalar
+from chex._src.asserts import assert_scalar_in
+from chex._src.asserts import assert_scalar_negative
+from chex._src.asserts import assert_scalar_non_negative
+from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
 from chex._src.asserts import assert_tpu_available
 from chex._src.asserts import assert_tree_all_close
@@ -52,6 +57,11 @@ __all__ = (
     "assert_devices_available",
     "assert_equal_shape",
     "assert_numerical_grads",
+    "assert_scalar",
+    "assert_scalar_in",
+    "assert_scalar_negative",
+    "assert_scalar_non_negative",
+    "assert_scalar_positive",
     "assert_shape",
     "assert_tpu_available",
     "assert_tree_all_close",
