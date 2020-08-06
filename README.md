@@ -8,6 +8,12 @@ This includes utils to help:
 * Debug (e.g. transforming `pmaps` in `vmaps` within a context manager).
 * Test JAX code across many `variants` (e.g. jitted vs non-jitted).
 
+## Installation
+
+Chex can be installed with pip directly from github, with the following command:
+
+`pip install git+git://github.com/deepmind/chex.git`
+
 ## Modules Overview
 
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
