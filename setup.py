@@ -23,7 +23,7 @@ def _get_version():
   with open('chex/__init__.py') as fp:
     for line in fp:
       if line.startswith('__version__') and '=' in line:
-        version = line[line.find('=')+1:].strip(' \'"')
+        version = line[line.find('=')+1:].strip(' \'"\n')
         if version:
           return version
     raise ValueError('`__version__` not defined in `chex/__init__.py`')
@@ -57,6 +57,7 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Software Development :: Testing :: Mocking',
         'Topic :: Software Development :: Testing :: Unit',

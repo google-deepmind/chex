@@ -14,6 +14,10 @@ Chex can be installed with pip directly from github, with the following command:
 
 `pip install git+git://github.com/deepmind/chex.git`
 
+or from PyPI:
+
+`pip install chex`
+
 ## Modules Overview
 
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
@@ -238,3 +242,22 @@ it in multi-device regime. Note that **all** tests within a module will have an
 access to `N` devices.
 
 More examples can be found in [variants_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants_test.py), [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) and [fake_set_n_cpu_devices_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_set_n_cpu_devices_test.py).
+
+## Citing Chex
+
+To cite this repository:
+
+```
+@software{chex2020github,
+  author = {David Budden and Matteo Hessel and Iurii Kemaev and Stephen Spencer
+            and Fabio Viola},
+  title = {Chex: Testing made fun, in JAX!},
+  url = {http://github.com/deepmind/chex},
+  version = {0.0.1},
+  year = {2020},
+}
+```
+
+In this bibtex entry, the version number is intended to be from
+[chex/\_\_init\_\_.py](https://github.com/deepmind/chex/blob/master/chex/__init__.py),
+and the year corresponds to the project's open-source release.
