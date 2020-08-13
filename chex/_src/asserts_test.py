@@ -290,6 +290,26 @@ class TypeAssertTest(parameterized.TestCase):
                           [np.complex, np.complex, float, int])
 
 
+class AxisDimensionAssertionsTest(parameterized.TestCase):
+
+  def test_assert_axis_dimension_pass(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i, s in enumerate(tensor.shape):
+      asserts.assert_axis_dimension(tensor, axis=i, expected=s)
+
+  def test_assert_axis_dimension_fail(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i, s in enumerate(tensor.shape):
+      with self.assertRaisesRegex(
+          AssertionError, 'Expected tensor to have dimension'):
+        asserts.assert_axis_dimension(tensor, axis=i, expected=s+1)
+
+  def test_assert_axis_invalid(self):
+    tensor = jnp.ones((3, 2))
+    with self.assertRaisesRegex(AssertionError, 'not available'):
+      asserts.assert_axis_dimension(tensor, axis=2, expected=1)
+
+
 class TreeAssertionsTest(parameterized.TestCase):
 
   def test_tree_all_finite_passes_finite(self):

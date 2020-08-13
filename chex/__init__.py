@@ -15,6 +15,7 @@
 # ==============================================================================
 """Chex: Testing made fun, in JAX!"""
 
+from chex._src.asserts import assert_axis_dimension
 from chex._src.asserts import assert_devices_available
 from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_gpu_available
@@ -54,6 +55,7 @@ __all__ = (
     "ArrayBatched",
     "ArrayDevice",
     "ArrayNumpy",
+    "assert_axis_dimension",
     "assert_devices_available",
     "assert_equal_shape",
     "assert_numerical_grads",

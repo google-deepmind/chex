@@ -281,6 +281,28 @@ def assert_type(
     raise AssertionError("Error in type compatibility check: " + msg + ".")
 
 
+def assert_axis_dimension(tensor, axis, expected):
+  """Assert dimension of a specific axis of a tensor.
+
+  Args:
+    tensor: a JAX array
+    axis: an integer specifying which axis to assert.
+    expected: expected value of `tensor.shape[axis]`.
+
+  Raises:
+    AssertionError: if the dimension of the specified axis does not match the
+      prescribed value.
+  """
+  if axis >= len(tensor.shape):
+    raise AssertionError(
+        f"Expected tensor to have dim '{expected}' along axis '{axis}' but"
+        f"axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
+  if tensor.shape[axis] != expected:
+    raise AssertionError(
+        "Expected tensor to have dimension {} along the axis {}"
+        "but got {} instead.".format(expected, axis, tensor.shape[axis]))
+
+
 def assert_numerical_grads(
     f: Callable[[Sequence[Array]], Array],
     f_args: Sequence[Array],
