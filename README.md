@@ -20,6 +20,18 @@ or from PyPI:
 
 ## Modules Overview
 
+### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.p))
+
+Dataclasses are a popular construct introduced by Python 3.7 to allows to
+easily specify typed data structures with minimal boilerplate code. They are
+not, however, compatible with JAX out of the box.
+
+In Chex we provide a JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
+
+Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
+nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
+compatibility with JAX data structures.
+
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
 
 One limitation of PyType annotations for JAX is that they do not support the
@@ -61,52 +73,6 @@ assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 ```
 
 See documentation of [asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py) for details on all supported assertions.
-
-### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.p))
-
-JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
-
-Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
-nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
-compatibility with JAX data structures.
-
-### Fakes ([fake.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake.py))
-
-Debugging in JAX is made more difficult by code transformations such as `jit`
-and `pmap`, which introduce optimizations that make code hard to inspect and
-trace. It can also be difficult to disable those transformations during
-debugging as they can be called at several places in the underlying
-code. Chex provides tools to globally replace `jax.jit` with a no-op
-transformation and `jax.pmap` with a (non-parallel) `jax.vmap`, in order to more
-easily debug code in a single-device context.
-
-For example, you can use Chex to fake `pmap` and have it replaced with a `vmap`.
-This can be achieved by wrapping your code with a context manager:
-
-```python
-with chex.fake_pmap(enable_patching=True):
-  @jax.pmap
-  def fn(inputs):
-    ...
-
-  # Function will be vmapped over inputs
-  fn(inputs)
-```
-
-The same functionality can also be invoked with `start` and `stop`:
-
-```python
-fake_pmap = chex.fake_pmap(enable_patching=True)
-fake_pmap.start()
-... your jax code ...
-fake_pmap.stop()
-```
-
-In addition, you can fake a real multi-device test environment with a
-multi-threaded CPU. See section **Faking multi-device test environments** for
-more details.
-
-See documentation in [fake.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake.py) and examples in [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) for more details.
 
 ### Test variants ([variants.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants.py))
 
@@ -215,6 +181,44 @@ describe  a way to properly test `fn` if it is supposed to be used in
 multi-device environments (TPUs or multiple CPUs/GPUs). To disable skipping
 `with_pmap` variants in case of a single device, add
 `--chex_skip_pmap_variant_if_single_device=false` to your test command.
+
+### Fakes ([fake.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake.py))
+
+Debugging in JAX is made more difficult by code transformations such as `jit`
+and `pmap`, which introduce optimizations that make code hard to inspect and
+trace. It can also be difficult to disable those transformations during
+debugging as they can be called at several places in the underlying
+code. Chex provides tools to globally replace `jax.jit` with a no-op
+transformation and `jax.pmap` with a (non-parallel) `jax.vmap`, in order to more
+easily debug code in a single-device context.
+
+For example, you can use Chex to fake `pmap` and have it replaced with a `vmap`.
+This can be achieved by wrapping your code with a context manager:
+
+```python
+with chex.fake_pmap(enable_patching=True):
+  @jax.pmap
+  def fn(inputs):
+    ...
+
+  # Function will be vmapped over inputs
+  fn(inputs)
+```
+
+The same functionality can also be invoked with `start` and `stop`:
+
+```python
+fake_pmap = chex.fake_pmap(enable_patching=True)
+fake_pmap.start()
+... your jax code ...
+fake_pmap.stop()
+```
+
+In addition, you can fake a real multi-device test environment with a
+multi-threaded CPU. See section **Faking multi-device test environments** for
+more details.
+
+See documentation in [fake.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake.py) and examples in [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) for more details.
 
 ## Faking multi-device test environments
 
