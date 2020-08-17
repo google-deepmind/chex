@@ -20,7 +20,7 @@ or from PyPI:
 
 ## Modules Overview
 
-### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.p))
+### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py))
 
 Dataclasses are a popular construct introduced by Python 3.7 to allows to
 easily specify typed data structures with minimal boilerplate code. They are
