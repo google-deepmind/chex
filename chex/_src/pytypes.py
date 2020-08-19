@@ -15,7 +15,7 @@
 # ==============================================================================
 """Pytypes for arrays and scalars."""
 
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, Iterable, Mapping, Tuple, Union
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -29,6 +29,7 @@ ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
 PRNGKey = Array
+Shape = Tuple[int, ...]
 
 # As of 06/2020 pytype doesn't support recursive types (see b/109648354)
 # pytype: disable=not-supported-yet

@@ -43,6 +43,7 @@ from chex._src.pytypes import ArrayNumpy
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
+from chex._src.pytypes import Shape
 from chex._src.variants import all_variants
 from chex._src.variants import TestCase
 from chex._src.variants import variants
