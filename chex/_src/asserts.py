@@ -281,7 +281,7 @@ def assert_type(
     raise AssertionError("Error in type compatibility check: " + msg + ".")
 
 
-def assert_axis_dimension(tensor, axis, expected):
+def assert_axis_dimension(tensor: Array, axis: int, expected: int):
   """Assert dimension of a specific axis of a tensor.
 
   Args:
