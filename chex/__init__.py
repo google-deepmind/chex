@@ -59,6 +59,7 @@ __all__ = (
     "assert_axis_dimension",
     "assert_devices_available",
     "assert_equal_shape",
+    "assert_gpu_available",
     "assert_numerical_grads",
     "assert_scalar",
     "assert_scalar_in",
@@ -79,6 +80,7 @@ __all__ = (
     "assert_rank",
     "Scalar",
     "set_n_cpu_devices",
+    "Shape",
     "TestCase",
     "variants",
 )
