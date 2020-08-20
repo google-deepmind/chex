@@ -16,6 +16,7 @@
 """Chex assertion utilities."""
 import functools
 from typing import Sequence, Type, Union, Callable, Optional, Set
+import unittest
 from unittest import mock
 from chex._src import pytypes
 import jax
@@ -433,3 +434,20 @@ def assert_tree_all_finite(tree_like: ArrayTree):
     is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
     error_msg = jax.tree_map(is_finite, tree_like)
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
+
+
+def assert_equal(first, second):
+  """Assert the two objects are equal as determined by the '==' operator.
+
+  Arrays with more than one element cannot be compared.
+  Use `assert_tree_all_close` to compare arrays.
+
+  Args:
+    first: first object.
+    second: second object.
+
+  Raises:
+    AssertionError: if not (first == second)
+  """
+  testcase = unittest.TestCase()
+  testcase.assertEqual(first, second)

@@ -498,6 +498,37 @@ class NumericalGradsAssertTest(parameterized.TestCase):
     self._test_fn(f_hard_with_sg, (lr, x), seed)
 
 
+class EqualAssertionsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('dtypes', jnp.int32, jnp.int32),
+      ('lists', [1, 2], [1, 2]),
+      ('dicts', dict(a=[7, jnp.int32]), dict(a=[7, jnp.int32])),
+  )
+  def test_assert_equal_pass(self, first, second):
+    asserts.assert_equal(first, second)
+
+  def test_assert_equal_pass_on_arrays(self):
+    # Not using named_parameters, becase JAX cannot be used before app.run().
+    asserts.assert_equal(jnp.ones([]), np.ones([]))
+    asserts.assert_equal(jnp.ones([], dtype=jnp.int32),
+                         np.ones([], dtype=np.float64))
+
+  @parameterized.named_parameters(
+      ('dtypes', jnp.int32, jnp.float32),
+      ('lists', [1, 2], [1, 7]),
+      ('lists2', [1, 2], [1]),
+      ('dicts1', dict(a=[7, jnp.int32]), dict(b=[7, jnp.int32])),
+      ('dicts2', dict(a=[7, jnp.int32]), dict(b=[1, jnp.int32])),
+      ('dicts3', dict(a=[7, jnp.int32]), dict(a=[1, jnp.int32], b=2)),
+      ('dicts4', dict(a=[7, jnp.int32]), dict(a=[1, jnp.float32])),
+      ('arrays', np.zeros([]), np.ones([])),
+  )
+  def test_assert_equal_fail(self, first, second):
+    with self.assertRaises(AssertionError):
+      asserts.assert_equal(first, second)
+
+
 if __name__ == '__main__':
   jax.config.update('jax_numpy_rank_promotion', 'raise')
   absltest.main()

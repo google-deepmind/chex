@@ -17,6 +17,7 @@
 
 from chex._src.asserts import assert_axis_dimension
 from chex._src.asserts import assert_devices_available
+from chex._src.asserts import assert_equal
 from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_numerical_grads
@@ -58,6 +59,7 @@ __all__ = (
     "ArrayNumpy",
     "assert_axis_dimension",
     "assert_devices_available",
+    "assert_equal",
     "assert_equal_shape",
     "assert_gpu_available",
     "assert_numerical_grads",
