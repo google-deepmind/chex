@@ -196,7 +196,7 @@ For example, you can use Chex to fake `pmap` and have it replaced with a `vmap`.
 This can be achieved by wrapping your code with a context manager:
 
 ```python
-with chex.fake_pmap(enable_patching=True):
+with chex.fake_pmap():
   @jax.pmap
   def fn(inputs):
     ...
@@ -208,7 +208,7 @@ with chex.fake_pmap(enable_patching=True):
 The same functionality can also be invoked with `start` and `stop`:
 
 ```python
-fake_pmap = chex.fake_pmap(enable_patching=True)
+fake_pmap = chex.fake_pmap()
 fake_pmap.start()
 ... your jax code ...
 fake_pmap.stop()

@@ -146,7 +146,7 @@ def fake_jit(enable_patching: bool = True):
   return stack
 
 
-def fake_pmap(enable_patching: bool = False):
+def fake_pmap(enable_patching: bool = True):
   """Context manager for patching jax.pmap with jax.vmap.
 
   This is intended to be used as a debugging tool to programmatically replace
