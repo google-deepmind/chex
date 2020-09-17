@@ -19,9 +19,10 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
+from chex._src import asserts
 from chex._src import fake
 from chex._src import pytypes
+
 import jax
 import jax.numpy as jnp
 
@@ -109,6 +110,53 @@ class PmapFakeTest(parameterized.TestCase):
 
       foo(inputs)
       self.assertEqual(python_execution_count, expected_execution_count)
+
+  @parameterized.named_parameters([
+      ('fake_nothing', False, False),
+      ('fake_pmap', True, False),
+      ('fake_jit', False, True),
+  ])
+  def test_with_kwargs(self, fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+      num_devices = len(jax.devices())
+
+      @functools.partial(jax.pmap, axis_size=num_devices)
+      @jax.jit
+      def foo(x, y):
+        return (x * 2) + y
+
+      # pmap over all available devices
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
+
+      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
+
+  @parameterized.named_parameters([
+      ('fake_nothing', False, False),
+      ('fake_pmap', True, False),
+      ('fake_jit', False, True),
+  ])
+  def test_with_partial(self, fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+      num_devices = len(jax.devices())
+
+      # Testing a common use-case where non-parallel arguments are partially
+      # applied before pmapping
+      def foo(x, y, flag):
+        return (x * 2) + y if flag else (x + y)
+      foo = functools.partial(foo, flag=True)
+
+      foo = jax.pmap(foo, axis_size=num_devices)
+      foo = jax.jit(foo)
+
+      # pmap over all available devices
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
+
+      asserts.assert_tree_all_close(foo(inputs, inputs), expected)
+      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@ See https://www.martinfowler.com/articles/mocksArentStubs.html
 
 import contextlib
 import functools
+import inspect
 import os
 import re
 from typing import Optional
@@ -81,6 +82,13 @@ def set_n_cpu_devices(n: Optional[int] = None):
       [f'--xla_force_host_platform_device_count={n}'] + xla_flags.split())
 
 
+def convert_to_varargs(sig, *args, **kwargs):
+  """Converts varargs+kwargs function arguments into varargs only."""
+  bound_args = sig.bind(*args, **kwargs)
+  bound_args.apply_defaults()
+  return bound_args.args
+
+
 @functools.wraps(jax.jit)
 def _fake_jit(fn, *unused_args, **unused_kwargs):
   return fn
@@ -88,7 +96,19 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 @functools.wraps(jax.pmap)
 def _fake_pmap(fn, *unused_args, **unused_kwargs):
-  return jax.vmap(fn)
+  """Fake implementation of pmap using vmap."""
+  fn_signature = inspect.signature(fn)
+  vmapped_fn = jax.vmap(fn)
+
+  @functools.wraps(fn)
+  def wrapped_fn(*args, **kwargs):
+    # Convert kwargs to varargs
+    # This is a workaround for vmapped functions not working with kwargs
+    call_args = convert_to_varargs(fn_signature, *args, **kwargs)
+    output = vmapped_fn(*call_args)
+    return output
+
+  return wrapped_fn
 
 
 def _zero(*unused_args, **unused_kwargs):
