@@ -198,6 +198,49 @@ def _variant_default_tests_generator(fn, is_jit_context, which_variants,
   return itertools.chain(*all_tests)
 
 
+class ParamsProductTest(absltest.TestCase):
+
+  def test_product(self):
+    l1 = (
+        ('x1', 1, 10),
+        ('x2', 2, 20),
+    )
+
+    l2 = (
+        ('y1', 3),
+        ('y2', 4),
+    )
+
+    l3 = (
+        ('z1', 5, 50),
+        ('z2', 6, 60),
+    )
+
+    l4 = (('aux', 'AUX'),)
+
+    expected = [('x1', 1, 10, 'y1', 3, 'z1', 5, 50, 'aux', 'AUX'),
+                ('x1', 1, 10, 'y1', 3, 'z2', 6, 60, 'aux', 'AUX'),
+                ('x1', 1, 10, 'y2', 4, 'z1', 5, 50, 'aux', 'AUX'),
+                ('x1', 1, 10, 'y2', 4, 'z2', 6, 60, 'aux', 'AUX'),
+                ('x2', 2, 20, 'y1', 3, 'z1', 5, 50, 'aux', 'AUX'),
+                ('x2', 2, 20, 'y1', 3, 'z2', 6, 60, 'aux', 'AUX'),
+                ('x2', 2, 20, 'y2', 4, 'z1', 5, 50, 'aux', 'AUX'),
+                ('x2', 2, 20, 'y2', 4, 'z2', 6, 60, 'aux', 'AUX')]
+    product = list(variants.params_product(l1, l2, l3, l4, named=False))
+    self.assertEqual(product, expected)
+
+    named_expected = [('x1_y1_z1_aux', 1, 10, 3, 5, 50, 'AUX'),
+                      ('x1_y1_z2_aux', 1, 10, 3, 6, 60, 'AUX'),
+                      ('x1_y2_z1_aux', 1, 10, 4, 5, 50, 'AUX'),
+                      ('x1_y2_z2_aux', 1, 10, 4, 6, 60, 'AUX'),
+                      ('x2_y1_z1_aux', 2, 20, 3, 5, 50, 'AUX'),
+                      ('x2_y1_z2_aux', 2, 20, 3, 6, 60, 'AUX'),
+                      ('x2_y2_z1_aux', 2, 20, 4, 5, 50, 'AUX'),
+                      ('x2_y2_z2_aux', 2, 20, 4, 6, 60, 'AUX')]
+    named_product = list(variants.params_product(l1, l2, l3, l4, named=True))
+    self.assertEqual(named_product, named_expected)
+
+
 class FailedTestsTest(variants.TestCase):
   # Inner class prevents FailedTest being run by `absltest.main()`.
 

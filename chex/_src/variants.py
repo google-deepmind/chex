@@ -29,7 +29,6 @@ from jax import tree_util
 import jax.numpy as jnp
 import toolz
 
-
 FLAGS = flags.FLAGS
 flags.DEFINE_bool(
     "chex_skip_pmap_variant_if_single_device", True,
@@ -53,6 +52,22 @@ class TestCase(parameterized.TestCase):
 
 
 tree_map = tree_util.tree_map
+
+
+def params_product(*params_lists, named=False):
+  """Generate a cartesian product of params_lists."""
+
+  def generate():
+    for combination in itertools.product(*params_lists):
+      if named:
+        name = "_".join(t[0] for t in combination)
+        args_tuples = (t[1:] for t in combination)
+        args = sum(args_tuples, ())
+        yield (name, *args)
+      else:
+        yield sum(combination, ())
+
+  return generate()
 
 
 def count_num_calls(fn):
@@ -483,7 +498,6 @@ _variant_decorators = {
     "without_device": _without_device,
     "with_pmap": _with_pmap,
 }
-
 
 # Collect valid argument names from all variant decorators.
 _valid_kwargs_keys = set()

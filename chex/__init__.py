@@ -46,8 +46,10 @@ from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
 from chex._src.pytypes import Shape
 from chex._src.variants import all_variants
+from chex._src.variants import params_product
 from chex._src.variants import TestCase
 from chex._src.variants import variants
+
 
 __version__ = "0.0.2"
 
@@ -63,6 +65,7 @@ __all__ = (
     "assert_equal_shape",
     "assert_gpu_available",
     "assert_numerical_grads",
+    "assert_rank",
     "assert_scalar",
     "assert_scalar_in",
     "assert_scalar_negative",
@@ -78,8 +81,8 @@ __all__ = (
     "fake_pmap",
     "fake_pmap_and_jit",
     "Numeric",
+    "params_product",
     "PRNGKey",
-    "assert_rank",
     "Scalar",
     "set_n_cpu_devices",
     "Shape",
