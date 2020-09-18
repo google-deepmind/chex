@@ -22,15 +22,22 @@ or from PyPI:
 
 ### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py))
 
-Dataclasses are a popular construct introduced by Python 3.7 to allows to
+Dataclasses are a popular construct introduced by Python 3.7 to allow to
 easily specify typed data structures with minimal boilerplate code. They are
-not, however, compatible with JAX out of the box.
+not, however, compatible with JAX and
+[dm-tree](https://github.com/deepmind/tree) out of the box.
 
 In Chex we provide a JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
 
 Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
 nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
 compatibility with JAX data structures.
+
+In addition, we provide a class wrapper that exposes dataclasss as
+`collections.Mapping` descendants which allows to process them
+(e.g. (un-)flatten) in `dm-tree` methods as usual Python dictionaries (enabled
+by default in Chex `dataclass`). See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L27)
+docstring for more details.
 
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
 

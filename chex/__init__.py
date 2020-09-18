@@ -33,6 +33,7 @@ from chex._src.asserts import assert_tree_all_close
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_type
 from chex._src.dataclass import dataclass
+from chex._src.dataclass import mappable_dataclass
 from chex._src.fake import fake_jit
 from chex._src.fake import fake_pmap
 from chex._src.fake import fake_pmap_and_jit
@@ -80,6 +81,7 @@ __all__ = (
     "fake_jit",
     "fake_pmap",
     "fake_pmap_and_jit",
+    "mappable_dataclass",
     "Numeric",
     "params_product",
     "PRNGKey",

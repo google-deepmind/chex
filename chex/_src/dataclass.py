@@ -13,27 +13,83 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX friendly dataclass implementation reusing the dataclasses library."""
+"""JAX/dm-tree friendly dataclass implementation reusing the dataclasses library."""
 
+import collections
+import functools
 from absl import logging
 import dataclasses
 import jax
-from jax import tree_util
-
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
 
 
-def dataclass(  # pylint: disable=invalid-name
-    _cls=None, *, init=True, repr=True, eq=True, order=False, unsafe_hash=False,  # pylint: disable=redefined-builtin
-    frozen=False):
+def mappable_dataclass(cls):
+  """Exposes dataclass as `collections.Mapping` descendent.
+
+  Allows to traverse dataclasses in methods from `dm-tree` library.
+
+  NOTE: changes dataclasses constructor to dict-type
+  (i.e. positional args aren't supported; however can use generators/iterables).
+
+  Args:
+    cls: dataclass to mutate.
+
+  Returns:
+    Mutated dataclass implementing `collections.Mapping` interface.
+  """
+  if not dataclasses.is_dataclass(cls):
+    raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
+
+  if cls.__bases__ != (object,):
+    raise ValueError(
+        f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__}).")
+
+  # Define methods for compatibility with `collections.Mapping`.
+  setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
+  setattr(cls, "__len__", lambda self: len(self.__dict__))
+  setattr(cls, "__iter__", lambda self: iter(self.__dict__))
+
+  # Update constructor.
+  orig_init = cls.__init__
+  init_fields = [f.name for f in cls.__dataclass_fields__.values() if f.init]
+
+  @functools.wraps(cls.__init__)
+  def new_init(self, *orig_args, **orig_kwargs):
+    if (orig_args and orig_kwargs) or len(orig_args) > 1:
+      raise ValueError(
+          "Mappabale dataclass constructor doesn't support positional args."
+          "(it has the same constructor as python dict)")
+    all_kwargs = dict(*orig_args, **orig_kwargs)
+
+    # Pass only arguments corresponding to fields with `init=True`.
+    valid_kwargs = {k: v for k, v in all_kwargs.items() if k in init_fields}
+    orig_init(self, **valid_kwargs)
+
+  cls.__init__ = new_init
+
+  # Update base class.
+  cls.__bases__ = (collections.Mapping,)
+  return cls
+
+
+def dataclass(
+    cls=None,
+    *,
+    init=True,
+    repr=True,  # pylint: disable=redefined-builtin
+    eq=True,
+    order=False,
+    unsafe_hash=False,
+    frozen=False,
+    mappable_dataclass=False,  # pylint: disable=redefined-outer-name
+):
   """"JAX-friendly wrapper for dataclasses.dataclass."""
-  dcls = _Dataclass(
-      init=init, repr=repr, eq=eq, order=order, unsafe_hash=unsafe_hash,
-      frozen=frozen)
-  if _cls is None:
+  dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
+                    mappable_dataclass)
+  if cls is None:
     return dcls
-  return dcls(_cls)
+  return dcls(cls)
 
 
 class _Dataclass():
@@ -45,24 +101,41 @@ class _Dataclass():
   """
 
   def __init__(
-      self, init=True, repr=True, eq=True, order=False, unsafe_hash=False,  # pylint: disable=redefined-builtin
-      frozen=False):
+      self,
+      init=True,
+      repr=True,  # pylint: disable=redefined-builtin
+      eq=True,
+      order=False,
+      unsafe_hash=False,
+      frozen=False,
+      mappable_dataclass=True,  # pylint: disable=redefined-outer-name
+  ):
     self.init = init
     self.repr = repr  # pylint: disable=redefined-builtin
     self.eq = eq
     self.order = order
     self.unsafe_hash = unsafe_hash
     self.frozen = frozen
+    self.mappable_dataclass = mappable_dataclass
 
   def __call__(self, cls):
     """Forwards class to dataclasses's wrapper and registers it with JAX."""
     dcls = dataclasses.dataclass(
-        cls, init=self.init, repr=self.repr, eq=self.eq, order=self.order,
-        unsafe_hash=self.unsafe_hash, frozen=self.frozen)  # pytype: disable=wrong-keyword-args
+        cls,
+        init=self.init,
+        repr=self.repr,
+        eq=self.eq,
+        order=self.order,
+        unsafe_hash=self.unsafe_hash,
+        frozen=self.frozen)  # pytype: disable=wrong-keyword-args
 
     def _replace(self, **kwargs):
       return dataclasses.replace(self, **kwargs)
-    setattr(dcls, 'replace', _replace)
+
+    setattr(dcls, "replace", _replace)
+
+    if self.mappable_dataclass:
+      dcls = mappable_dataclass(dcls)
 
     _register_dataclass_type(dcls)
     return dcls
@@ -73,7 +146,7 @@ def _register_dataclass_type(data_class):
   flatten = lambda d: jax.tree_flatten(d.__dict__)
   unflatten = lambda s, xs: data_class(**s.unflatten(xs))
   try:
-    tree_util.register_pytree_node(
+    jax.tree_util.register_pytree_node(
         nodetype=data_class, flatten_func=flatten, unflatten_func=unflatten)
   except ValueError:
-    logging.info('%s is already registered as JAX PyTree node.', data_class)
+    logging.info("%s is already registered as JAX PyTree node.", data_class)
