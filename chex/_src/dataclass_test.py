@@ -255,6 +255,17 @@ class DataclassesTest(parameterized.TestCase):
                                 'cannot assign to field'):
       obj.b = factor * obj.b  # raises error because obj is frozen.
 
+  def test_get_and_set_state(self):
+
+    @chex_dataclass()
+    class SimpleClass():
+      data: int = 1
+
+    obj_a = SimpleClass(data=1)
+    state = obj_a.__getstate__()
+    obj_b = SimpleClass(data=2)
+    obj_b.__setstate__(state)
+    self.assertEqual(obj_a, obj_b)
 
 if __name__ == '__main__':
   absltest.main()

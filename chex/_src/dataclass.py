@@ -144,7 +144,15 @@ class _Dataclass():
     def _replace(self, **kwargs):
       return dataclasses.replace(self, **kwargs)
 
+    def _getstate(self):
+      return self.__dict__
+
+    def _setstate(self, state):
+      self.__dict__ = state
+
     setattr(dcls, "replace", _replace)
+    setattr(dcls, "__getstate__", _getstate)
+    setattr(dcls, "__setstate__", _setstate)
 
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls, self.restricted_inheritance)
