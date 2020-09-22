@@ -15,6 +15,7 @@
 # ==============================================================================
 """Chex assertion utilities."""
 import functools
+import itertools
 from typing import Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
@@ -38,6 +39,76 @@ def _num_devices_available(devtype: str, backend: Optional[str] = None):
         f"Unknown device type '{devtype}' (expected one of {supported_types}).")
 
   return sum(d.platform == devtype for d in jax.devices(backend))
+
+
+def assert_max_traces(fn=None, n=None):
+  """Checks if a function is traced at most n times (inclusively).
+
+  JAX re-traces JIT'ted function every time the structure of passed arguments
+  changes. Often this behavior is inadvertent and leads to a significant
+  performance drop which is hard to debug. This wrapper asserts that
+  the function is not re-traced more that `n` times during program execution.
+
+  Examples:
+
+  ```
+    @jax.jit
+    @chex.assert_max_traces(n=1)
+    def fn_sum_jitted(x, y):
+      return x + y
+
+    def fn_sub(x, y):
+      return x - y
+
+    fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
+  ```
+
+  More about tracing:
+    https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html
+
+  Args:
+    fn: a function to wrap (must not be a JIT'ted function itself).
+    n: maximum allowed number of retraces (non-negative).
+
+  Returns:
+    Decorated f-n that throws exception when max. number of re-traces exceeded.
+  """
+  if not callable(fn) and n is None:
+    # Passed n as a first argument.
+    n, fn = fn, n
+
+  # Currying.
+  if fn is None:
+    return lambda fn_: assert_max_traces(fn_, n)
+
+  assert_scalar_non_negative(n)
+
+  # Check wrappers ordering.
+  i_fn = fn
+  while hasattr(i_fn, "__wrapped__"):
+    if "_python_jit." in i_fn.__repr__():
+      raise ValueError("@assert_max_traces must not wrap `@jax.jit`'ted f-n; "
+                       "change wrappers ordering.")
+    i_fn = i_fn.__wrapped__
+
+  tracing_counter = 0
+
+  @functools.wraps(fn)
+  def fn_wrapped(*args, **kwargs):
+    # We assume that a function without arguments is not being traced.
+    # That is, case of n=0 for no-arguments function won't raise a error.
+    has_tracers_in_args = any(
+        isinstance(arg, jax.core.Tracer)
+        for arg in itertools.chain(args, kwargs.values()))
+
+    nonlocal tracing_counter
+    tracing_counter += int(has_tracers_in_args)
+    if tracing_counter > n:
+      raise AssertionError(f"Function {fn.__name__} is traced > {n} times!")
+
+    return fn(*args, **kwargs)
+
+  return fn_wrapped
 
 
 def assert_scalar(x: Scalar):

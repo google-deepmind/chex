@@ -20,6 +20,7 @@ from chex._src.asserts import assert_devices_available
 from chex._src.asserts import assert_equal
 from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_gpu_available
+from chex._src.asserts import assert_max_traces
 from chex._src.asserts import assert_numerical_grads
 from chex._src.asserts import assert_rank
 from chex._src.asserts import assert_scalar
@@ -65,6 +66,7 @@ __all__ = (
     "assert_equal",
     "assert_equal_shape",
     "assert_gpu_available",
+    "assert_max_traces",
     "assert_numerical_grads",
     "assert_rank",
     "assert_scalar",

@@ -15,6 +15,7 @@
 # ==============================================================================
 """Tests for `asserts.py`."""
 
+import functools
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
@@ -30,6 +31,125 @@ def as_arrays(arrays):
 
 def emplace(arrays):
   return arrays
+
+
+class AssertMaxTracesTest(variants.TestCase):
+
+  def _init(self, fn_, init_type, max_traces, kwargs, static_arg):
+    variant_kwargs = dict()
+    if static_arg:
+      variant_kwargs['static_argnums'] = 1
+
+    if kwargs:
+      args, kwargs = list(), dict(n=max_traces)
+    else:
+      args, kwargs = [max_traces], dict()
+
+    if init_type == 't1':
+
+      @asserts.assert_max_traces(*args, **kwargs)
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      fn_jitted = self.variant(fn, **variant_kwargs)
+    elif init_type == 't2':
+
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      fn = asserts.assert_max_traces(fn, *args, **kwargs)
+      fn_jitted = self.variant(fn, **variant_kwargs)
+    elif init_type == 't3':
+
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      @self.variant(**variant_kwargs)
+      @asserts.assert_max_traces(*args, **kwargs)
+      def fn_jitted(x, y):
+        self.assertIsInstance(x, jax.core.Tracer)
+        return fn_(x, y)
+    else:
+      raise ValueError(f'Unknown type {init_type}.')
+
+    return fn, fn_jitted
+
+  @variants.variants(with_jit=True, with_pmap=True)
+  @parameterized.named_parameters(
+      variants.params_product((
+          ('type1', 't1'),
+          ('type2', 't2'),
+          ('type3', 't3'),
+      ), (
+          ('args', False),
+          ('kwargs', True),
+      ), (
+          ('no_static_arg', False),
+          ('with_static_arg', True),
+      ), (
+          ('max_traces_0', 0),
+          ('max_traces_1', 1),
+          ('max_traces_2', 2),
+          ('max_traces_10', 10),
+      ),
+                              named=True))
+  def test_assert(self, init_type, kwargs, static_arg, max_traces):
+    fn_ = lambda x, y: x + y
+    fn, fn_jitted = self._init(fn_, init_type, max_traces, kwargs, static_arg)
+
+    # Original function.
+    for _ in range(max_traces + 3):
+      self.assertEqual(fn(1, 2), 3)
+
+    # Every call results in re-tracing because arguments' shapes are different.
+    for i in range(max_traces):
+      for k in range(5):
+        arg = jnp.zeros(i + 1) + k
+        np.testing.assert_array_equal(fn_jitted(arg, 2), arg + 2)
+
+    # Original function.
+    for _ in range(max_traces + 3):
+      self.assertEqual(fn(1, 2), 3)
+      self.assertEqual(fn([1], [2]), [1, 2])
+      self.assertEqual(fn('a', 'b'), 'ab')
+
+    # (max_traces + 1)-th re-tracing.
+    with self.assertRaisesRegex(AssertionError, 'fn.* is traced > .* times!'):
+      arg = jnp.zeros(max_traces + 1)
+      fn_jitted(arg, 2)
+
+  def test_incorrect_ordering(self):
+    # pylint:disable=g-error-prone-assert-raises,unused-variable
+    with self.assertRaisesRegex(ValueError, 'change wrappers ordering'):
+
+      @asserts.assert_max_traces(1)
+      @jax.jit
+      def fn(_):
+        pass
+
+    def dummy_wrapper(fn):
+
+      @functools.wraps(fn)
+      def fn_wrapped():
+        return fn()
+
+      return fn_wrapped
+
+    with self.assertRaisesRegex(ValueError, 'change wrappers ordering'):
+
+      @asserts.assert_max_traces(1)
+      @dummy_wrapper
+      @jax.jit
+      def fn_2():
+        pass
+
+    # pylint:enable=g-error-prone-assert-raises,unused-variable
 
 
 class ScalarAssertTest(parameterized.TestCase):

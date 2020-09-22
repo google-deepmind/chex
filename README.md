@@ -79,6 +79,35 @@ assert_tpu_available()                 # at least 1 TPU available
 assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 ```
 
+JAX re-traces JIT'ted function every time the structure of passed arguments
+changes. Often this behavior is inadvertent and leads to a significant
+performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
+decorator asserts that the function is not re-traced more that `n` times during
+program execution.
+
+Examples:
+
+```
+  @jax.jit
+  @chex.assert_max_traces(n=1)
+  def fn_sum_jitted(x, y):
+    return x + y
+
+  z = fn_sum_jitted(jnp.zeros(3), jnp.zeros(3))
+  t = fn_sum_jitted(jnp.zeros(6, 7), jnp.zeros(6, 7))  # AssertionError!
+```
+
+Can be used with `jax.pmap()` as well:
+
+```
+  def fn_sub(x, y):
+    return x - y
+
+  fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
+```
+
+[More about tracing](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
+
 See documentation of [asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py) for details on all supported assertions.
 
 ### Test variants ([variants.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants.py))

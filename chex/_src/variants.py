@@ -48,7 +48,11 @@ flags.DEFINE_bool(
 # instead of `variants.TestCase` or `parameterized.TestCase`. If a base class
 # doesn't support this feature variant test fails with a corresponding error.
 class TestCase(parameterized.TestCase):
-  pass
+
+  def variant(self, *args, **kwargs):
+    """To pass pytype checks."""
+    raise NotImplementedError("self.variant is not implemented: "
+                              "forgot to wrap a test in @chex.variants?")
 
 
 tree_map = tree_util.tree_map
@@ -67,7 +71,7 @@ def params_product(*params_lists, named=False):
       else:
         yield sum(combination, ())
 
-  return generate()
+  return list(generate())
 
 
 def count_num_calls(fn):
