@@ -24,7 +24,7 @@ import jax
 FrozenInstanceError = dataclasses.FrozenInstanceError
 
 
-def mappable_dataclass(cls):
+def mappable_dataclass(cls, restricted_inheritance=True):
   """Exposes dataclass as `collections.Mapping` descendent.
 
   Allows to traverse dataclasses in methods from `dm-tree` library.
@@ -34,6 +34,8 @@ def mappable_dataclass(cls):
 
   Args:
     cls: dataclass to mutate.
+    restricted_inheritance: ensure dataclass inherits from `object` or from
+      another `chex.dataclass`.
 
   Returns:
     Mutated dataclass implementing `collections.Mapping` interface.
@@ -41,9 +43,12 @@ def mappable_dataclass(cls):
   if not dataclasses.is_dataclass(cls):
     raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
 
-  if cls.__bases__ != (object,):
+  is_dataclass_base = all(map(dataclasses.is_dataclass, cls.__bases__))
+  if (restricted_inheritance and
+      (cls.__bases__ != (object,) and not is_dataclass_base)):
     raise ValueError(
-        f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__}).")
+        f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__})."
+        "Disable `restricted_inheritance` to suppress this check.")
 
   # Define methods for compatibility with `collections.Mapping`.
   setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
@@ -69,7 +74,11 @@ def mappable_dataclass(cls):
   cls.__init__ = new_init
 
   # Update base class.
-  cls.__bases__ = (collections.Mapping,)
+  if cls.__bases__ == (object,):
+    # `collections.Mapping` is incompatible with `object`
+    cls.__bases__ = (collections.Mapping,)
+  else:
+    cls.__bases__ += (collections.Mapping,)
   return cls
 
 
@@ -82,11 +91,12 @@ def dataclass(
     order=False,
     unsafe_hash=False,
     frozen=False,
-    mappable_dataclass=False,  # pylint: disable=redefined-outer-name
+    mappable_dataclass=True,  # pylint: disable=redefined-outer-name
+    restricted_inheritance=True,
 ):
   """"JAX-friendly wrapper for dataclasses.dataclass."""
   dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
-                    mappable_dataclass)
+                    mappable_dataclass, restricted_inheritance)
   if cls is None:
     return dcls
   return dcls(cls)
@@ -109,6 +119,7 @@ class _Dataclass():
       unsafe_hash=False,
       frozen=False,
       mappable_dataclass=True,  # pylint: disable=redefined-outer-name
+      restricted_inheritance=True,
   ):
     self.init = init
     self.repr = repr  # pylint: disable=redefined-builtin
@@ -117,6 +128,7 @@ class _Dataclass():
     self.unsafe_hash = unsafe_hash
     self.frozen = frozen
     self.mappable_dataclass = mappable_dataclass
+    self.restricted_inheritance = restricted_inheritance
 
   def __call__(self, cls):
     """Forwards class to dataclasses's wrapper and registers it with JAX."""
@@ -135,7 +147,7 @@ class _Dataclass():
     setattr(dcls, "replace", _replace)
 
     if self.mappable_dataclass:
-      dcls = mappable_dataclass(dcls)
+      dcls = mappable_dataclass(dcls, self.restricted_inheritance)
 
     _register_dataclass_type(dcls)
     return dcls
