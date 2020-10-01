@@ -470,6 +470,10 @@ class TypeAssertTest(parameterized.TestCase):
       ('one_int', 3, float),
       ('many_floats', [1., 2., 3.], int),
       ('many_floats_verbose', [1., 2., 3.], [float, float, int]),
+      ('one_bool_as_float', True, float),
+      ('one_bool_as_int', True, int),
+      ('one_float_as_bool', 3., bool),
+      ('one_int_as_bool', 3, bool),
   )
   def test_type_should_fail_scalar(self, scalars, wrong_type):
     with self.assertRaisesRegex(AssertionError,
@@ -490,6 +494,7 @@ class TypeAssertTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('one_float', 3., float),
       ('one_int', 3, int),
+      ('one_bool', True, bool),
       ('many_floats', [1., 2., 3.], float),
       ('many_floats_verbose', [1., 2., 3.], [float, float, float]),
   )

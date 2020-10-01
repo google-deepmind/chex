@@ -472,6 +472,7 @@ def assert_type(
   ```
     assert_type(7, int)
     assert_type(7.1, float)
+    assert_type(False, bool)
     assert_type([7, 8], int)
     assert_type([7, 7.1], [int, float])
     assert_type(np.array(7), int)
@@ -506,6 +507,8 @@ def assert_type(
       parent = jnp.floating
     elif jnp.issubdtype(expected, jnp.integer):
       parent = jnp.integer
+    elif jnp.issubdtype(expected, jnp.bool_):
+      parent = jnp.bool_
     else:
       raise AssertionError(
           f"Error in type compatibility check, unsupported dtype '{expected}'.")
