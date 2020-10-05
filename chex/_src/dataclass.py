@@ -63,7 +63,7 @@ def mappable_dataclass(cls, restricted_inheritance=True):
   def new_init(self, *orig_args, **orig_kwargs):
     if (orig_args and orig_kwargs) or len(orig_args) > 1:
       raise ValueError(
-          "Mappabale dataclass constructor doesn't support positional args."
+          "Mappable dataclass constructor doesn't support positional args."
           "(it has the same constructor as python dict)")
     all_kwargs = dict(*orig_args, **orig_kwargs)
 
