@@ -86,9 +86,11 @@ def assert_max_traces(fn=None, n=None):
   # Check wrappers ordering.
   i_fn = fn
   while hasattr(i_fn, "__wrapped__"):
-    if "_python_jit." in i_fn.__repr__():
-      raise ValueError("@assert_max_traces must not wrap `@jax.jit`'ted f-n; "
-                       "change wrappers ordering.")
+    if ("_python_jit." in i_fn.__repr__() or
+        ".reraise_with_filtered_traceback" in i_fn.__repr__()):
+      raise ValueError(
+          "@assert_max_traces must not wrap JAX-transformed function "
+          "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
     i_fn = i_fn.__wrapped__
 
   tracing_counter = 0
