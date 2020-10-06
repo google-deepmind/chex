@@ -216,7 +216,9 @@ def assert_shape(
   errors = []
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
-    if list(shape) != list(expected):
+    if not (
+        len(shape) == len(expected)
+        and all(j is None or i == j for i, j in zip(shape, expected))):
       errors.append((idx, shape, expected))
 
   if errors:
