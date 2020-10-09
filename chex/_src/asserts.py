@@ -41,6 +41,39 @@ def _num_devices_available(devtype: str, backend: Optional[str] = None):
   return sum(d.platform == devtype for d in jax.devices(backend))
 
 
+def _is_traceable(fn):
+  """Checks if function is traceable.
+
+  JAX traces a function when it is wrapped with @jit, @pmap, or @vmap.
+  In other words, this function checks whether `fn` is wrapped with any of
+  the aforementioned JAX transformations.
+
+  Args:
+    fn: function to assert.
+  Returns:
+    Bool indicating whether fn is traceable.
+  """
+
+  tokens = (
+      "_python_jit.",                        # PyJIT  in Python ver. < 3.7
+      "_cpp_jit.",                           # CppJIT in Python ver. < 3.7
+      ".reraise_with_filtered_traceback",    # JIT    in Python ver. >= 3.7
+      "pmap.",                               # pmap
+      "vmap.",                               # vmap
+  )
+
+  # Un-wrap `fn` and check if any internal f-n is jitted by pattern matching.
+  fn_ = fn
+  while True:
+    if any(t in str(fn_) for t in tokens):
+      return True
+
+    if not hasattr(fn_, "__wrapped__"):
+      break
+    fn_ = fn_.__wrapped__
+  return False
+
+
 def assert_max_traces(fn=None, n=None):
   """Checks if a function is traced at most n times (inclusively).
 
@@ -84,14 +117,10 @@ def assert_max_traces(fn=None, n=None):
   assert_scalar_non_negative(n)
 
   # Check wrappers ordering.
-  i_fn = fn
-  while hasattr(i_fn, "__wrapped__"):
-    if ("_python_jit." in i_fn.__repr__() or
-        ".reraise_with_filtered_traceback" in i_fn.__repr__()):
-      raise ValueError(
-          "@assert_max_traces must not wrap JAX-transformed function "
-          "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
-    i_fn = i_fn.__wrapped__
+  if _is_traceable(fn):
+    raise ValueError(
+        "@assert_max_traces must not wrap JAX-transformed function "
+        "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
 
   tracing_counter = 0
 

@@ -33,6 +33,40 @@ def emplace(arrays):
   return arrays
 
 
+class IsTraceableTest(variants.TestCase):
+
+  @variants.variants(with_jit=True, with_pmap=True)
+  @parameterized.named_parameters(
+      ('CPP_JIT', True),
+      ('PY_JIT', False),
+  )
+  def test_is_traceable(self, cpp_jit):
+    prev_state = jax.api.FLAGS.experimental_cpp_jit
+    jax.api.FLAGS.experimental_cpp_jit = cpp_jit
+
+    def dummy_wrapper(fn):
+
+      @functools.wraps(fn)
+      def fn_wrapped(fn, *args):
+        return fn(args)
+
+      return fn_wrapped
+
+    fn = lambda x: x.sum()
+    wrapped_fn = dummy_wrapper(fn)
+    self.assertFalse(asserts._is_traceable(fn))
+    self.assertFalse(asserts._is_traceable(wrapped_fn))
+
+    var_fn = self.variant(fn)
+    wrapped_var_f = dummy_wrapper(var_fn)
+    var_wrapped_f = self.variant(wrapped_fn)
+    self.assertTrue(asserts._is_traceable(var_fn))
+    self.assertTrue(asserts._is_traceable(wrapped_var_f))
+    self.assertTrue(asserts._is_traceable(var_wrapped_f))
+
+    jax.api.FLAGS.experimental_cpp_jit = prev_state
+
+
 class AssertMaxTracesTest(variants.TestCase):
 
   def _init(self, fn_, init_type, max_traces, kwargs, static_arg):

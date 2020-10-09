@@ -324,11 +324,7 @@ def _with_jit(fn,
               **unused_kwargs):
   """Variant that applies `jax.jit` to fn."""
 
-  @functools.wraps(fn)
-  def wrapper(*args, **kwargs):
-    return jax.jit(fn, static_argnums, device, backend)(*args, **kwargs)
-
-  return wrapper
+  return jax.jit(fn, static_argnums, device, backend)
 
 
 @toolz.curry
@@ -445,7 +441,15 @@ def _with_pmap(fn,
   if isinstance(static_argnums, int):
     static_argnums = (static_argnums,)
 
-  @functools.wraps(fn)
+  pmap_kwargs = dict(
+      axis_name=axis_name,
+      devices=devices,
+      in_axes=in_axes,
+      static_broadcasted_argnums=static_argnums,
+      backend=backend)
+  pmapped_fn = jax.pmap(fn, **pmap_kwargs)
+
+  @functools.wraps(pmapped_fn)
   def wrapper(*args: pytypes.ArrayTree, **kwargs: pytypes.ArrayTree):
     if kwargs and (in_axes != 0 or static_argnums):
       raise ValueError("Do not use kwargs with `in_axes` or `static_argnums` "
@@ -482,14 +486,21 @@ def _with_pmap(fn,
               f"got: {shapes} (expected the first dim to be {n_devices_}). "
               "Consider setting `broadcast_args_to_devices=True`.")
 
-    res = jax.pmap(
-        fn,
+    new_kwargs = dict(
         axis_name=axis_name,
         devices=devices_,
         in_axes=in_axes,
         static_broadcasted_argnums=static_argnums,
-        backend=backend)(*args, **kwargs)
+        backend=backend)
 
+    # Re-compile fn if kwargs changed.
+    nonlocal pmap_kwargs
+    nonlocal pmapped_fn
+    if new_kwargs != pmap_kwargs:
+      pmap_kwargs = new_kwargs
+      pmapped_fn = jax.pmap(fn, **pmap_kwargs)
+
+    res = pmapped_fn(*args, **kwargs)
     return reduce_fn(res)
 
   return wrapper
