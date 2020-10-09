@@ -44,6 +44,7 @@ setup(
     install_requires=[
         'absl-py>=0.9.0',
         'dataclasses>=0.7; python_version>="3.6" and python_version<"3.7"',
+        'dm-tree>=0.1.5',
         'jax>=0.1.55',
         'jaxlib>=0.1.37',
         'numpy>=1.18.0',

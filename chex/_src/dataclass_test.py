@@ -31,19 +31,19 @@ mappable_dataclass = dataclass.mappable_dataclass
 orig_dataclass = dataclasses.dataclass
 
 
-@chex_dataclass(mappable_dataclass=False)
+@chex_dataclass
 class NestedDataclass():
   c: pytypes.ArrayDevice
   d: pytypes.ArrayDevice
 
 
-@chex_dataclass(mappable_dataclass=False)
+@chex_dataclass
 class Dataclass():
   a: NestedDataclass
   b: pytypes.ArrayDevice
 
 
-@chex_dataclass(frozen=True, mappable_dataclass=False)
+@chex_dataclass(frozen=True)
 class FrozenDataclass():
   a: NestedDataclass
   b: pytypes.ArrayDevice

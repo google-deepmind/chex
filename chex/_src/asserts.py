@@ -16,7 +16,7 @@
 """Chex assertion utilities."""
 import functools
 import itertools
-from typing import Sequence, Type, Union, Callable, Optional, Set
+from typing import Any, Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
 from chex._src import pytypes
@@ -24,10 +24,17 @@ import jax
 import jax.numpy as jnp
 import jax.test_util as jax_test
 import numpy as np
+import tree
 
 Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
+
+# Custom pytypes.
+TIndex = int
+TLeaf = Any
+TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
+TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
 
 def _num_devices_available(devtype: str, backend: Optional[str] = None):
@@ -50,16 +57,17 @@ def _is_traceable(fn):
 
   Args:
     fn: function to assert.
+
   Returns:
     Bool indicating whether fn is traceable.
   """
 
   tokens = (
-      "_python_jit.",                        # PyJIT  in Python ver. < 3.7
-      "_cpp_jit.",                           # CppJIT in Python ver. < 3.7
-      ".reraise_with_filtered_traceback",    # JIT    in Python ver. >= 3.7
-      "pmap.",                               # pmap
-      "vmap.",                               # vmap
+      "_python_jit.",  # PyJIT  in Python ver. < 3.7
+      "_cpp_jit.",  # CppJIT in Python ver. < 3.7
+      ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
+      "pmap.",  # pmap
+      "vmap.",  # vmap
   )
 
   # Un-wrap `fn` and check if any internal f-n is jitted by pattern matching.
@@ -72,6 +80,17 @@ def _is_traceable(fn):
       break
     fn_ = fn_.__wrapped__
   return False
+
+
+def _assert_leaves_all_eq_comparator(
+    equality_comparator: TLeavesEqCmpFn,
+    error_msg_fn: Callable[[TLeaf, TLeaf, str, int, int],
+                           str], path: Sequence[Any], *leaves: Sequence[TLeaf]):
+  """Asserts all leaves are equal using custom comparator."""
+  path_ = "/".join(map(str, path))
+  for i in range(1, len(leaves)):
+    if not equality_comparator(leaves[0], leaves[i]):
+      raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_, 0, i))
 
 
 def assert_max_traces(fn=None, n=None):
@@ -217,8 +236,9 @@ def assert_shape(
   Args:
     inputs: array or sequence of arrays.
     expected_shapes: sequence of expected shapes associated with each input,
-      where the expected shape is a sequence of integer dimensions; if all
-      inputs have same shape, a single shape may be passed as `expected_shapes`.
+      where the expected shape is a sequence of integer and `None` dimensions;
+      if all inputs have same shape, a single shape may be passed as
+      `expected_shapes`.
 
   Raises:
     AssertionError: if the length of `inputs` and `expected_shapes` don't match;
@@ -437,37 +457,78 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
-def assert_tree_all_close(
-    actual: ArrayTree,
-    desired: ArrayTree,
-    rtol: float = 1e-07,
-    atol: float = 0):
-  """Assert two trees have leaves with approximately equal values.
+def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
+  """Assert trees have the same structure.
+
+  Args:
+    *trees: trees which structures to assert on equality.
+
+  Raise:
+    AssertionError: if structures of any two trees are different.
+  """
+  first_treedef = jax.tree_structure(trees[0])
+  other_treedefs = map(jax.tree_structure, trees[1:])
+  for i, treedef in enumerate(other_treedefs, start=1):
+    if first_treedef != treedef:
+      raise AssertionError(
+          f"Error in tree structs equality check: trees 0 and {i} do not match,"
+          f"\n tree 0: {first_treedef}"
+          f"\n tree {i}: {treedef}")
+
+
+def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
+                                     error_msg_fn: TLeavesEqCmpErrorFn,
+                                     *trees: Sequence[ArrayTree]):
+  """Assert all trees are equal using custom comparator for leaves."""
+  if len(trees) < 2:
+    return
+  assert_tree_all_equal_structs(*trees)
+
+  def _tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
+    msg = error_msg_fn(l_1, l_2)
+    return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."
+
+  cmp = functools.partial(_assert_leaves_all_eq_comparator,
+                          equality_comparator, _tree_error_msg_fn)
+  tree.map_structure_with_path(cmp, *trees)
+
+
+def assert_tree_all_close(*trees: Sequence[ArrayTree],
+                          rtol: float = 1e-07,
+                          atol: float = .0):
+  """Assert trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired to
    atol + rtol * abs(desired).
 
   Args:
-    actual: pytree with array leaves.
-    desired: pytree with array leaves.
+    *trees: a sequence of trees with array leaves.
     rtol: relative tolerance.
     atol: absolute tolerance.
   Raise:
     AssertionError: if the leaf values actual and desired are not equal up to
       specified tolerance.
   """
-  if jax.tree_structure(actual) != jax.tree_structure(desired):
-    raise AssertionError(
-        "Error in value equality check: Trees do not have the same structure,\n"
-        f"actual: {jax.tree_structure(actual)}\n"
-        f"desired: {jax.tree_structure(desired)}.")
-
   assert_fn = functools.partial(
-      np.testing.assert_allclose,
-      rtol=rtol,
-      atol=atol,
+      np.testing.assert_allclose, rtol=rtol, atol=atol,
       err_msg="Error in value equality check: Values not approximately equal")
-  jax.tree_multimap(assert_fn, actual, desired)
+  cmp_fn = lambda arr_1, arr_2: bool(assert_fn(arr_1, arr_2) is None)
+  err_msg_fn = lambda arr_1, arr_2: None
+  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
+
+
+def assert_tree_all_equal_shapes(*trees: Sequence[ArrayTree]):
+  """Assert trees have the same structure and leaves' shapes.
+
+  Args:
+    *trees: a sequence of trees with array leaves.
+
+  Raise:
+    AssertionError: if trees' structures or leaves' shapes are different.
+  """
+  cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
+  err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
+  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
 
 
 def assert_devices_available(

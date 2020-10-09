@@ -466,6 +466,34 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
 
 class TreeAssertionsTest(parameterized.TestCase):
 
+  def _assert_tree_structs_validation(self, assert_fn):
+    get_val = lambda: jnp.zeros([3])
+    tree1 = [[get_val(), get_val()], get_val()]
+    tree2 = [[get_val(), get_val()], get_val()]
+    tree3 = [get_val(), [get_val(), get_val()]]
+    tree4 = [get_val(), [get_val(), get_val()], get_val()]
+    tree5 = dict(x=1, y=2, z=3)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+      assert_fn(tree1, tree5)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+      assert_fn(tree1, tree3)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+      assert_fn([], [], tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 3'):
+      assert_fn(tree2, tree1, tree2, tree3, tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+      assert_fn(tree2, tree1, tree4)
+
   def test_tree_all_finite_passes_finite(self):
     finite_tree = {'a': jnp.ones((3,)), 'b': jnp.array([0.0, 0.0])}
     asserts.assert_tree_all_finite(finite_tree)
@@ -496,22 +524,8 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree2 = (jnp.array([1.0, 1.0 + 1e-9]),)
     asserts.assert_tree_all_close(tree1, tree2)
 
-  def test_assert_tree_all_close_fails_number_of_leaves(self):
-    tree1 = (jnp.zeros((4,)), jnp.zeros((4,)))
-    tree2 = (jnp.zeros((4,)))
-    with self.assertRaisesRegex(
-        AssertionError,
-        'Error in value equality check: Trees do not have the same structure'):
-      asserts.assert_tree_all_close(tree1, tree2)
-
   def test_assert_tree_all_close_fails_different_structure(self):
-    val = jnp.zeros((4,))
-    tree1 = ((val, val), val)
-    tree2 = (val, (val, val))
-    with self.assertRaisesRegex(
-        AssertionError,
-        'Error in value equality check: Trees do not have the same structure'):
-      asserts.assert_tree_all_close(tree1, tree2)
+    self._assert_tree_structs_validation(asserts.assert_tree_all_close)
 
   def test_assert_tree_all_close_fails_values_differ(self):
     tree1 = (jnp.array([0.0, 2.0]))
@@ -525,6 +539,36 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 'Values not approximately equal'):
       asserts.assert_tree_all_close(tree1, tree2, rtol=0.01)
+
+  def test_assert_tree_all_equal_shapes(self):
+    get_val = lambda s: jnp.zeros([s])
+    tree1 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
+    tree2 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
+    tree3 = dict(a1=get_val(3), d=dict(a2=get_val(7), a3=get_val(5)))
+
+    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_shapes)
+    asserts.assert_tree_all_equal_shapes(tree1, tree1)
+    asserts.assert_tree_all_equal_shapes(tree2, tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Trees 0 and 1 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+      asserts.assert_tree_all_equal_shapes(tree1, tree3)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Trees 0 and 3 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+      asserts.assert_tree_all_equal_shapes(tree1, tree2, tree2, tree3, tree1)
+
+  def test_assert_tree_all_equal_structs(self):
+    get_val = lambda: jnp.zeros([3])
+    tree1 = [[get_val(), get_val()], get_val()]
+    tree2 = [[get_val(), get_val()], get_val()]
+    tree3 = [get_val(), [get_val(), get_val()]]
+
+    asserts.assert_tree_all_equal_structs(tree1, tree2, tree2, tree1)
+    asserts.assert_tree_all_equal_structs(tree3, tree3)
+    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_structs)
 
 
 class NumDevicesAssertTest(parameterized.TestCase):

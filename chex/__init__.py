@@ -31,6 +31,9 @@ from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
 from chex._src.asserts import assert_tpu_available
 from chex._src.asserts import assert_tree_all_close
+from chex._src.asserts import assert_tree_all_equal_comparator
+from chex._src.asserts import assert_tree_all_equal_shapes
+from chex._src.asserts import assert_tree_all_equal_structs
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_type
 from chex._src.dataclass import dataclass
@@ -77,6 +80,9 @@ __all__ = (
     "assert_shape",
     "assert_tpu_available",
     "assert_tree_all_close",
+    "assert_tree_all_equal_comparator",
+    "assert_tree_all_equal_shapes",
+    "assert_tree_all_equal_structs",
     "assert_tree_all_finite",
     "assert_type",
     "dataclass",
