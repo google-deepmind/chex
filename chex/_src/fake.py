@@ -132,6 +132,15 @@ def _fake_all_gather(x, *unused_args, **unused_kwargs):
   return jax.tree_map(add_leading_dim, x)
 
 
+class FakeContext(contextlib.ExitStack):
+
+  def start(self):
+    self.__enter__()
+
+  def stop(self):
+    self.__exit__(None, None, None)
+
+
 def fake_jit(enable_patching: bool = True):
   """Context manager for patching jax.jit with the identity function.
 
@@ -160,7 +169,7 @@ def fake_jit(enable_patching: bool = True):
   Returns:
     Context where jax.jit is patched with the identity function
   """
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.jit', _fake_jit))
   return stack
@@ -195,7 +204,7 @@ def fake_pmap(enable_patching: bool = True):
     Context where jax.pmap is patched with jax.vmap
   """
   # Improve implementation to automatically track JAX collectives development.
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.pmap', _fake_pmap))
     stack.enter_context(mock.patch('jax.lax.axis_index', _fake_axis_index))
@@ -214,6 +223,10 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
   This is a convenience function, equivalent to nested `chex.fake_pmap` and
   `chex.fake_jit` contexts.
 
+  Note that calling (the true implementation of) jax.pmap will compile the
+  function, so faking jax.jit in this case will not stop the function from
+  being compiled.
+
   Args:
     enable_pmap_patching: Whether to patch jax.pmap
     enable_jit_patching: Whether to patch jax.jit
@@ -222,7 +235,7 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
     Context where jax.pmap and jax.jit are patched with jax.vmap and the
     identity function
   """
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   stack.enter_context(fake_pmap(enable_pmap_patching))
   stack.enter_context(fake_jit(enable_jit_patching))
   return stack
