@@ -22,15 +22,22 @@ or from PyPI:
 
 ### Dataclass ([dataclass.py](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py))
 
-Dataclasses are a popular construct introduced by Python 3.7 to allows to
+Dataclasses are a popular construct introduced by Python 3.7 to allow to
 easily specify typed data structures with minimal boilerplate code. They are
-not, however, compatible with JAX out of the box.
+not, however, compatible with JAX and
+[dm-tree](https://github.com/deepmind/tree) out of the box.
 
 In Chex we provide a JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
 
 Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
 nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
 compatibility with JAX data structures.
+
+In addition, we provide a class wrapper that exposes dataclasss as
+`collections.Mapping` descendants which allows to process them
+(e.g. (un-)flatten) in `dm-tree` methods as usual Python dictionaries (enabled
+by default in Chex `dataclass`). See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L27)
+docstring for more details.
 
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
 
@@ -71,6 +78,35 @@ assert_tpu_available()                 # at least 1 TPU available
 
 assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 ```
+
+JAX re-traces JIT'ted function every time the structure of passed arguments
+changes. Often this behavior is inadvertent and leads to a significant
+performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
+decorator asserts that the function is not re-traced more that `n` times during
+program execution.
+
+Examples:
+
+```
+  @jax.jit
+  @chex.assert_max_traces(n=1)
+  def fn_sum_jitted(x, y):
+    return x + y
+
+  z = fn_sum_jitted(jnp.zeros(3), jnp.zeros(3))
+  t = fn_sum_jitted(jnp.zeros(6, 7), jnp.zeros(6, 7))  # AssertionError!
+```
+
+Can be used with `jax.pmap()` as well:
+
+```
+  def fn_sub(x, y):
+    return x - y
+
+  fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
+```
+
+[More about tracing](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
 
 See documentation of [asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py) for details on all supported assertions.
 
@@ -196,7 +232,7 @@ For example, you can use Chex to fake `pmap` and have it replaced with a `vmap`.
 This can be achieved by wrapping your code with a context manager:
 
 ```python
-with chex.fake_pmap(enable_patching=True):
+with chex.fake_pmap():
   @jax.pmap
   def fn(inputs):
     ...
@@ -208,7 +244,7 @@ with chex.fake_pmap(enable_patching=True):
 The same functionality can also be invoked with `start` and `stop`:
 
 ```python
-fake_pmap = chex.fake_pmap(enable_patching=True)
+fake_pmap = chex.fake_pmap()
 fake_pmap.start()
 ... your jax code ...
 fake_pmap.stop()

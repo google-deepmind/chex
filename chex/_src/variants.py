@@ -29,7 +29,6 @@ from jax import tree_util
 import jax.numpy as jnp
 import toolz
 
-
 FLAGS = flags.FLAGS
 flags.DEFINE_bool(
     "chex_skip_pmap_variant_if_single_device", True,
@@ -49,10 +48,30 @@ flags.DEFINE_bool(
 # instead of `variants.TestCase` or `parameterized.TestCase`. If a base class
 # doesn't support this feature variant test fails with a corresponding error.
 class TestCase(parameterized.TestCase):
-  pass
+
+  def variant(self, *args, **kwargs):
+    """To pass pytype checks."""
+    raise NotImplementedError("self.variant is not implemented: "
+                              "forgot to wrap a test in @chex.variants?")
 
 
 tree_map = tree_util.tree_map
+
+
+def params_product(*params_lists, named=False):
+  """Generate a cartesian product of params_lists."""
+
+  def generate():
+    for combination in itertools.product(*params_lists):
+      if named:
+        name = "_".join(t[0] for t in combination)
+        args_tuples = (t[1:] for t in combination)
+        args = sum(args_tuples, ())
+        yield (name, *args)
+      else:
+        yield sum(combination, ())
+
+  return list(generate())
 
 
 def count_num_calls(fn):
@@ -305,11 +324,7 @@ def _with_jit(fn,
               **unused_kwargs):
   """Variant that applies `jax.jit` to fn."""
 
-  @functools.wraps(fn)
-  def wrapper(*args, **kwargs):
-    return jax.jit(fn, static_argnums, device, backend)(*args, **kwargs)
-
-  return wrapper
+  return jax.jit(fn, static_argnums, device, backend)
 
 
 @toolz.curry
@@ -326,11 +341,13 @@ def _without_jit(fn, **unused_kwargs):
 
 @toolz.curry
 @check_variant_arguments
-def _with_device(fn, ignore_argnums=(), **unused_kwargs):
+def _with_device(fn, ignore_argnums=(), static_argnums=(), **unused_kwargs):
   """Variant that applies `jax.device_put` to the args of fn."""
 
   if isinstance(ignore_argnums, int):
     ignore_argnums = (ignore_argnums,)
+  if isinstance(static_argnums, int):
+    static_argnums = (static_argnums,)
 
   @functools.wraps(fn)
   def wrapper(*args, **kwargs):
@@ -342,8 +359,8 @@ def _with_device(fn, ignore_argnums=(), **unused_kwargs):
         return x
 
     device_args = [
-        arg if idx in ignore_argnums else tree_map(put, arg)
-        for idx, arg in enumerate(args)
+        arg if (idx in ignore_argnums or idx in static_argnums) else tree_map(
+            put, arg) for idx, arg in enumerate(args)
     ]
     device_kwargs = tree_map(put, kwargs)
     return fn(*device_args, **device_kwargs)
@@ -426,7 +443,15 @@ def _with_pmap(fn,
   if isinstance(static_argnums, int):
     static_argnums = (static_argnums,)
 
-  @functools.wraps(fn)
+  pmap_kwargs = dict(
+      axis_name=axis_name,
+      devices=devices,
+      in_axes=in_axes,
+      static_broadcasted_argnums=static_argnums,
+      backend=backend)
+  pmapped_fn = jax.pmap(fn, **pmap_kwargs)
+
+  @functools.wraps(pmapped_fn)
   def wrapper(*args: pytypes.ArrayTree, **kwargs: pytypes.ArrayTree):
     if kwargs and (in_axes != 0 or static_argnums):
       raise ValueError("Do not use kwargs with `in_axes` or `static_argnums` "
@@ -463,14 +488,21 @@ def _with_pmap(fn,
               f"got: {shapes} (expected the first dim to be {n_devices_}). "
               "Consider setting `broadcast_args_to_devices=True`.")
 
-    res = jax.pmap(
-        fn,
+    new_kwargs = dict(
         axis_name=axis_name,
         devices=devices_,
         in_axes=in_axes,
         static_broadcasted_argnums=static_argnums,
-        backend=backend)(*args, **kwargs)
+        backend=backend)
 
+    # Re-compile fn if kwargs changed.
+    nonlocal pmap_kwargs
+    nonlocal pmapped_fn
+    if new_kwargs != pmap_kwargs:
+      pmap_kwargs = new_kwargs
+      pmapped_fn = jax.pmap(fn, **pmap_kwargs)
+
+    res = pmapped_fn(*args, **kwargs)
     return reduce_fn(res)
 
   return wrapper
@@ -483,7 +515,6 @@ _variant_decorators = {
     "without_device": _without_device,
     "with_pmap": _with_pmap,
 }
-
 
 # Collect valid argument names from all variant decorators.
 _valid_kwargs_keys = set()

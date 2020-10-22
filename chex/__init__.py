@@ -17,8 +17,10 @@
 
 from chex._src.asserts import assert_axis_dimension
 from chex._src.asserts import assert_devices_available
+from chex._src.asserts import assert_equal
 from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_gpu_available
+from chex._src.asserts import assert_max_traces
 from chex._src.asserts import assert_numerical_grads
 from chex._src.asserts import assert_rank
 from chex._src.asserts import assert_scalar
@@ -29,9 +31,13 @@ from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
 from chex._src.asserts import assert_tpu_available
 from chex._src.asserts import assert_tree_all_close
+from chex._src.asserts import assert_tree_all_equal_comparator
+from chex._src.asserts import assert_tree_all_equal_shapes
+from chex._src.asserts import assert_tree_all_equal_structs
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_type
 from chex._src.dataclass import dataclass
+from chex._src.dataclass import mappable_dataclass
 from chex._src.fake import fake_jit
 from chex._src.fake import fake_pmap
 from chex._src.fake import fake_pmap_and_jit
@@ -43,9 +49,12 @@ from chex._src.pytypes import ArrayNumpy
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
+from chex._src.pytypes import Shape
 from chex._src.variants import all_variants
+from chex._src.variants import params_product
 from chex._src.variants import TestCase
 from chex._src.variants import variants
+
 
 __version__ = "0.0.2"
 
@@ -57,8 +66,12 @@ __all__ = (
     "ArrayNumpy",
     "assert_axis_dimension",
     "assert_devices_available",
+    "assert_equal",
     "assert_equal_shape",
+    "assert_gpu_available",
+    "assert_max_traces",
     "assert_numerical_grads",
+    "assert_rank",
     "assert_scalar",
     "assert_scalar_in",
     "assert_scalar_negative",
@@ -67,17 +80,22 @@ __all__ = (
     "assert_shape",
     "assert_tpu_available",
     "assert_tree_all_close",
+    "assert_tree_all_equal_comparator",
+    "assert_tree_all_equal_shapes",
+    "assert_tree_all_equal_structs",
     "assert_tree_all_finite",
     "assert_type",
     "dataclass",
     "fake_jit",
     "fake_pmap",
     "fake_pmap_and_jit",
+    "mappable_dataclass",
     "Numeric",
+    "params_product",
     "PRNGKey",
-    "assert_rank",
     "Scalar",
     "set_n_cpu_devices",
+    "Shape",
     "TestCase",
     "variants",
 )

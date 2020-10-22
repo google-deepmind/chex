@@ -15,17 +15,26 @@
 # ==============================================================================
 """Chex assertion utilities."""
 import functools
-from typing import Sequence, Type, Union, Callable, Optional, Set
+import itertools
+from typing import Any, Sequence, Type, Union, Callable, Optional, Set
+import unittest
 from unittest import mock
 from chex._src import pytypes
 import jax
 import jax.numpy as jnp
 import jax.test_util as jax_test
 import numpy as np
+import tree
 
 Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
+
+# Custom pytypes.
+TIndex = int
+TLeaf = Any
+TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
+TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
 
 def _num_devices_available(devtype: str, backend: Optional[str] = None):
@@ -37,6 +46,119 @@ def _num_devices_available(devtype: str, backend: Optional[str] = None):
         f"Unknown device type '{devtype}' (expected one of {supported_types}).")
 
   return sum(d.platform == devtype for d in jax.devices(backend))
+
+
+def _is_traceable(fn):
+  """Checks if function is traceable.
+
+  JAX traces a function when it is wrapped with @jit, @pmap, or @vmap.
+  In other words, this function checks whether `fn` is wrapped with any of
+  the aforementioned JAX transformations.
+
+  Args:
+    fn: function to assert.
+
+  Returns:
+    Bool indicating whether fn is traceable.
+  """
+
+  tokens = (
+      "_python_jit.",  # PyJIT  in Python ver. < 3.7
+      "_cpp_jit.",  # CppJIT in Python ver. < 3.7
+      ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
+      "pmap.",  # pmap
+      "vmap.",  # vmap
+  )
+
+  # Un-wrap `fn` and check if any internal f-n is jitted by pattern matching.
+  fn_ = fn
+  while True:
+    if any(t in str(fn_) for t in tokens):
+      return True
+
+    if not hasattr(fn_, "__wrapped__"):
+      break
+    fn_ = fn_.__wrapped__
+  return False
+
+
+def _assert_leaves_all_eq_comparator(
+    equality_comparator: TLeavesEqCmpFn,
+    error_msg_fn: Callable[[TLeaf, TLeaf, str, int, int],
+                           str], path: Sequence[Any], *leaves: Sequence[TLeaf]):
+  """Asserts all leaves are equal using custom comparator."""
+  path_ = "/".join(map(str, path))
+  for i in range(1, len(leaves)):
+    if not equality_comparator(leaves[0], leaves[i]):
+      raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_, 0, i))
+
+
+def assert_max_traces(fn=None, n=None):
+  """Checks if a function is traced at most n times (inclusively).
+
+  JAX re-traces JIT'ted function every time the structure of passed arguments
+  changes. Often this behavior is inadvertent and leads to a significant
+  performance drop which is hard to debug. This wrapper asserts that
+  the function is not re-traced more that `n` times during program execution.
+
+  Examples:
+
+  ```
+    @jax.jit
+    @chex.assert_max_traces(n=1)
+    def fn_sum_jitted(x, y):
+      return x + y
+
+    def fn_sub(x, y):
+      return x - y
+
+    fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
+  ```
+
+  More about tracing:
+    https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html
+
+  Args:
+    fn: a function to wrap (must not be a JIT'ted function itself).
+    n: maximum allowed number of retraces (non-negative).
+
+  Returns:
+    Decorated f-n that throws exception when max. number of re-traces exceeded.
+  """
+  if not callable(fn) and n is None:
+    # Passed n as a first argument.
+    n, fn = fn, n
+
+  # Currying.
+  if fn is None:
+    return lambda fn_: assert_max_traces(fn_, n)
+
+  assert_scalar_non_negative(n)
+
+  # Check wrappers ordering.
+  if _is_traceable(fn):
+    raise ValueError(
+        "@assert_max_traces must not wrap JAX-transformed function "
+        "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
+
+  tracing_counter = 0
+
+  @functools.wraps(fn)
+  def fn_wrapped(*args, **kwargs):
+    # We assume that a function without arguments is not being traced.
+    # That is, case of n=0 for no-arguments function won't raise a error.
+    has_tracers_in_args = any(
+        isinstance(arg, jax.core.Tracer)
+        for arg in itertools.chain(args, kwargs.values()))
+
+    nonlocal tracing_counter
+    tracing_counter += int(has_tracers_in_args)
+    if tracing_counter > n:
+      raise AssertionError(f"Function {fn.__name__} is traced > {n} times!")
+
+    return fn(*args, **kwargs)
+
+  return fn_wrapped
 
 
 def assert_scalar(x: Scalar):
@@ -114,8 +236,9 @@ def assert_shape(
   Args:
     inputs: array or sequence of arrays.
     expected_shapes: sequence of expected shapes associated with each input,
-      where the expected shape is a sequence of integer dimensions; if all
-      inputs have same shape, a single shape may be passed as `expected_shapes`.
+      where the expected shape is a sequence of integer and `None` dimensions;
+      if all inputs have same shape, a single shape may be passed as
+      `expected_shapes`.
 
   Raises:
     AssertionError: if the length of `inputs` and `expected_shapes` don't match;
@@ -142,7 +265,9 @@ def assert_shape(
   errors = []
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
-    if list(shape) != list(expected):
+    if not (
+        len(shape) == len(expected)
+        and all(j is None or i == j for i, j in zip(shape, expected))):
       errors.append((idx, shape, expected))
 
   if errors:
@@ -281,7 +406,7 @@ def assert_type(
     raise AssertionError("Error in type compatibility check: " + msg + ".")
 
 
-def assert_axis_dimension(tensor, axis, expected):
+def assert_axis_dimension(tensor: Array, axis: int, expected: int):
   """Assert dimension of a specific axis of a tensor.
 
   Args:
@@ -332,37 +457,78 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
-def assert_tree_all_close(
-    actual: ArrayTree,
-    desired: ArrayTree,
-    rtol: float = 1e-07,
-    atol: float = 0):
-  """Assert two trees have leaves with approximately equal values.
+def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
+  """Assert trees have the same structure.
+
+  Args:
+    *trees: trees which structures to assert on equality.
+
+  Raise:
+    AssertionError: if structures of any two trees are different.
+  """
+  first_treedef = jax.tree_structure(trees[0])
+  other_treedefs = map(jax.tree_structure, trees[1:])
+  for i, treedef in enumerate(other_treedefs, start=1):
+    if first_treedef != treedef:
+      raise AssertionError(
+          f"Error in tree structs equality check: trees 0 and {i} do not match,"
+          f"\n tree 0: {first_treedef}"
+          f"\n tree {i}: {treedef}")
+
+
+def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
+                                     error_msg_fn: TLeavesEqCmpErrorFn,
+                                     *trees: Sequence[ArrayTree]):
+  """Assert all trees are equal using custom comparator for leaves."""
+  if len(trees) < 2:
+    return
+  assert_tree_all_equal_structs(*trees)
+
+  def _tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
+    msg = error_msg_fn(l_1, l_2)
+    return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."
+
+  cmp = functools.partial(_assert_leaves_all_eq_comparator,
+                          equality_comparator, _tree_error_msg_fn)
+  tree.map_structure_with_path(cmp, *trees)
+
+
+def assert_tree_all_close(*trees: Sequence[ArrayTree],
+                          rtol: float = 1e-07,
+                          atol: float = .0):
+  """Assert trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired to
    atol + rtol * abs(desired).
 
   Args:
-    actual: pytree with array leaves.
-    desired: pytree with array leaves.
+    *trees: a sequence of trees with array leaves.
     rtol: relative tolerance.
     atol: absolute tolerance.
   Raise:
     AssertionError: if the leaf values actual and desired are not equal up to
       specified tolerance.
   """
-  if jax.tree_structure(actual) != jax.tree_structure(desired):
-    raise AssertionError(
-        "Error in value equality check: Trees do not have the same structure,\n"
-        f"actual: {jax.tree_structure(actual)}\n"
-        f"desired: {jax.tree_structure(desired)}.")
-
   assert_fn = functools.partial(
-      np.testing.assert_allclose,
-      rtol=rtol,
-      atol=atol,
+      np.testing.assert_allclose, rtol=rtol, atol=atol,
       err_msg="Error in value equality check: Values not approximately equal")
-  jax.tree_multimap(assert_fn, actual, desired)
+  cmp_fn = lambda arr_1, arr_2: bool(assert_fn(arr_1, arr_2) is None)
+  err_msg_fn = lambda arr_1, arr_2: None
+  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
+
+
+def assert_tree_all_equal_shapes(*trees: Sequence[ArrayTree]):
+  """Assert trees have the same structure and leaves' shapes.
+
+  Args:
+    *trees: a sequence of trees with array leaves.
+
+  Raise:
+    AssertionError: if trees' structures or leaves' shapes are different.
+  """
+  cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
+  err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
+  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
 
 
 def assert_devices_available(
@@ -433,3 +599,20 @@ def assert_tree_all_finite(tree_like: ArrayTree):
     is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
     error_msg = jax.tree_map(is_finite, tree_like)
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
+
+
+def assert_equal(first, second):
+  """Assert the two objects are equal as determined by the '==' operator.
+
+  Arrays with more than one element cannot be compared.
+  Use `assert_tree_all_close` to compare arrays.
+
+  Args:
+    first: first object.
+    second: second object.
+
+  Raises:
+    AssertionError: if not (first == second)
+  """
+  testcase = unittest.TestCase()
+  testcase.assertEqual(first, second)

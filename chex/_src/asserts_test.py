@@ -15,6 +15,7 @@
 # ==============================================================================
 """Tests for `asserts.py`."""
 
+import functools
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
@@ -30,6 +31,159 @@ def as_arrays(arrays):
 
 def emplace(arrays):
   return arrays
+
+
+class IsTraceableTest(variants.TestCase):
+
+  @variants.variants(with_jit=True, with_pmap=True)
+  @parameterized.named_parameters(
+      ('CPP_JIT', True),
+      ('PY_JIT', False),
+  )
+  def test_is_traceable(self, cpp_jit):
+    prev_state = jax.api.FLAGS.experimental_cpp_jit
+    jax.api.FLAGS.experimental_cpp_jit = cpp_jit
+
+    def dummy_wrapper(fn):
+
+      @functools.wraps(fn)
+      def fn_wrapped(fn, *args):
+        return fn(args)
+
+      return fn_wrapped
+
+    fn = lambda x: x.sum()
+    wrapped_fn = dummy_wrapper(fn)
+    self.assertFalse(asserts._is_traceable(fn))
+    self.assertFalse(asserts._is_traceable(wrapped_fn))
+
+    var_fn = self.variant(fn)
+    wrapped_var_f = dummy_wrapper(var_fn)
+    var_wrapped_f = self.variant(wrapped_fn)
+    self.assertTrue(asserts._is_traceable(var_fn))
+    self.assertTrue(asserts._is_traceable(wrapped_var_f))
+    self.assertTrue(asserts._is_traceable(var_wrapped_f))
+
+    jax.api.FLAGS.experimental_cpp_jit = prev_state
+
+
+class AssertMaxTracesTest(variants.TestCase):
+
+  def _init(self, fn_, init_type, max_traces, kwargs, static_arg):
+    variant_kwargs = dict()
+    if static_arg:
+      variant_kwargs['static_argnums'] = 1
+
+    if kwargs:
+      args, kwargs = list(), dict(n=max_traces)
+    else:
+      args, kwargs = [max_traces], dict()
+
+    if init_type == 't1':
+
+      @asserts.assert_max_traces(*args, **kwargs)
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      fn_jitted = self.variant(fn, **variant_kwargs)
+    elif init_type == 't2':
+
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      fn = asserts.assert_max_traces(fn, *args, **kwargs)
+      fn_jitted = self.variant(fn, **variant_kwargs)
+    elif init_type == 't3':
+
+      def fn(x, y):
+        if static_arg:
+          self.assertNotIsInstance(y, jax.core.Tracer)
+        return fn_(x, y)
+
+      @self.variant(**variant_kwargs)
+      @asserts.assert_max_traces(*args, **kwargs)
+      def fn_jitted(x, y):
+        self.assertIsInstance(x, jax.core.Tracer)
+        return fn_(x, y)
+    else:
+      raise ValueError(f'Unknown type {init_type}.')
+
+    return fn, fn_jitted
+
+  @variants.variants(with_jit=True, with_pmap=True)
+  @parameterized.named_parameters(
+      variants.params_product((
+          ('type1', 't1'),
+          ('type2', 't2'),
+          ('type3', 't3'),
+      ), (
+          ('args', False),
+          ('kwargs', True),
+      ), (
+          ('no_static_arg', False),
+          ('with_static_arg', True),
+      ), (
+          ('max_traces_0', 0),
+          ('max_traces_1', 1),
+          ('max_traces_2', 2),
+          ('max_traces_10', 10),
+      ),
+                              named=True))
+  def test_assert(self, init_type, kwargs, static_arg, max_traces):
+    fn_ = lambda x, y: x + y
+    fn, fn_jitted = self._init(fn_, init_type, max_traces, kwargs, static_arg)
+
+    # Original function.
+    for _ in range(max_traces + 3):
+      self.assertEqual(fn(1, 2), 3)
+
+    # Every call results in re-tracing because arguments' shapes are different.
+    for i in range(max_traces):
+      for k in range(5):
+        arg = jnp.zeros(i + 1) + k
+        np.testing.assert_array_equal(fn_jitted(arg, 2), arg + 2)
+
+    # Original function.
+    for _ in range(max_traces + 3):
+      self.assertEqual(fn(1, 2), 3)
+      self.assertEqual(fn([1], [2]), [1, 2])
+      self.assertEqual(fn('a', 'b'), 'ab')
+
+    # (max_traces + 1)-th re-tracing.
+    with self.assertRaisesRegex(AssertionError, 'fn.* is traced > .* times!'):
+      arg = jnp.zeros(max_traces + 1)
+      fn_jitted(arg, 2)
+
+  def test_incorrect_ordering(self):
+    # pylint:disable=g-error-prone-assert-raises,unused-variable
+    with self.assertRaisesRegex(ValueError, 'change wrappers ordering'):
+
+      @asserts.assert_max_traces(1)
+      @jax.jit
+      def fn(_):
+        pass
+
+    def dummy_wrapper(fn):
+
+      @functools.wraps(fn)
+      def fn_wrapped():
+        return fn()
+
+      return fn_wrapped
+
+    with self.assertRaisesRegex(ValueError, 'change wrappers ordering'):
+
+      @asserts.assert_max_traces(1)
+      @dummy_wrapper
+      @jax.jit
+      def fn_2():
+        pass
+
+    # pylint:enable=g-error-prone-assert-raises,unused-variable
 
 
 class ScalarAssertTest(parameterized.TestCase):
@@ -312,6 +466,34 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
 
 class TreeAssertionsTest(parameterized.TestCase):
 
+  def _assert_tree_structs_validation(self, assert_fn):
+    get_val = lambda: jnp.zeros([3])
+    tree1 = [[get_val(), get_val()], get_val()]
+    tree2 = [[get_val(), get_val()], get_val()]
+    tree3 = [get_val(), [get_val(), get_val()]]
+    tree4 = [get_val(), [get_val(), get_val()], get_val()]
+    tree5 = dict(x=1, y=2, z=3)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+      assert_fn(tree1, tree5)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+      assert_fn(tree1, tree3)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+      assert_fn([], [], tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 3'):
+      assert_fn(tree2, tree1, tree2, tree3, tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+      assert_fn(tree2, tree1, tree4)
+
   def test_tree_all_finite_passes_finite(self):
     finite_tree = {'a': jnp.ones((3,)), 'b': jnp.array([0.0, 0.0])}
     asserts.assert_tree_all_finite(finite_tree)
@@ -342,22 +524,8 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree2 = (jnp.array([1.0, 1.0 + 1e-9]),)
     asserts.assert_tree_all_close(tree1, tree2)
 
-  def test_assert_tree_all_close_fails_number_of_leaves(self):
-    tree1 = (jnp.zeros((4,)), jnp.zeros((4,)))
-    tree2 = (jnp.zeros((4,)))
-    with self.assertRaisesRegex(
-        AssertionError,
-        'Error in value equality check: Trees do not have the same structure'):
-      asserts.assert_tree_all_close(tree1, tree2)
-
   def test_assert_tree_all_close_fails_different_structure(self):
-    val = jnp.zeros((4,))
-    tree1 = ((val, val), val)
-    tree2 = (val, (val, val))
-    with self.assertRaisesRegex(
-        AssertionError,
-        'Error in value equality check: Trees do not have the same structure'):
-      asserts.assert_tree_all_close(tree1, tree2)
+    self._assert_tree_structs_validation(asserts.assert_tree_all_close)
 
   def test_assert_tree_all_close_fails_values_differ(self):
     tree1 = (jnp.array([0.0, 2.0]))
@@ -371,6 +539,36 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 'Values not approximately equal'):
       asserts.assert_tree_all_close(tree1, tree2, rtol=0.01)
+
+  def test_assert_tree_all_equal_shapes(self):
+    get_val = lambda s: jnp.zeros([s])
+    tree1 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
+    tree2 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
+    tree3 = dict(a1=get_val(3), d=dict(a2=get_val(7), a3=get_val(5)))
+
+    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_shapes)
+    asserts.assert_tree_all_equal_shapes(tree1, tree1)
+    asserts.assert_tree_all_equal_shapes(tree2, tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Trees 0 and 1 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+      asserts.assert_tree_all_equal_shapes(tree1, tree3)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Trees 0 and 3 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+      asserts.assert_tree_all_equal_shapes(tree1, tree2, tree2, tree3, tree1)
+
+  def test_assert_tree_all_equal_structs(self):
+    get_val = lambda: jnp.zeros([3])
+    tree1 = [[get_val(), get_val()], get_val()]
+    tree2 = [[get_val(), get_val()], get_val()]
+    tree3 = [get_val(), [get_val(), get_val()]]
+
+    asserts.assert_tree_all_equal_structs(tree1, tree2, tree2, tree1)
+    asserts.assert_tree_all_equal_structs(tree3, tree3)
+    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_structs)
 
 
 class NumDevicesAssertTest(parameterized.TestCase):
@@ -496,6 +694,37 @@ class NumericalGradsAssertTest(parameterized.TestCase):
     x = jnp.zeros(x_shape)
 
     self._test_fn(f_hard_with_sg, (lr, x), seed)
+
+
+class EqualAssertionsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('dtypes', jnp.int32, jnp.int32),
+      ('lists', [1, 2], [1, 2]),
+      ('dicts', dict(a=[7, jnp.int32]), dict(a=[7, jnp.int32])),
+  )
+  def test_assert_equal_pass(self, first, second):
+    asserts.assert_equal(first, second)
+
+  def test_assert_equal_pass_on_arrays(self):
+    # Not using named_parameters, becase JAX cannot be used before app.run().
+    asserts.assert_equal(jnp.ones([]), np.ones([]))
+    asserts.assert_equal(jnp.ones([], dtype=jnp.int32),
+                         np.ones([], dtype=np.float64))
+
+  @parameterized.named_parameters(
+      ('dtypes', jnp.int32, jnp.float32),
+      ('lists', [1, 2], [1, 7]),
+      ('lists2', [1, 2], [1]),
+      ('dicts1', dict(a=[7, jnp.int32]), dict(b=[7, jnp.int32])),
+      ('dicts2', dict(a=[7, jnp.int32]), dict(b=[1, jnp.int32])),
+      ('dicts3', dict(a=[7, jnp.int32]), dict(a=[1, jnp.int32], b=2)),
+      ('dicts4', dict(a=[7, jnp.int32]), dict(a=[1, jnp.float32])),
+      ('arrays', np.zeros([]), np.ones([])),
+  )
+  def test_assert_equal_fail(self, first, second):
+    with self.assertRaises(AssertionError):
+      asserts.assert_equal(first, second)
 
 
 if __name__ == '__main__':

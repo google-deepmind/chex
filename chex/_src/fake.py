@@ -23,6 +23,7 @@ See https://www.martinfowler.com/articles/mocksArentStubs.html
 
 import contextlib
 import functools
+import inspect
 import os
 import re
 from typing import Optional
@@ -81,6 +82,13 @@ def set_n_cpu_devices(n: Optional[int] = None):
       [f'--xla_force_host_platform_device_count={n}'] + xla_flags.split())
 
 
+def convert_to_varargs(sig, *args, **kwargs):
+  """Converts varargs+kwargs function arguments into varargs only."""
+  bound_args = sig.bind(*args, **kwargs)
+  bound_args.apply_defaults()
+  return bound_args.args
+
+
 @functools.wraps(jax.jit)
 def _fake_jit(fn, *unused_args, **unused_kwargs):
   return fn
@@ -88,7 +96,19 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 @functools.wraps(jax.pmap)
 def _fake_pmap(fn, *unused_args, **unused_kwargs):
-  return jax.vmap(fn)
+  """Fake implementation of pmap using vmap."""
+  fn_signature = inspect.signature(fn)
+  vmapped_fn = jax.vmap(fn)
+
+  @functools.wraps(fn)
+  def wrapped_fn(*args, **kwargs):
+    # Convert kwargs to varargs
+    # This is a workaround for vmapped functions not working with kwargs
+    call_args = convert_to_varargs(fn_signature, *args, **kwargs)
+    output = vmapped_fn(*call_args)
+    return output
+
+  return wrapped_fn
 
 
 def _zero(*unused_args, **unused_kwargs):
@@ -110,6 +130,15 @@ _fake_pmin = functools.wraps(jax.lax.pmin)(_identity)
 def _fake_all_gather(x, *unused_args, **unused_kwargs):
   add_leading_dim = lambda t: t[jnp.newaxis]
   return jax.tree_map(add_leading_dim, x)
+
+
+class FakeContext(contextlib.ExitStack):
+
+  def start(self):
+    self.__enter__()
+
+  def stop(self):
+    self.__exit__(None, None, None)
 
 
 def fake_jit(enable_patching: bool = True):
@@ -140,13 +169,13 @@ def fake_jit(enable_patching: bool = True):
   Returns:
     Context where jax.jit is patched with the identity function
   """
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.jit', _fake_jit))
   return stack
 
 
-def fake_pmap(enable_patching: bool = False):
+def fake_pmap(enable_patching: bool = True):
   """Context manager for patching jax.pmap with jax.vmap.
 
   This is intended to be used as a debugging tool to programmatically replace
@@ -175,7 +204,7 @@ def fake_pmap(enable_patching: bool = False):
     Context where jax.pmap is patched with jax.vmap
   """
   # Improve implementation to automatically track JAX collectives development.
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.pmap', _fake_pmap))
     stack.enter_context(mock.patch('jax.lax.axis_index', _fake_axis_index))
@@ -194,6 +223,10 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
   This is a convenience function, equivalent to nested `chex.fake_pmap` and
   `chex.fake_jit` contexts.
 
+  Note that calling (the true implementation of) jax.pmap will compile the
+  function, so faking jax.jit in this case will not stop the function from
+  being compiled.
+
   Args:
     enable_pmap_patching: Whether to patch jax.pmap
     enable_jit_patching: Whether to patch jax.jit
@@ -202,7 +235,7 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
     Context where jax.pmap and jax.jit are patched with jax.vmap and the
     identity function
   """
-  stack = contextlib.ExitStack()
+  stack = FakeContext()
   stack.enter_context(fake_pmap(enable_pmap_patching))
   stack.enter_context(fake_jit(enable_jit_patching))
   return stack

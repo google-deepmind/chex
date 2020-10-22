@@ -19,9 +19,10 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
+from chex._src import asserts
 from chex._src import fake
 from chex._src import pytypes
+
 import jax
 import jax.numpy as jnp
 
@@ -35,80 +36,184 @@ def setUpModule():
   fake.set_n_cpu_devices()
 
 
+def _assert_jitted(fn, fn_input, is_jitted):
+  """Asserts that a function can be jitted or not.
+
+  Args:
+    fn: The function to be tested
+    fn_input: Input to pass to the function
+    is_jitted: Assert that the function can be jitted with jax.jit (True) or
+    cannot be jitted (False), i.e. the fake jit is working correctly.
+  """
+  max_traces = 1 if is_jitted else 0
+  wrapped_fn = jax.jit(asserts.assert_max_traces(fn, max_traces))
+  wrapped_fn(fn_input)
+
+
+def _assert_pmapped(fn, fn_input, is_pmapped):
+  """Asserts whether a function can be pmapped or not.
+
+  Args:
+    fn: The function to be tested
+    fn_input: Input to pass to the function
+    is_pmapped: Assert that the function can be pmapped with jax.pmap (True) or
+    cannot be pmapped (False), i.e. the fake pmap is working correctly.
+  """
+  num_devices = len(jax.devices())
+  wrapped_fn = jax.pmap(fn, axis_size=num_devices)
+
+  fn_input = jnp.broadcast_to(fn_input, (num_devices,) + fn_input.shape)
+  output = wrapped_fn(fn_input)
+
+  # We test whether the function has been pmapped by inspecting the type of
+  # the function output, if it is a sharded array type then the function has
+  # been pmapped
+  expected_type = ArraySharded if is_pmapped else ArrayDevice
+  assert_message = f'Output is type {type(output)}, expected {expected_type}'
+  # We want to check exact types here
+  assert type(output) == expected_type, assert_message    # pylint: disable=unidiomatic-typecheck
+
+
 class PmapFakeTest(parameterized.TestCase):
 
-  @parameterized.named_parameters([
-      ('plain_jit', fake.fake_jit, False, 1),
-      ('faked_jit', fake.fake_jit, True, 2),
-  ])
-  def test_fake_jit(self, context, patch, expected_execution_count):
-    # We test whether the function has been jitted by introducing a counter
-    # variable as a side-effect. When the function is repeatedly called, jitted
-    # code will only execute the side-effect once
-    python_execution_count = 0
-    with context(patch):
+  def test_assert_pmapped(self):
+    def foo(x):
+      return x * 2
+    fn_input = jnp.ones((4,))
 
-      @jax.jit
-      def foo(x):
-        nonlocal python_execution_count
-        python_execution_count += 1
-        return x * 2
+    _assert_pmapped(foo, fn_input, True)
+    with self.assertRaises(AssertionError):
+      _assert_pmapped(foo, fn_input, False)
 
-      foo(jnp.array([1, 2]))
-      self.assertEqual(python_execution_count, 1)
+  def test_assert_jitted(self):
+    fn_input = jnp.ones((4,))
+    def foo(x):
+      return x * 2
 
-      foo(jnp.array([1, 2]))
-      self.assertEqual(python_execution_count, expected_execution_count)
+    _assert_jitted(foo, fn_input, True)
+    with self.assertRaises(AssertionError):
+      _assert_jitted(foo, fn_input, False)
 
   @parameterized.named_parameters([
-      ('plain_pmap', fake.fake_pmap, False, ArraySharded),
-      ('faked_pmap', fake.fake_pmap, True, ArrayDevice),
+      ('plain_jit', {'enable_patching': True}, False),
+      ('faked_jit', {'enable_patching': False}, True),
   ])
-  def test_fake_pmap(self, context, patch, expected_type):
-    # We test whether the function has been pmapped by inspecting the type of
-    # the function output, if it is a sharded array type then the function has
-    # been pmapped
-    with context(patch):
+  def test_fake_jit(self, fake_kwargs, is_jitted):
+    fn_input = jnp.ones((4,))
+    def foo(x):
+      return x * 2
+
+    # Call with context manager
+    with fake.fake_jit(**fake_kwargs):
+      _assert_jitted(foo, fn_input, is_jitted)
+
+    # Call with start/stop
+    ctx = fake.fake_jit(**fake_kwargs)
+    ctx.start()
+    _assert_jitted(foo, fn_input, is_jitted)
+    ctx.stop()
+
+  @parameterized.named_parameters([
+      ('plain_pmap', {'enable_patching': False}, True),
+      ('faked_pmap', {'enable_patching': True}, False),
+  ])
+  def test_fake_pmap(self, fake_kwargs, is_pmapped):
+    fn_input = jnp.ones((4,))
+    def foo(x):
+      return x * 2
+
+    # Call with context manager
+    with fake.fake_pmap(**fake_kwargs):
+      _assert_pmapped(foo, fn_input, is_pmapped)
+
+    # Call with start/stop
+    ctx = fake.fake_pmap(**fake_kwargs)
+    ctx.start()
+    _assert_pmapped(foo, fn_input, is_pmapped)
+    ctx.stop()
+
+  @parameterized.named_parameters([
+      ('fake_nothing', {
+          'enable_pmap_patching': False,
+          'enable_jit_patching': False
+      }, True, True),
+      ('fake_pmap', {
+          'enable_pmap_patching': True,
+          'enable_jit_patching': False
+      }, False, True),
+      # Default pmap will implicitly compile the function
+      ('fake_jit', {
+          'enable_pmap_patching': False,
+          'enable_jit_patching': True
+      }, True, False),
+      ('fake_both', {
+          'enable_pmap_patching': True,
+          'enable_jit_patching': True
+      }, False, False),
+  ])
+  def test_pmap_and_jit(self, fake_kwargs, is_pmapped, is_jitted):
+    fn_input = jnp.ones((4,))
+    def foo(x):
+      return x * 2
+
+    # Call with context manager
+    with fake.fake_pmap_and_jit(**fake_kwargs):
+      _assert_pmapped(foo, fn_input, is_pmapped)
+      _assert_jitted(foo, fn_input, is_jitted)
+
+    # Call with start/stop
+    ctx = fake.fake_pmap_and_jit(**fake_kwargs)
+    ctx.start()
+    _assert_pmapped(foo, fn_input, is_pmapped)
+    _assert_jitted(foo, fn_input, is_jitted)
+    ctx.stop()
+
+  @parameterized.named_parameters([
+      ('fake_nothing', False, False),
+      ('fake_pmap', True, False),
+      ('fake_jit', False, True),
+  ])
+  def test_with_kwargs(self, fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
       num_devices = len(jax.devices())
 
       @functools.partial(jax.pmap, axis_size=num_devices)
-      def foo(x):
-        return x * 2
-
-      # pmap over all available devices
-      x = jnp.array([1, 2])
-      x = jnp.broadcast_to(x, (num_devices,) + x.shape)
-      output = foo(x)
-      self.assertEqual(type(output), expected_type)
-
-  @parameterized.named_parameters([
-      ('fake_nothing', fake.fake_pmap_and_jit, False, False, ArraySharded, 1),
-      ('fake_pmap', fake.fake_pmap_and_jit, True, False, ArrayDevice, 1),
-      # Default pmap will implicitly jit compile the function
-      ('fake_jit', fake.fake_pmap_and_jit, False, True, ArraySharded, 1),
-      ('fake_both', fake.fake_pmap_and_jit, True, True, ArrayDevice, 2),
-  ])
-  def test_pmap_and_jit(self, context, fake_pmap, fake_jit, expected_type,
-                        expected_execution_count):
-    python_execution_count = 0
-    with context(fake_pmap, fake_jit):
-      num_devices = len(jax.devices())
-      @functools.partial(jax.pmap, axis_size=num_devices)
       @jax.jit
-      def foo(x):
-        nonlocal python_execution_count
-        python_execution_count += 1
-        return x * 2
+      def foo(x, y):
+        return (x * 2) + y
 
       # pmap over all available devices
       inputs = jnp.array([1, 2])
       inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
-      output = foo(inputs)
-      self.assertEqual(type(output), expected_type)
-      self.assertEqual(python_execution_count, 1)
+      expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
 
-      foo(inputs)
-      self.assertEqual(python_execution_count, expected_execution_count)
+      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
+
+  @parameterized.named_parameters([
+      ('fake_nothing', False, False),
+      ('fake_pmap', True, False),
+      ('fake_jit', False, True),
+  ])
+  def test_with_partial(self, fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+      num_devices = len(jax.devices())
+
+      # Testing a common use-case where non-parallel arguments are partially
+      # applied before pmapping
+      def foo(x, y, flag):
+        return (x * 2) + y if flag else (x + y)
+      foo = functools.partial(foo, flag=True)
+
+      foo = jax.pmap(foo, axis_size=num_devices)
+      foo = jax.jit(foo)
+
+      # pmap over all available devices
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
+
+      asserts.assert_tree_all_close(foo(inputs, inputs), expected)
+      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
 
 
 if __name__ == '__main__':
