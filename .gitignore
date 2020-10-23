@@ -7,13 +7,13 @@ dist/
 venv/
 
 # Mac OS
-*.DS_Store
+.DS_Store
 
 # Python tools
-*.mypy_cache/
-*.pytype/
-*.ipynb_checkpoints
+.mypy_cache/
+.pytype/
+.ipynb_checkpoints
 
 # Editors
-*.idea
-*.vscode
+.idea
+.vscode
