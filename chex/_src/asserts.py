@@ -418,6 +418,7 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
     AssertionError: if the dimension of the specified axis does not match the
       prescribed value.
   """
+  tensor = jnp.asarray(tensor)
   if axis >= len(tensor.shape):
     raise AssertionError(
         f"Expected tensor to have dim '{expected}' along axis '{axis}' but"
@@ -426,6 +427,28 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
     raise AssertionError(
         "Expected tensor to have dimension {} along the axis {}"
         "but got {} instead.".format(expected, axis, tensor.shape[axis]))
+
+
+def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
+  """Assert dimension of a specific axis of a tensor.
+
+  Args:
+    tensor: a JAX array.
+    axis: an integer specifying which axis to assert.
+    val: value `tensor.shape[axis]` must be greater than.
+
+  Raises:
+    AssertionError: if the dimension of `axis` is not greater than `val`.
+  """
+  tensor = jnp.asarray(tensor)
+  if axis >= len(tensor.shape):
+    raise AssertionError(
+        f"Expected tensor to have dim greater than '{val}' on axis '{axis}' but"
+        f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
+  if tensor.shape[axis] <= val:
+    raise AssertionError(
+        f"Expected tensor to have dim greater than '{val}' on axis '{axis}'"
+        f" but got '{tensor.shape[axis]}' instead.")
 
 
 def assert_numerical_grads(
@@ -616,3 +639,26 @@ def assert_equal(first, second):
   """
   testcase = unittest.TestCase()
   testcase.assertEqual(first, second)
+
+
+def assert_not_both_none(x, y):
+  """Assert that at least one of the arguments is not `None`."""
+  if x is None and y is None:
+    raise ValueError(
+        "At least one of the arguments must be different from `None`")
+
+
+def assert_exactly_one_is_none(x, y):
+  """Assert that one and only one of the arguments is `None`."""
+  if (x is None) == (y is None):
+    raise ValueError("Must pass one of the arguments, and not both.")
+
+
+def if_args_not_none(fn, *args, **kwargs):
+  """Wrap chex assertion to only be evaluated if positional args not None."""
+  found_none = False
+  for x in args:
+    found_none = found_none or (x is None)
+  if not found_none:
+    fn(*args, **kwargs)
+

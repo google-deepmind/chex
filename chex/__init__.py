@@ -16,11 +16,14 @@
 """Chex: Testing made fun, in JAX!"""
 
 from chex._src.asserts import assert_axis_dimension
+from chex._src.asserts import assert_axis_dimension_gt
 from chex._src.asserts import assert_devices_available
 from chex._src.asserts import assert_equal
 from chex._src.asserts import assert_equal_shape
+from chex._src.asserts import assert_exactly_one_is_none
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_max_traces
+from chex._src.asserts import assert_not_both_none
 from chex._src.asserts import assert_numerical_grads
 from chex._src.asserts import assert_rank
 from chex._src.asserts import assert_scalar
@@ -36,6 +39,7 @@ from chex._src.asserts import assert_tree_all_equal_shapes
 from chex._src.asserts import assert_tree_all_equal_structs
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_type
+from chex._src.asserts import if_args_not_none
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
 from chex._src.fake import fake_jit
@@ -65,11 +69,14 @@ __all__ = (
     "ArrayDevice",
     "ArrayNumpy",
     "assert_axis_dimension",
+    "assert_axis_dimension_gt",
     "assert_devices_available",
     "assert_equal",
     "assert_equal_shape",
+    "assert_exactly_one_is_none",
     "assert_gpu_available",
     "assert_max_traces",
+    "assert_not_both_none",
     "assert_numerical_grads",
     "assert_rank",
     "assert_scalar",
@@ -89,6 +96,7 @@ __all__ = (
     "fake_jit",
     "fake_pmap",
     "fake_pmap_and_jit",
+    "if_args_not_none",
     "mappable_dataclass",
     "Numeric",
     "params_product",
