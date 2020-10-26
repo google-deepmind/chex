@@ -267,5 +267,17 @@ class DataclassesTest(parameterized.TestCase):
     obj_b.__setstate__(state)
     self.assertEqual(obj_a, obj_b)
 
+  def test_unexpected_kwargs(self):
+
+    @chex_dataclass()
+    class SimpleDataclass:
+      a: int
+      b: int = 2
+
+    SimpleDataclass(a=1, b=3)
+    with self.assertRaisesRegex(ValueError, 'init.*got unexpected kwargs'):
+      SimpleDataclass(a=1, b=3, c=4)
+
+
 if __name__ == '__main__':
   absltest.main()

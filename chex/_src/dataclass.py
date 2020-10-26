@@ -57,6 +57,7 @@ def mappable_dataclass(cls, restricted_inheritance=True):
 
   # Update constructor.
   orig_init = cls.__init__
+  all_fields = set(f.name for f in cls.__dataclass_fields__.values())
   init_fields = [f.name for f in cls.__dataclass_fields__.values() if f.init]
 
   @functools.wraps(cls.__init__)
@@ -66,6 +67,9 @@ def mappable_dataclass(cls, restricted_inheritance=True):
           "Mappable dataclass constructor doesn't support positional args."
           "(it has the same constructor as python dict)")
     all_kwargs = dict(*orig_args, **orig_kwargs)
+    unknown_kwargs = set(all_kwargs.keys()) - all_fields
+    if unknown_kwargs:
+      raise ValueError(f"__init__() got unexpected kwargs: {unknown_kwargs}.")
 
     # Pass only arguments corresponding to fields with `init=True`.
     valid_kwargs = {k: v for k, v in all_kwargs.items() if k in init_fields}
