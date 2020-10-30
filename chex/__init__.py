@@ -19,7 +19,10 @@ from chex._src.asserts import assert_axis_dimension
 from chex._src.asserts import assert_axis_dimension_gt
 from chex._src.asserts import assert_devices_available
 from chex._src.asserts import assert_equal
+from chex._src.asserts import assert_equal_rank
 from chex._src.asserts import assert_equal_shape
+from chex._src.asserts import assert_equal_shape_prefix
+from chex._src.asserts import assert_equal_shape_suffix
 from chex._src.asserts import assert_exactly_one_is_none
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_max_traces
@@ -72,7 +75,10 @@ __all__ = (
     "assert_axis_dimension_gt",
     "assert_devices_available",
     "assert_equal",
+    "assert_equal_rank",
     "assert_equal_shape",
+    "assert_equal_shape_prefix",
+    "assert_equal_shape_suffix",
     "assert_exactly_one_is_none",
     "assert_gpu_available",
     "assert_max_traces",

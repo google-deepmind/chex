@@ -246,6 +246,23 @@ class EqualShapeAssertTest(parameterized.TestCase):
     arrays = as_arrays(arrays)
     asserts.assert_equal_shape(arrays)
 
+  @parameterized.named_parameters(
+      ('scalars', [1, 2, 3]),
+      ('vectors', [[1], [2], [[3, 4]]]),
+  )
+  def test_equal_shape_prefix_should_pass(self, arrays):
+    arrays = as_arrays(arrays)
+    asserts.assert_equal_shape_prefix(arrays, prefix_len=1)
+
+  @parameterized.named_parameters(
+      ('scalars', [1, 2, [3]]),
+      ('vectors', [[1], [2], [[3], [4]]]),
+  )
+  def test_equal_shape_prefix_should_fail(self, arrays):
+    arrays = as_arrays(arrays)
+    with self.assertRaisesRegex(AssertionError, 'different shape prefixes'):
+      asserts.assert_equal_shape_prefix(arrays, prefix_len=1)
+
 
 class ShapeAssertTest(parameterized.TestCase):
 

@@ -219,6 +219,38 @@ def assert_equal_shape(inputs: Sequence[Array]):
       raise AssertionError(f"Arrays have different shapes: {shapes}.")
 
 
+def assert_equal_shape_prefix(inputs, prefix_len):
+  """Check that the leading `prefix_dims` dims of all inputs have same shape.
+
+  Args:
+    inputs: sequence of input arrays.
+    prefix_len: number of leading dimensions to compare; each input's shape
+      will be sliced to `shape[:prefix_len]`. Negative values are accepted
+      and have the conventional Python indexing semantics.
+
+  Raises:
+    AssertionError: if the shapes of all arrays do not match.
+  """
+  shapes = [array.shape[:prefix_len] for array in inputs]
+  if shapes != [shapes[0]] * len(shapes):
+    raise AssertionError(f"Arrays have different shape prefixes: {shapes}")
+
+
+def assert_equal_shape_suffix(inputs, suffix_len):
+  """Check that the final `suffix_len` dims of all inputs have same shape.
+
+  Args:
+    inputs: sequence of input arrays.
+    suffix_len: number of leading dimensions to compare.
+
+  Raises:
+    AssertionError: if the shapes of all arrays do not match.
+  """
+  shapes = [array.shape[-suffix_len:] for array in inputs]
+  if shapes != [shapes[0]] * len(shapes):
+    raise AssertionError(f"Arrays have different shape suffixes: {shapes}")
+
+
 def assert_shape(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     expected_shapes: Union[Sequence[int], Sequence[Sequence[int]]]):
@@ -274,6 +306,23 @@ def assert_shape(
     msg = "; ".join(
         "input {} has shape {} but expected {}".format(*err) for err in errors)
     raise AssertionError("Error in shape compatibility check: " + msg + ".")
+
+
+def assert_equal_rank(inputs: Sequence[Array]):
+  """Checks that all arrays have the same rank.
+
+  Args:
+    inputs: sequence of arrays.
+
+  Raises:
+    AssertionError: if the ranks of all arrays do not match.
+  """
+  if isinstance(inputs, Sequence):
+    rank = len(inputs[0].shape)
+    expected_ranks = [rank] * len(inputs)
+    ranks = [len(x.shape) for x in inputs]
+    if ranks != expected_ranks:
+      raise AssertionError(f"Arrays have different rank: {ranks}.")
 
 
 def assert_rank(
