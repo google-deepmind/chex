@@ -98,7 +98,7 @@ def dataclass(
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
     restricted_inheritance=True,
 ):
-  """"JAX-friendly wrapper for dataclasses.dataclass."""
+  """JAX-friendly wrapper for dataclasses.dataclass."""
   dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
                     mappable_dataclass, restricted_inheritance)
   if cls is None:
@@ -107,7 +107,7 @@ def dataclass(
 
 
 class _Dataclass():
-  """"JAX-friendly wrapper for dataclasses.dataclass.
+  """JAX-friendly wrapper for dataclasses.dataclass.
 
   This wrapper class registers new dataclasses with JAX so that tree utils
   operate correctly. Additionally a replace method is provided making it easy
