@@ -278,6 +278,27 @@ class DataclassesTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'init.*got unexpected kwargs'):
       SimpleDataclass(a=1, b=3, c=4)
 
+  def test_tuple_conversion(self):
+
+    @chex_dataclass()
+    class SimpleDataclass:
+      b: int
+      a: int
+
+    obj = SimpleDataclass(a=2, b=1)
+    self.assertSequenceEqual(obj.to_tuple(), (1, 2))
+
+    obj2 = SimpleDataclass.from_tuple((1, 2))
+    self.assertEqual(obj.a, obj2.a)
+    self.assertEqual(obj.b, obj2.b)
+
+  @parameterized.named_parameters(
+      ('frozen', True),
+      ('mutable', False),
+  )
+  def test_tuple_rev_conversion(self, frozen):
+    obj = dummy_dataclass(frozen=frozen)
+    asserts.assert_tree_all_close(obj.__class__.from_tuple(obj.to_tuple()), obj)
 
 if __name__ == '__main__':
   absltest.main()

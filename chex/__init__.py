@@ -53,6 +53,7 @@ from chex._src.pytypes import Array
 from chex._src.pytypes import ArrayBatched
 from chex._src.pytypes import ArrayDevice
 from chex._src.pytypes import ArrayNumpy
+from chex._src.pytypes import ArrayTree
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
@@ -71,6 +72,7 @@ __all__ = (
     "ArrayBatched",
     "ArrayDevice",
     "ArrayNumpy",
+    "ArrayTree",
     "assert_axis_dimension",
     "assert_axis_dimension_gt",
     "assert_devices_available",

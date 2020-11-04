@@ -145,6 +145,15 @@ class _Dataclass():
         unsafe_hash=self.unsafe_hash,
         frozen=self.frozen)  # pytype: disable=wrong-keyword-args
 
+    if self.mappable_dataclass:
+      dcls = mappable_dataclass(dcls, self.restricted_inheritance)
+
+    def _from_tuple(args):
+      return dcls(zip(dcls.__dataclass_fields__.keys(), args))
+
+    def _to_tuple(self):
+      return tuple(getattr(self, k) for k in self.__dataclass_fields__.keys())
+
     def _replace(self, **kwargs):
       return dataclasses.replace(self, **kwargs)
 
@@ -154,12 +163,11 @@ class _Dataclass():
     def _setstate(self, state):
       self.__dict__ = state
 
+    setattr(dcls, "from_tuple", _from_tuple)
+    setattr(dcls, "to_tuple", _to_tuple)
     setattr(dcls, "replace", _replace)
     setattr(dcls, "__getstate__", _getstate)
     setattr(dcls, "__setstate__", _setstate)
-
-    if self.mappable_dataclass:
-      dcls = mappable_dataclass(dcls, self.restricted_inheritance)
 
     _register_dataclass_type(dcls)
     return dcls
