@@ -27,7 +27,6 @@ import jax
 import jax.numpy as jnp
 
 ArrayBatched = pytypes.ArrayBatched
-ArrayDevice = pytypes.ArrayDevice
 ArraySharded = pytypes.ArraySharded
 
 
@@ -68,10 +67,15 @@ def _assert_pmapped(fn, fn_input, is_pmapped):
   # We test whether the function has been pmapped by inspecting the type of
   # the function output, if it is a sharded array type then the function has
   # been pmapped
-  expected_type = ArraySharded if is_pmapped else ArrayDevice
-  assert_message = f'Output is type {type(output)}, expected {expected_type}'
-  # We want to check exact types here
-  assert type(output) == expected_type, assert_message    # pylint: disable=unidiomatic-typecheck
+  if not is_pmapped and hasattr(jax.interpreters.xla, 'type_is_device_array'):
+    expected_type = 'DeviceArray'
+    assert_message = f'Output is type {type(output)}, expected {expected_type}'
+    assert jax.interpreters.xla.type_is_device_array(output), assert_message
+  else:
+    expected_type = ArraySharded if is_pmapped else jnp.DeviceArray
+    assert_message = f'Output is type {type(output)}, expected {expected_type}'
+    # We want to check exact types here
+    assert type(output) == expected_type, assert_message    # pylint: disable=unidiomatic-typecheck
 
 
 class PmapFakeTest(parameterized.TestCase):
