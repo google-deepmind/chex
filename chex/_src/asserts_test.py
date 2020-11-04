@@ -304,6 +304,32 @@ def rank_array(n):
   return np.zeros(shape=[2] * n)
 
 
+class BroadcastAssertTest(parameterized.TestCase):
+
+  @parameterized.parameters(
+      {'shape_a': (), 'shape_b': ()},
+      {'shape_a': (), 'shape_b': (2, 3)},
+      {'shape_a': (2, 3), 'shape_b': (2, 3)},
+      {'shape_a': (1, 3), 'shape_b': (2, 3)},
+      {'shape_a': (2, 1), 'shape_b': (2, 3)},
+      {'shape_a': (4,), 'shape_b': (2, 3, 4)},
+      {'shape_a': (3, 4), 'shape_b': (2, 3, 4)},
+  )
+  def test_shapes_are_broadcastable(self, shape_a, shape_b):
+    asserts.assert_is_broadcastable(shape_a, shape_b)
+
+  @parameterized.parameters(
+      {'shape_a': (2,), 'shape_b': ()},
+      {'shape_a': (2, 3, 4), 'shape_b': (3, 4)},
+      {'shape_a': (3, 5), 'shape_b': (3, 4)},
+      {'shape_a': (3, 4), 'shape_b': (3, 1)},
+      {'shape_a': (3, 4), 'shape_b': (1, 4)},
+  )
+  def test_shapes_are_not_broadcastable(self, shape_a, shape_b):
+    with self.assertRaises(AssertionError):
+      asserts.assert_is_broadcastable(shape_a, shape_b)
+
+
 class RankAssertTest(parameterized.TestCase):
 
   def test_rank_should_fail_array_expectations(self):

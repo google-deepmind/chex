@@ -308,6 +308,28 @@ def assert_shape(
     raise AssertionError("Error in shape compatibility check: " + msg + ".")
 
 
+def assert_is_broadcastable(shape_a: Sequence[int], shape_b: Sequence[int]):
+  """Checks that an array of `shape_a` is broadcastable to one of `shape_b`.
+
+  Args:
+    shape_a: the shape of the array we want to broadcast.
+    shape_b: the target shape after broadcasting.
+
+  Raises:
+    AssertionError: if `shape_a` is not broadcastable to `shape_b`.
+  """
+  error = AssertionError(
+      f"Shape {shape_a} is not broadcastable to shape {shape_b}.")
+  ndim_a = len(shape_a)
+  ndim_b = len(shape_b)
+  if ndim_a > ndim_b:
+    raise error
+  else:
+    for i in range(1, ndim_a + 1):
+      if shape_a[-i] != 1 and shape_a[-i] != shape_b[-i]:
+        raise error
+
+
 def assert_equal_rank(inputs: Sequence[Array]):
   """Checks that all arrays have the same rank.
 
