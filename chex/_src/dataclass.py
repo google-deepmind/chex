@@ -161,7 +161,7 @@ class _Dataclass():
       return self.__dict__
 
     def _setstate(self, state):
-      self.__dict__ = state
+      self.__dict__.update(state)
 
     setattr(dcls, "from_tuple", _from_tuple)
     setattr(dcls, "to_tuple", _to_tuple)

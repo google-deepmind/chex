@@ -255,9 +255,13 @@ class DataclassesTest(parameterized.TestCase):
                                 'cannot assign to field'):
       obj.b = factor * obj.b  # raises error because obj is frozen.
 
-  def test_get_and_set_state(self):
+  @parameterized.named_parameters(
+      ('frozen', True),
+      ('mutable', False),
+  )
+  def test_get_and_set_state(self, frozen):
 
-    @chex_dataclass()
+    @chex_dataclass(frozen=frozen)
     class SimpleClass():
       data: int = 1
 
