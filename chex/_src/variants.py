@@ -15,6 +15,7 @@
 # ==============================================================================
 """Chex variants utilities."""
 
+import enum
 import functools
 import inspect
 import itertools
@@ -54,6 +55,13 @@ class TestCase(parameterized.TestCase):
     raise NotImplementedError("self.variant is not implemented: "
                               "forgot to wrap a test in @chex.variants?")
 
+
+class ChexVariantType(enum.Enum):
+  WITH_JIT = 1
+  WITHOUT_JIT = 2
+  WITH_DEVICE = 3
+  WITHOUT_DEVICE = 4
+  WITH_PMAP = 5
 
 tree_map = tree_util.tree_map
 
@@ -144,13 +152,13 @@ class VariantsTestCaseGenerator:
   def _inner_iter(self, test_method):
     """Generate chex variants for a single test."""
 
-    def make_test(variant):
+    def make_test(variant: ChexVariantType):
 
       @functools.wraps(test_method)
       def test(self, *args, **kwargs):
         # Skip pmap variant if only one device is available.
 
-        if (variant == "with_pmap" and
+        if (variant is ChexVariantType.WITH_PMAP and
             FLAGS.chex_skip_pmap_variant_if_single_device and
             jax.device_count() < 2):
           self.skipTest(f"Only 1 device is available ({jax.devices()}).")
@@ -173,6 +181,7 @@ class VariantsTestCaseGenerator:
 
         # Set up the variant.
         self.variant, num_calls = count_num_calls(_variant_decorators[variant])
+        self.variant.type = variant
         res = test_method(self, *args, **kwargs)
         if num_calls() == 0:
           raise RuntimeError(
@@ -197,6 +206,10 @@ class VariantsTestCaseGenerator:
 def _variants_fn(test_object, **which_variants):
   """Implements `variants` and `all_variants`."""
 
+  # Convert keys to enum entries.
+  which_variants = {
+      ChexVariantType[name.upper()]: var for name, var in which_variants.items()
+  }
   if isinstance(test_object, VariantsTestCaseGenerator):
     # Merge variants for nested wrappers.
     test_object.add_variants(which_variants)
@@ -507,14 +520,13 @@ def _with_pmap(fn,
 
   return wrapper
 
-
-_variant_decorators = {
-    "with_jit": _with_jit,
-    "without_jit": _without_jit,
-    "with_device": _with_device,
-    "without_device": _without_device,
-    "with_pmap": _with_pmap,
-}
+_variant_decorators = dict({
+    ChexVariantType.WITH_JIT: _with_jit,
+    ChexVariantType.WITHOUT_JIT: _without_jit,
+    ChexVariantType.WITH_DEVICE: _with_device,
+    ChexVariantType.WITHOUT_DEVICE: _without_device,
+    ChexVariantType.WITH_PMAP: _with_pmap,
+})
 
 # Collect valid argument names from all variant decorators.
 _valid_kwargs_keys = set()

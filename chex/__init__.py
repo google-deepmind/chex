@@ -60,6 +60,7 @@ from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
 from chex._src.pytypes import Shape
 from chex._src.variants import all_variants
+from chex._src.variants import ChexVariantType
 from chex._src.variants import params_product
 from chex._src.variants import TestCase
 from chex._src.variants import variants
@@ -102,6 +103,7 @@ __all__ = (
     "assert_tree_all_equal_structs",
     "assert_tree_all_finite",
     "assert_type",
+    "ChexVariantType",
     "dataclass",
     "fake_jit",
     "fake_pmap",

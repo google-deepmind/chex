@@ -18,6 +18,7 @@
 To run tests in multi-cpu regime, one need to set the flag `--n_cpu_devices=N`.
 """
 
+import inspect
 import itertools
 import unittest
 
@@ -257,7 +258,7 @@ class FailedTestsTest(variants.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.chex_info = '(chex variant == `without_jit`)'
+    self.chex_info = f'variant == `{variants.ChexVariantType.WITHOUT_JIT}`'
     self.res = unittest.TestResult()
     ts = unittest.makeSuite(self.FailedTest)  # pytype: disable=module-attr
     ts.run(self.res)
@@ -290,8 +291,8 @@ class OneFailedVariantTest(variants.TestCase):
       fails_for_without_device_variant(42)
 
   def test_useful_failure(self):
-    expected_info = '(chex variant == `without_device`)'
-    unexpected_info = '(chex variant == `with_device`)'
+    expected_info = f'variant == `{variants.ChexVariantType.WITHOUT_DEVICE}`'
+    unexpected_info = f'variant == `{variants.ChexVariantType.WITH_DEVICE}`'
 
     res = unittest.TestResult()
     ts = unittest.makeSuite(self.MaybeFailedTest)  # pytype: disable=module-attr
@@ -449,6 +450,34 @@ class UnknownVariantArgumentsTest(absltest.TestCase):
     self.assertLen(res.errors, 4)
     for _, msg in res.errors:
       self.assertRegex(msg, 'Unknown arguments in .+some_unknown_arg')
+
+
+class VariantTypesTest(absltest.TestCase):
+  # Inner class prevents InnerTest being run by `absltest.main()`.
+
+  class InnerTest(variants.TestCase):
+    var_types = set()
+
+    @variants.all_variants()
+    def test_var_type(self):
+      self.variant(lambda: None)
+      self.var_types.add(self.variant.type)
+
+  def test_var_type_fetch(self):
+    ts = unittest.makeSuite(self.InnerTest)  # pytype: disable=module-attr
+    ts.run(unittest.TestResult())
+    expected_types = set(variants.ChexVariantType)
+    if jax.device_count() == 1:
+      expected_types.remove(variants.ChexVariantType.WITH_PMAP)
+    self.assertSetEqual(self.InnerTest.var_types, expected_types)
+
+  def test_consistency(self):
+    self.assertLen(variants._variant_decorators, len(variants.ChexVariantType))
+
+    for arg in inspect.getfullargspec(variants.variants).args:
+      if arg == 'test_method':
+        continue
+      self.assertTrue(hasattr(variants.ChexVariantType, arg.upper()))
 
 
 class CountVariantsTest(absltest.TestCase):
