@@ -95,10 +95,15 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 
 @functools.wraps(jax.pmap)
-def _fake_pmap(fn, *unused_args, **unused_kwargs):
+def _fake_pmap(fn, axis_name=None, *, in_axes=0, static_broadcasted_argnums=(),
+               **unused_kwargs):
   """Fake implementation of pmap using vmap."""
+  if static_broadcasted_argnums:
+    raise ValueError('fake pmap does not currently support non-empty '
+                     f'static_broadcasted_argnums={static_broadcasted_argnums}')
+
   fn_signature = inspect.signature(fn)
-  vmapped_fn = jax.vmap(fn)
+  vmapped_fn = jax.vmap(fn, in_axes=in_axes, axis_name=axis_name)
 
   @functools.wraps(fn)
   def wrapped_fn(*args, **kwargs):
@@ -111,15 +116,10 @@ def _fake_pmap(fn, *unused_args, **unused_kwargs):
   return wrapped_fn
 
 
-def _zero(*unused_args, **unused_kwargs):
-  return 0
-
-
 def _identity(x, *unused_args, **unused_kwargs):
   return x
 
 
-_fake_axis_index = functools.wraps(jax.lax.axis_index)(_zero)
 _fake_psum = functools.wraps(jax.lax.psum)(_identity)
 _fake_pmean = functools.wraps(jax.lax.pmean)(_identity)
 _fake_pmax = functools.wraps(jax.lax.pmax)(_identity)
@@ -207,7 +207,6 @@ def fake_pmap(enable_patching: bool = True):
   stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.pmap', _fake_pmap))
-    stack.enter_context(mock.patch('jax.lax.axis_index', _fake_axis_index))
     stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
     stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
     stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))

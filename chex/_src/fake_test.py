@@ -136,6 +136,18 @@ class PmapFakeTest(parameterized.TestCase):
     _assert_pmapped(foo, fn_input, is_pmapped)
     ctx.stop()
 
+  def test_fake_pmap_axis_name(self):
+
+    with fake.fake_pmap():
+      @jax.partial(jax.pmap, axis_name='i')
+      @jax.partial(jax.pmap, axis_name='j')
+      def f(_):
+        return jax.lax.axis_index('i'), jax.lax.axis_index('j')
+      x, y = f(jnp.zeros((4, 2)))
+
+    self.assertEqual(x.tolist(), [[0, 0], [1, 1], [2, 2], [3, 3]])
+    self.assertEqual(y.tolist(), [[0, 1], [0, 1], [0, 1], [0, 1]])
+
   @parameterized.named_parameters([
       ('fake_nothing', {
           'enable_pmap_patching': False,
