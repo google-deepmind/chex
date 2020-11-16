@@ -188,6 +188,7 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_nothing', False, False),
       ('fake_pmap', True, False),
       ('fake_jit', False, True),
+      ('fake_both', True, True),
   ])
   def test_with_kwargs(self, fake_pmap, fake_jit):
     with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
@@ -209,6 +210,7 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_nothing', False, False),
       ('fake_pmap', True, False),
       ('fake_jit', False, True),
+      ('fake_both', True, True),
   ])
   def test_with_partial(self, fake_pmap, fake_jit):
     with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
@@ -230,6 +232,38 @@ class PmapFakeTest(parameterized.TestCase):
 
       asserts.assert_tree_all_close(foo(inputs, inputs), expected)
       asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
+
+  @parameterized.named_parameters([
+      ('fake_nothing', False, False),
+      ('fake_pmap', True, False),
+      ('fake_jit', False, True),
+      ('fake_both', True, True),
+  ])
+  def test_with_default_params(self, fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+      num_devices = len(jax.devices())
+
+      # Default flag specified at definition time
+      def foo(x, y, flag=True):
+        return (x * 2) + y if flag else (x + y)
+
+      default_foo = jax.pmap(foo, axis_size=num_devices)
+      default_foo = jax.jit(default_foo)
+
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
+      asserts.assert_tree_all_close(default_foo(inputs, inputs), expected)
+      asserts.assert_tree_all_close(default_foo(x=inputs, y=inputs), expected)
+
+      # Default overriden by partial to execute other branch
+      overidden_foo = functools.partial(foo, flag=False)
+      overidden_foo = jax.pmap(overidden_foo, axis_size=num_devices)
+      overidden_foo = jax.jit(overidden_foo)
+
+      expected = jnp.broadcast_to(jnp.array([2, 4]), (num_devices, 2))
+      asserts.assert_tree_all_close(overidden_foo(inputs, inputs), expected)
+      asserts.assert_tree_all_close(overidden_foo(x=inputs, y=inputs), expected)
 
 
 if __name__ == '__main__':
