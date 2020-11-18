@@ -493,11 +493,11 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
   if axis >= len(tensor.shape):
     raise AssertionError(
         f"Expected tensor to have dim '{expected}' along axis '{axis}' but"
-        f"axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
+        f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
   if tensor.shape[axis] != expected:
     raise AssertionError(
         "Expected tensor to have dimension {} along the axis {}"
-        "but got {} instead.".format(expected, axis, tensor.shape[axis]))
+        " but got {} instead.".format(expected, axis, tensor.shape[axis]))
 
 
 def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
