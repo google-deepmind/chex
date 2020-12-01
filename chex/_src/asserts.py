@@ -251,9 +251,9 @@ def assert_equal_shape_suffix(inputs, suffix_len):
     raise AssertionError(f"Arrays have different shape suffixes: {shapes}")
 
 
-def assert_shape(
-    inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-    expected_shapes: Union[Sequence[int], Sequence[Sequence[int]]]):
+def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
+                 expected_shapes: Union[Sequence[Optional[int]],
+                                        Sequence[Sequence[Optional[int]]]]):
   """Checks that the shape of all inputs matches specified expected_shapes.
 
   Valid usages include:
@@ -261,6 +261,7 @@ def assert_shape(
   ```
     assert_shape(x, ())                    # x is scalar
     assert_shape(x, (2, 3))                # x has shape (2, 3)
+    assert_shape(x, (2, None))             # x has rank 2 and `x.shape[0] == 2`
     assert_shape([x, y], ())               # x and y are scalar
     assert_shape([x, y], [(), (2,3)])      # x is scalar and y has shape (2, 3)
   ```

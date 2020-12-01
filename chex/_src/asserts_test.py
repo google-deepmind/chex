@@ -293,11 +293,18 @@ class ShapeAssertTest(parameterized.TestCase):
       ('scalars', [1, 2], ()),
       ('vectors', [[1, 2], [3, 4, 5]], [(2,), (3,)]),
       ('matrices', [[[1, 2], [3, 4]]], (2, 2)),
+      ('matrices_variable_shape', [[[1, 2], [3, 4]]], (None, 2)),
       ('vectors_common_shape', [[1, 2], [3, 4]], (2,)),
+      ('variable_common_shape', [[[1, 2], [3, 4]], [[1], [3]]], (2, None)),
+
   )
   def test_shape_should_pass(self, arrays, shapes):
     arrays = as_arrays(arrays)
     asserts.assert_shape(arrays, shapes)
+
+  def test_pytypes_pass(self):
+    arrays = as_arrays([[[1, 2], [3, 4]], [[1], [3]]])
+    asserts.assert_shape(arrays, (2, None))
 
 
 def rank_array(n):
