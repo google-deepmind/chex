@@ -54,6 +54,7 @@ from chex._src.pytypes import Array
 from chex._src.pytypes import ArrayBatched
 from chex._src.pytypes import ArrayDevice
 from chex._src.pytypes import ArrayNumpy
+from chex._src.pytypes import ArraySharded
 from chex._src.pytypes import ArrayTree
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
@@ -74,6 +75,7 @@ __all__ = (
     "ArrayBatched",
     "ArrayDevice",
     "ArrayNumpy",
+    "ArraySharded",
     "ArrayTree",
     "assert_axis_dimension",
     "assert_axis_dimension_gt",
