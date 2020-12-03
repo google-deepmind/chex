@@ -22,7 +22,9 @@ import numpy as np
 
 Array = jnp.ndarray
 ArrayBatched = jax.interpreters.batching.BatchTracer
-ArrayDevice = jax.interpreters.xla.DeviceArray
+# Use this type for type annotation. For instance checking,  use
+# `isinstance(x, jax.DeviceArray`.
+ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint: disable=protected-access
 ArrayNumpy = np.ndarray
 ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
 
