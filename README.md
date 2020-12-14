@@ -33,11 +33,45 @@ Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
 nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
 compatibility with JAX data structures.
 
-In addition, we provide a class wrapper that exposes dataclasss as
+In addition, we provide a class wrapper that exposes dataclasses as
 `collections.Mapping` descendants which allows to process them
-(e.g. (un-)flatten) in `dm-tree` methods as usual Python dictionaries (enabled
-by default in Chex `dataclass`). See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L27)
+(e.g. (un-)flatten) in `dm-tree` methods as usual Python dictionaries.
+See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L27)
 docstring for more details.
+
+Example:
+
+```python
+@chex.dataclass
+class Parameters:
+  x: chex.ArrayDevice
+  y: chex.ArrayDevice
+
+parameters = Parameters(
+    x=jnp.ones((2, 2)),
+    y=jnp.ones((1, 2)),
+)
+
+# Dataclasses can be treated as JAX pytrees
+jax.tree_map(lambda x: 2.0 * x, parameters)
+
+# and as mappings by dm-tree
+tree.flatten(parameters)
+```
+
+**NOTE**: Unlike standard Python 3.7 dataclasses, Chex
+dataclasses cannot be constructed using positional arguments. They support
+construction arguments provided in the same format as the Python dict
+constructor. Dataclasses can be converted to tuples with the `from_tuple` and
+`to_tuple` methods if necessary.
+
+```python
+parameters = Parameters(
+    jnp.ones((2, 2)),
+    jnp.ones((1, 2)),
+)
+# ValueError: Mappable dataclass constructor doesn't support positional args.
+```
 
 ### Assertions ([asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py))
 
