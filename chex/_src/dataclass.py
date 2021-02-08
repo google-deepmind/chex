@@ -25,7 +25,7 @@ FrozenInstanceError = dataclasses.FrozenInstanceError
 
 
 def mappable_dataclass(cls, restricted_inheritance=True):
-  """Exposes dataclass as `collections.Mapping` descendent.
+  """Exposes dataclass as `collections.abc.Mapping` descendent.
 
   Allows to traverse dataclasses in methods from `dm-tree` library.
 
@@ -38,19 +38,19 @@ def mappable_dataclass(cls, restricted_inheritance=True):
       another `chex.dataclass`.
 
   Returns:
-    Mutated dataclass implementing `collections.Mapping` interface.
+    Mutated dataclass implementing `collections.abc.Mapping` interface.
   """
   if not dataclasses.is_dataclass(cls):
     raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
 
   is_dataclass_base = all(map(dataclasses.is_dataclass, cls.__bases__))
-  if (restricted_inheritance and
-      (cls.__bases__ != (object,) and not is_dataclass_base)):
+  if (restricted_inheritance and (cls.__bases__ !=
+                                  (object,) and not is_dataclass_base)):
     raise ValueError(
         f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__})."
         "Disable `restricted_inheritance` to suppress this check.")
 
-  # Define methods for compatibility with `collections.Mapping`.
+  # Define methods for compatibility with `collections.abc.Mapping`.
   setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
   setattr(cls, "__len__", lambda self: len(self.__dict__))
   setattr(cls, "__iter__", lambda self: iter(self.__dict__))
@@ -78,11 +78,11 @@ def mappable_dataclass(cls, restricted_inheritance=True):
   cls.__init__ = new_init
 
   # Update base class.
-  if cls.__bases__ == (object,):
-    # `collections.Mapping` is incompatible with `object`
-    cls.__bases__ = (collections.Mapping,)
-  else:
-    cls.__bases__ += (collections.Mapping,)
+  dct = dict(cls.__dict__)
+  if "__dict__" in dct:
+    dct.pop("__dict__")  # Avoid self-references.
+  bases = tuple(b for b in cls.__bases__ if b != object)
+  cls = type(cls.__name__, bases + (collections.abc.Mapping,), dct)
   return cls
 
 

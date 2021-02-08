@@ -304,5 +304,28 @@ class DataclassesTest(parameterized.TestCase):
     obj = dummy_dataclass(frozen=frozen)
     asserts.assert_tree_all_close(obj.__class__.from_tuple(obj.to_tuple()), obj)
 
+  @parameterized.named_parameters(
+      ('frozen', True),
+      ('mutable', False),
+  )
+  def test_inheritance(self, frozen):
+
+    @chex_dataclass(frozen=frozen)
+    class Base:
+      x: int
+
+    @chex_dataclass(frozen=frozen)
+    class Derived(Base):
+      y: int
+
+    base_obj = Base(x=1)
+    self.assertNotIsInstance(base_obj, Derived)
+    self.assertIsInstance(base_obj, Base)
+
+    derived_obj = Derived(x=1, y=2)
+    self.assertIsInstance(derived_obj, Derived)
+    self.assertIsInstance(derived_obj, Base)
+
+
 if __name__ == '__main__':
   absltest.main()
