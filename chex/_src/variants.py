@@ -19,6 +19,7 @@ import enum
 import functools
 import inspect
 import itertools
+import unittest
 
 from absl import flags
 from absl.testing import parameterized
@@ -220,12 +221,14 @@ def _variants_fn(test_object, **which_variants):
 
 
 @toolz.curry
+# pylint: disable=redefined-outer-name
 def variants(test_method,
              with_jit: bool = False,
              without_jit: bool = False,
              with_device: bool = False,
              without_device: bool = False,
              with_pmap: bool = False):
+  # pylint: enable=redefined-outer-name
   """Decorates a test to expose Chex variants.
 
   The decorated test has access to a decorator called `self.variant`, which
@@ -299,12 +302,14 @@ def variants(test_method,
 
 
 @toolz.curry
+# pylint: disable=redefined-outer-name
 def all_variants(test_method,
                  with_jit: bool = True,
                  without_jit: bool = True,
                  with_device: bool = True,
                  without_device: bool = True,
                  with_pmap: bool = True):
+  # pylint: enable=redefined-outer-name
   """Equivalent to `variants` but with flipped defaults."""
   return _variants_fn(
       test_method,
@@ -435,11 +440,15 @@ def _with_pmap(fn,
     `reduce_fn` and `fn` applied to them.
 
   Raises:
-    `ValueError` if `broadcast_args_to_devices` used with `in_axes` or
-                   `static_broadcasted_argnums`;
-                 if number of available devices is less than a required;
-                 pmappable arg axes' sizes are not equal to a number of devices.
+    ValueError: if `broadcast_args_to_devices` used with `in_axes` or
+        `static_broadcasted_argnums`;
+        if number of available devices is less than required;
+        if pmappable arg axes' sizes are not equal to the number of devices.
+    SkipTest: if the flag chex_skip_pmap_variant_if_single_device is set and
+        there is only one device available.
   """
+  if FLAGS.chex_skip_pmap_variant_if_single_device and jax.device_count() < 2:
+    raise unittest.SkipTest(f"Only 1 device is available ({jax.devices()}).")
 
   if broadcast_args_to_devices and in_axes != 0:
     raise ValueError(
@@ -527,6 +536,30 @@ _variant_decorators = dict({
     ChexVariantType.WITHOUT_DEVICE: _without_device,
     ChexVariantType.WITH_PMAP: _with_pmap,
 })
+
+
+# Wrap variants in a class for typing and string representation.
+class Variant:
+
+  def __init__(self, name, fn):
+    self._fn = fn
+    self._name = name
+
+  def __repr__(self):
+    return self._name
+
+  def __call__(self, *args, **kwargs):
+    # Could apply decorators (currying, arg-checking) here
+    return self._fn(*args, **kwargs)
+
+
+# Expose variant objects.
+without_device = Variant("chex.without_device", _without_device)
+without_jit = Variant("chex.without_jit", _without_jit)
+with_device = Variant("chex.with_device", _with_device)
+with_jit = Variant("chex.with_jit", _with_jit)
+with_pmap = Variant("chex.with_pmap", _with_pmap)
+ALL_VARIANTS = (without_device, without_jit, with_device, with_jit, with_pmap)
 
 # Collect valid argument names from all variant decorators.
 _valid_kwargs_keys = set()
