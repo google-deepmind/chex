@@ -326,6 +326,26 @@ class DataclassesTest(parameterized.TestCase):
     self.assertIsInstance(derived_obj, Derived)
     self.assertIsInstance(derived_obj, Base)
 
+  def test_inheritance_from_empty_frozen_base(self):
+
+    @chex_dataclass(frozen=True)
+    class FrozenBase:
+      pass
+
+    @chex_dataclass(frozen=True)
+    class DerivedFrozen(FrozenBase):
+      j: int
+
+    df = DerivedFrozen(j=2)
+    self.assertIsInstance(df, FrozenBase)
+
+    with self.assertRaisesRegex(
+        TypeError, 'cannot inherit non-frozen dataclass from a frozen one'):
+
+      @chex_dataclass  # pylint:disable=unused-variable
+      class DerivedMutable(FrozenBase):
+        j: int
+
 
 if __name__ == '__main__':
   absltest.main()
