@@ -76,6 +76,11 @@ def _is_traceable(fn):
     if any(t in str(fn_) for t in tokens):
       return True
 
+    if hasattr(fn_, "__wrapped__") and getattr(fn_, "__globals__", {}).get(
+        "__name__", None) == "jax.api":
+      # Wrapper from `jax.api`.
+      return True
+
     if not hasattr(fn_, "__wrapped__"):
       break
     fn_ = fn_.__wrapped__
@@ -733,4 +738,3 @@ def if_args_not_none(fn, *args, **kwargs):
     found_none = found_none or (x is None)
   if not found_none:
     fn(*args, **kwargs)
-
