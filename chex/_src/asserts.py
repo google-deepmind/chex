@@ -14,8 +14,11 @@
 # limitations under the License.
 # ==============================================================================
 """Chex assertion utilities."""
+import collections
 import functools
+import inspect
 import itertools
+import traceback
 from typing import Any, Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
@@ -98,6 +101,17 @@ def _assert_leaves_all_eq_comparator(
       raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_, 0, i))
 
 
+_TRACE_COUNTER = collections.Counter()
+
+
+def clear_trace_counter():
+  """Clears Chex traces' counter for `assert_max_traces` checks.
+
+  Use it to isolate unit tests that rely on `assert_max_traces`.
+  """
+  _TRACE_COUNTER.clear()
+
+
 def assert_max_traces(fn=None, n=None):
   """Checks if a function is traced at most n times (inclusively).
 
@@ -146,7 +160,13 @@ def assert_max_traces(fn=None, n=None):
         "@assert_max_traces must not wrap JAX-transformed function "
         "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
 
-  tracing_counter = 0
+  # Footprint is defined as a stacktrace of modules' names at the function's
+  # definition place + its name and source code. This allows to catch retracing
+  # event both in loops and in sequential calls. Can be used in Colab.
+  fn_footprint = (
+      tuple(frame.name for frame in traceback.extract_stack()[:-1]) +
+      (inspect.getsource(fn), fn.__name__))
+  fn_hash = hash(fn_footprint)
 
   @functools.wraps(fn)
   def fn_wrapped(*args, **kwargs):
@@ -156,10 +176,18 @@ def assert_max_traces(fn=None, n=None):
         isinstance(arg, jax.core.Tracer)
         for arg in itertools.chain(args, kwargs.values()))
 
-    nonlocal tracing_counter
-    tracing_counter += int(has_tracers_in_args)
-    if tracing_counter > n:
-      raise AssertionError(f"Function {fn.__name__} is traced > {n} times!")
+    nonlocal fn_hash
+    _TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
+    if _TRACE_COUNTER[fn_hash] > n:
+      raise AssertionError(
+          f"Function '{fn.__name__}' is traced > {n} times!\n"
+          "It often happens when a jitted function is defined inside another "
+          "function that is called multiple times (i.e. the jitted f-n is a "
+          "new object every time). Make sure that your code does not exploit "
+          "this pattern (move the nested functions to the top level to fix it)."
+          " See `chex.clear_trace_counter()` if `@chex.assert_max_traces` is "
+          "used in unittests."
+      )
 
     return fn(*args, **kwargs)
 

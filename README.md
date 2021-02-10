@@ -119,6 +119,10 @@ performance drop which is hard to debug. [@chex.assert_max_traces](https://githu
 decorator asserts that the function is not re-traced more that `n` times during
 program execution.
 
+Global trace counter can be cleared by calling
+`chex.clear_trace_counter()`. This function be used to isolate unittests relying
+on `@chex.assert_max_traces`.
+
 Examples:
 
 ```

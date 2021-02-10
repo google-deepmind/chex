@@ -69,6 +69,10 @@ class IsTraceableTest(variants.TestCase):
 
 class AssertMaxTracesTest(variants.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    asserts.clear_trace_counter()
+
   def _init(self, fn_, init_type, max_traces, kwargs, static_arg):
     variant_kwargs = dict()
     if static_arg:
@@ -184,6 +188,50 @@ class AssertMaxTracesTest(variants.TestCase):
         pass
 
     # pylint:enable=g-error-prone-assert-raises,unused-variable
+
+  def test_redefined_traced_function(self):
+
+    def outer_fn(x):
+
+      @jax.jit
+      @asserts.assert_max_traces(3)
+      def inner_fn(y):
+        return y.sum()
+
+      return inner_fn(2 * x)
+
+    self.assertEqual(outer_fn(1), 2)
+    self.assertEqual(outer_fn(2), 4)
+    self.assertEqual(outer_fn(3), 6)
+
+    # Fails since the traced inner function is redefined at each call.
+    with self.assertRaisesRegex(AssertionError, 'fn.* is traced > .* times!'):
+      outer_fn(4)
+
+    asserts.clear_trace_counter()
+    for i in range(10):
+      if i > 2:
+        with self.assertRaisesRegex(AssertionError,
+                                    'fn.* is traced > .* times!'):
+          outer_fn(1)
+      else:
+        outer_fn(1)
+
+  def test_nested_functions(self):
+
+    @jax.jit
+    def jitted_outer_fn(x):
+
+      @jax.jit
+      @asserts.assert_max_traces(1)
+      def inner_fn(y):
+        return y.sum()
+
+      return inner_fn(2 * x)
+
+    # Inner assert_max_traces have no effect since the outer_fn is traced once.
+    for i in range(10):
+      self.assertEqual(jitted_outer_fn(i), 2 * i)
 
 
 class ScalarAssertTest(parameterized.TestCase):
