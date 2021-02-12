@@ -15,18 +15,31 @@
 # ==============================================================================
 """Install script for setuptools."""
 
+import os
 from setuptools import find_namespace_packages
 from setuptools import setup
 
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def _get_version():
-  with open('chex/__init__.py') as fp:
+  with open(os.path.join(_CURRENT_DIR, 'chex', '__init__.py')) as fp:
     for line in fp:
       if line.startswith('__version__') and '=' in line:
-        version = line[line.find('=')+1:].strip(' \'"\n')
+        version = line[line.find('=') + 1:].strip(' \'"\n')
         if version:
           return version
     raise ValueError('`__version__` not defined in `chex/__init__.py`')
+
+
+def _parse_requirements(path):
+
+  with open(os.path.join(_CURRENT_DIR, path)) as f:
+    return [
+        line.rstrip()
+        for line in f
+        if not (line.isspace() or line.startswith('#'))
+    ]
 
 
 setup(
@@ -36,20 +49,13 @@ setup(
     license='Apache 2.0',
     author='DeepMind',
     description=('Chex: Testing made fun, in JAX!'),
-    long_description=open('README.md').read(),
+    long_description=open(os.path.join(_CURRENT_DIR, 'README.md')).read(),
     long_description_content_type='text/markdown',
     author_email='chex-dev@google.com',
     keywords='jax testing debugging python machine learning',
     packages=find_namespace_packages(exclude=['*_test.py']),
-    install_requires=[
-        'absl-py>=0.9.0',
-        'dataclasses>=0.7; python_version>="3.6" and python_version<"3.7"',
-        'dm-tree>=0.1.5',
-        'jax>=0.1.55',
-        'jaxlib>=0.1.37',
-        'numpy>=1.18.0',
-        'toolz>=0.9.0',
-    ],
+    install_requires=_parse_requirements('requirements.txt'),
+    tests_require=_parse_requirements('requirements-test.txt'),
     python_requires='>=3.6',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
