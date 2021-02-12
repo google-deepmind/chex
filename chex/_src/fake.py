@@ -26,6 +26,7 @@ import functools
 import inspect
 import os
 import re
+import sys
 from typing import Optional
 from unittest import mock
 from absl import flags
@@ -66,7 +67,18 @@ def set_n_cpu_devices(n: Optional[int] = None):
   Raises:
     RuntimeError: if XLA backends were already initialized.
   """
-  n = n or FLAGS.chex_n_cpu_devices
+  if n is None:
+    # Parse flags (for `pytest`).
+    if not FLAGS.is_parsed():
+      FLAGS(sys.argv, known_only=True)
+
+    if FLAGS.chex_n_cpu_devices:
+      n = FLAGS.chex_n_cpu_devices
+    else:
+      raise RuntimeError(
+          '`FLAGS.chex_n_cpu_devices` is not parsed: use `bazel` for testing or'
+          ' call `set_n_cpu_devices()` with an argument specifying required '
+          'number of devices.')
 
   n_devices = get_n_cpu_devices_from_xla_flags()
   cpu_backend = (jax.lib.xla_client._local_backends or {}).get('cpu', None)  # pylint: disable=protected-access

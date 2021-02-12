@@ -19,6 +19,7 @@ This test is isolated to ensure hermeticity because its execution changes
 XLA backend configuration.
 """
 
+import unittest
 from absl.testing import absltest
 from chex._src import asserts
 from chex._src import fake
@@ -27,8 +28,13 @@ from chex._src import fake
 class DevicesSetterTest(absltest.TestCase):
 
   def test_set_n_cpu_devices(self):
-    # Should not initialize backends.
-    fake.set_n_cpu_devices(4)
+    try:
+      # Should not initialize backends.
+      fake.set_n_cpu_devices(4)
+    except RuntimeError:
+      raise unittest.SkipTest(
+          "set_n_cpu_devices: backend's already been initialized. "
+          'Run this test in isolation from others.')
 
     # Hence, this one does not fail.
     fake.set_n_cpu_devices(6)

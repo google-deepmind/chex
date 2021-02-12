@@ -19,6 +19,7 @@ import enum
 import functools
 import inspect
 import itertools
+import sys
 import unittest
 
 from absl import flags
@@ -158,12 +159,14 @@ class VariantsTestCaseGenerator:
       @functools.wraps(test_method)
       def test(self, *args, **kwargs):
         # Skip pmap variant if only one device is available.
-
-        if (variant is ChexVariantType.WITH_PMAP and
+        if not FLAGS.is_parsed():
+          # Parse flags (for `pytest`).
+          FLAGS(sys.argv, known_only=True)
+        if (variant is ChexVariantType.WITH_PMAP and FLAGS.is_parsed() and
             FLAGS.chex_skip_pmap_variant_if_single_device and
             jax.device_count() < 2):
-          self.skipTest(f"Only 1 device is available ({jax.devices()}).")
-          raise RuntimeError("This line should not be executed.")
+          raise unittest.SkipTest(
+              f"Only 1 device is available ({jax.devices()}).")
 
         # n_cpu_devices assert.
         if FLAGS.chex_assert_multiple_cpu_devices:
@@ -447,7 +450,8 @@ def _with_pmap(fn,
     SkipTest: if the flag chex_skip_pmap_variant_if_single_device is set and
         there is only one device available.
   """
-  if FLAGS.chex_skip_pmap_variant_if_single_device and jax.device_count() < 2:
+  if (FLAGS.is_parsed() and FLAGS.chex_skip_pmap_variant_if_single_device and
+      jax.device_count() < 2):
     raise unittest.SkipTest(f"Only 1 device is available ({jax.devices()}).")
 
   if broadcast_args_to_devices and in_axes != 0:

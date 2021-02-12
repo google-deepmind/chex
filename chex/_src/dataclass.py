@@ -143,6 +143,7 @@ class _Dataclass():
           getattr(base, "__dataclass_params__").frozen and not self.frozen):
         raise TypeError("cannot inherit non-frozen dataclass from a frozen one")
 
+    # pytype: disable=wrong-keyword-args
     dcls = dataclasses.dataclass(
         cls,
         init=self.init,
@@ -150,7 +151,8 @@ class _Dataclass():
         eq=self.eq,
         order=self.order,
         unsafe_hash=self.unsafe_hash,
-        frozen=self.frozen)  # pytype: disable=wrong-keyword-args
+        frozen=self.frozen)
+    # pytype: enable=wrong-keyword-args
 
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls, self.restricted_inheritance)

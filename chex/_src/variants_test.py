@@ -20,6 +20,7 @@ To run tests in multi-cpu regime, one need to set the flag `--n_cpu_devices=N`.
 
 import inspect
 import itertools
+import sys
 import unittest
 
 from absl import flags
@@ -48,8 +49,10 @@ DEFAULT_NAMED_PARAMS = (('case_0', 1, 2, 1), ('case_1', 4, 6, 2))
 
 # Set `FLAGS.chex_n_cpu_devices` CPU devices for all tests.
 def setUpModule():
-  # Has the same effect as `fake.set_n_cpu_devices(FLAGS.chex_n_cpu_devices)`.
-  fake.set_n_cpu_devices()
+  # Parse flags (for `pytest`).
+  if not FLAGS.is_parsed():
+    FLAGS(sys.argv, known_only=True)
+  fake.set_n_cpu_devices(FLAGS.chex_n_cpu_devices)
   asserts.assert_devices_available(
       FLAGS.chex_n_cpu_devices, 'cpu', backend='cpu')
 
@@ -719,7 +722,8 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     elif n_gpu > 1:
       self.n_devices, self.backend = n_gpu, 'gpu'
     else:
-      self.n_devices, self.backend = FLAGS.chex_n_cpu_devices, 'cpu'
+      self.n_devices = FLAGS.chex_n_cpu_devices if FLAGS.is_parsed() else 1
+      self.backend = 'cpu'
 
   @variants.variants(with_pmap=True)
   @parameterized.parameters(*DEFAULT_PARAMS)
