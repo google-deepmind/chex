@@ -1,5 +1,7 @@
 # Chex
 
+![CI status](https://github.com/deepmind/chex/workflows/ci/badge.svg)
+
 Chex is a library of utilities for helping to write reliable JAX code.
 
 This includes utils to help:
