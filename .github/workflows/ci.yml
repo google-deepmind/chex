@@ -45,10 +45,8 @@ jobs:
       - name: Check types with pytype
         run: |
           set -xe
-          cd chex
           pytype --version
-          pytype . -k
-          cd ..
+          pytype `find chex/_src/ -name "*py" | xargs` -k
         shell: bash
       - name: Run tests
         run: |
