@@ -303,7 +303,6 @@ class DataclassesTest(parameterized.TestCase):
   def test_tuple_rev_conversion(self, frozen):
     obj = dummy_dataclass(frozen=frozen)
     asserts.assert_tree_all_close(type(obj).from_tuple(obj.to_tuple()), obj)
-    self.assertTrue(0)
 
   @parameterized.named_parameters(
       ('frozen', True),
