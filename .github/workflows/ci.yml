@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
         os: [macos-latest, ubuntu-latest]
 
     steps:
@@ -25,7 +25,7 @@ jobs:
         run: |
           set -xe
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install flake8 pytest pytype pylint pylint-exit
+          python -m pip install flake8 pytest pytype
           python -m pip install -r requirements.txt
           python -m pip install -r requirements-test.txt
         shell: bash
