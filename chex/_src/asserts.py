@@ -274,7 +274,9 @@ def assert_equal_shape_suffix(inputs, suffix_len):
 
   Args:
     inputs: sequence of input arrays.
-    suffix_len: number of leading dimensions to compare.
+    suffix_len: number of trailing dimensions to compare; each input's shape
+      will be sliced to `shape[-suffix_len:]`. Negative values are accepted
+      and have the conventional Python indexing semantics.
 
   Raises:
     AssertionError: if the shapes of all arrays do not match.
