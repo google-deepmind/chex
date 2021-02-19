@@ -27,7 +27,7 @@ import jax
 import jax.numpy as jnp
 import jax.test_util as jax_test
 import numpy as np
-import tree
+import tree as dm_tree
 
 Scalar = pytypes.Scalar
 Array = pytypes.Array
@@ -587,6 +587,26 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
+def assert_tree_shape_prefix(tree: ArrayTree, shape_prefix: Sequence[int]):
+  """Assert all tree leaves shapes' have the same prefix.
+
+  Args:
+    tree: tree to assert.
+    shape_prefix: expected shapes' prefix.
+  Raise:
+    AssertionError: if some leaf's shape doesn't start with the expected prefix.
+  """
+
+  def _assert_fn(path, leaf):
+    prefix = leaf.shape[:len(shape_prefix)]
+    if prefix != shape_prefix:
+      raise AssertionError(
+          f"Tree leaf '{'/'.join(path)}' has a shape prefix "
+          f"diffent from expected: {prefix} != {shape_prefix}.")
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+
+
 def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
   """Assert trees have the same structure.
 
@@ -620,7 +640,7 @@ def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
 
   cmp = functools.partial(_assert_leaves_all_eq_comparator,
                           equality_comparator, _tree_error_msg_fn)
-  tree.map_structure_with_path(cmp, *trees)
+  dm_tree.map_structure_with_path(cmp, *trees)
 
 
 def assert_tree_all_close(*trees: Sequence[ArrayTree],

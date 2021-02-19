@@ -668,6 +668,18 @@ class TreeAssertionsTest(parameterized.TestCase):
     asserts.assert_tree_all_equal_structs(tree3, tree3)
     self._assert_tree_structs_validation(asserts.assert_tree_all_equal_structs)
 
+  def test_assert_tree_shape_prefix(self):
+    tree = {'x': {'y': np.zeros([3, 2])}, 'z': np.zeros([3, 2, 1])}
+    asserts.assert_tree_shape_prefix(tree, ())
+    asserts.assert_tree_shape_prefix(tree, (3,))
+    asserts.assert_tree_shape_prefix(tree, (3, 2))
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Tree leaf \'x/y\' .* diffent from expected: \(3, 2\) != \(3, 2, 1\)'
+    ):
+      asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
+
 
 class NumDevicesAssertTest(parameterized.TestCase):
 
