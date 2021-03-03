@@ -58,10 +58,14 @@ from chex._src.pytypes import ArrayDevice
 from chex._src.pytypes import ArrayNumpy
 from chex._src.pytypes import ArraySharded
 from chex._src.pytypes import ArrayTree
+from chex._src.pytypes import CpuDevice
+from chex._src.pytypes import Device
+from chex._src.pytypes import GpuDevice
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
 from chex._src.pytypes import Scalar
 from chex._src.pytypes import Shape
+from chex._src.pytypes import TpuDevice
 from chex._src.variants import all_variants
 from chex._src.variants import ChexVariantType
 from chex._src.variants import params_product
@@ -110,10 +114,13 @@ __all__ = (
     "assert_type",
     "ChexVariantType",
     "clear_trace_counter",
+    "CpuDevice",
     "dataclass",
+    "Device",
     "fake_jit",
     "fake_pmap",
     "fake_pmap_and_jit",
+    "GpuDevice",
     "if_args_not_none",
     "mappable_dataclass",
     "Numeric",
@@ -123,6 +130,7 @@ __all__ = (
     "set_n_cpu_devices",
     "Shape",
     "TestCase",
+    "TpuDevice",
     "variants",
 )
 
