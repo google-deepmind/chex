@@ -95,7 +95,7 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 @functools.wraps(jax.pmap)
 def _fake_pmap(fn, axis_name=None, *, in_axes=0, static_broadcasted_argnums=(),
-               **unused_kwargs):
+               jit_result=False, **unused_kwargs):
   """Fake implementation of pmap using vmap."""
   if static_broadcasted_argnums:
     raise ValueError('fake pmap does not currently support non-empty '
@@ -103,6 +103,8 @@ def _fake_pmap(fn, axis_name=None, *, in_axes=0, static_broadcasted_argnums=(),
 
   fn_signature = inspect.signature(fn)
   vmapped_fn = jax.vmap(fn, in_axes=in_axes, axis_name=axis_name)
+  if jit_result:
+    vmapped_fn = jax.jit(vmapped_fn)
 
   @functools.wraps(fn)
   def wrapped_fn(*args, **kwargs):
@@ -174,7 +176,7 @@ def fake_jit(enable_patching: bool = True):
   return stack
 
 
-def fake_pmap(enable_patching: bool = True):
+def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
   """Context manager for patching jax.pmap with jax.vmap.
 
   This is intended to be used as a debugging tool to programmatically replace
@@ -198,6 +200,8 @@ def fake_pmap(enable_patching: bool = True):
 
   Args:
     enable_patching: Whether to patch jax.pmap
+    jit_result: Whether the transformed function should be jitted despite not
+      being pmapped.
 
   Returns:
     Context where jax.pmap is patched with jax.vmap
@@ -205,7 +209,9 @@ def fake_pmap(enable_patching: bool = True):
   # Improve implementation to automatically track JAX collectives development.
   stack = FakeContext()
   if enable_patching:
-    stack.enter_context(mock.patch('jax.pmap', _fake_pmap))
+    stack.enter_context(
+        mock.patch('jax.pmap',
+                   functools.partial(_fake_pmap, jit_result=jit_result)))
     stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
     stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
     stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))

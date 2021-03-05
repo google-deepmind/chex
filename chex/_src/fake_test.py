@@ -50,7 +50,7 @@ def _assert_jitted(fn, fn_input, is_jitted):
   wrapped_fn(fn_input)
 
 
-def _assert_pmapped(fn, fn_input, is_pmapped):
+def _assert_pmapped(fn, fn_input, is_pmapped, should_jit=False):
   """Asserts whether a function can be pmapped or not.
 
   Args:
@@ -58,8 +58,13 @@ def _assert_pmapped(fn, fn_input, is_pmapped):
     fn_input: Input to pass to the function
     is_pmapped: Assert that the function can be pmapped with jax.pmap (True) or
     cannot be pmapped (False), i.e. the fake pmap is working correctly.
+    should_jit: if True, asserts that the function is jitted, regardless of it
+    being pmapped or not.
   """
   num_devices = len(jax.devices())
+  if should_jit:
+    asserts.clear_trace_counter()
+    fn = asserts.assert_max_traces(fn, n=1)
   wrapped_fn = jax.pmap(fn, axis_size=num_devices)
 
   fn_input = jnp.broadcast_to(fn_input, (num_devices,) + fn_input.shape)
@@ -119,22 +124,26 @@ class PmapFakeTest(parameterized.TestCase):
     ctx.stop()
 
   @parameterized.named_parameters([
-      ('plain_pmap', {'enable_patching': False}, True),
-      ('faked_pmap', {'enable_patching': True}, False),
+      ('plain_pmap_but_jit', True, True),
+      ('plain_pmap', True, False),
+      ('faked_pmap_but_jit', False, True),
+      ('faked_pmap', False, False),
   ])
-  def test_fake_pmap(self, fake_kwargs, is_pmapped):
+  def test_fake_pmap_(self, is_pmapped, jit_result):
+    enable_patching = not is_pmapped
+
     fn_input = jnp.ones((4,))
     def foo(x):
       return x * 2
 
     # Call with context manager
-    with fake.fake_pmap(**fake_kwargs):
-      _assert_pmapped(foo, fn_input, is_pmapped)
+    with fake.fake_pmap(enable_patching=enable_patching, jit_result=jit_result):
+      _assert_pmapped(foo, fn_input, is_pmapped, jit_result)
 
     # Call with start/stop
-    ctx = fake.fake_pmap(**fake_kwargs)
+    ctx = fake.fake_pmap(enable_patching=enable_patching, jit_result=jit_result)
     ctx.start()
-    _assert_pmapped(foo, fn_input, is_pmapped)
+    _assert_pmapped(foo, fn_input, is_pmapped, jit_result)
     ctx.stop()
 
   def test_fake_pmap_axis_name(self):
