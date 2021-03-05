@@ -526,7 +526,7 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
       prescribed value.
   """
   tensor = jnp.asarray(tensor)
-  if axis >= len(tensor.shape):
+  if axis >= len(tensor.shape) or axis < -len(tensor.shape):
     raise AssertionError(
         f"Expected tensor to have dim '{expected}' along axis '{axis}' but"
         f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
@@ -548,14 +548,14 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
     AssertionError: if the dimension of `axis` is not greater than `val`.
   """
   tensor = jnp.asarray(tensor)
-  if axis >= len(tensor.shape):
+  if axis >= len(tensor.shape) or axis < -len(tensor.shape):
     raise AssertionError(
         f"Expected tensor to have dim greater than '{val}' on axis '{axis}' but"
         f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
   if tensor.shape[axis] <= val:
     raise AssertionError(
-        f"Expected tensor to have dim greater than '{val}' on axis '{axis}'"
-        f" but got '{tensor.shape[axis]}' instead.")
+        f"Expected tensor to have dimension greater than '{val}' on axis"
+        f" '{axis}' but got '{tensor.shape[axis]}' instead.")
 
 
 def assert_numerical_grads(
