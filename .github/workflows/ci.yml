@@ -25,7 +25,7 @@ jobs:
         run: |
           set -xe
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install flake8 pytest pytype pylint pylint-exit
+          python -m pip install flake8 pytest-xdist pytype pylint pylint-exit
           python -m pip install -r requirements.txt
           python -m pip install -r requirements-test.txt
         shell: bash
@@ -57,8 +57,8 @@ jobs:
           # Change directory to avoid importing the package from repo root.
           mkdir _testing && cd _testing
           # Main tests.
-          python -m pytest --pyargs chex -k "not fake_set_n_cpu_devices_test"
+          python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n_cpu_devices_test"
           # Isolate tests that use `chex.set_n_cpu_device()`.
-          python -m pytest --pyargs chex -k "fake_set_n_cpu_devices_test"
+          python -m pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu_devices_test"
           cd ..
         shell: bash
