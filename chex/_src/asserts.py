@@ -79,13 +79,20 @@ def _is_traceable(fn):
     if any(t in str(fn_) for t in tokens):
       return True
 
-    if hasattr(fn_, "__wrapped__") and getattr(fn_, "__globals__", {}).get(
-        "__name__", None) == "jax.api":
-      # Wrapper from `jax.api`.
-      return True
+    if hasattr(fn_, "__wrapped__"):
+      # Wrapper.
+      fn_globals = getattr(fn_, "__globals__", {})
 
-    if not hasattr(fn_, "__wrapped__"):
+      if fn_globals.get("__name__", None) == "jax.api":
+        # Wrapper from `jax.api`.
+        return True
+
+      if "api_boundary" in fn_globals:
+        # api_boundary is a JAX wrapper for traced functions.
+        return True
+    else:
       break
+
     fn_ = fn_.__wrapped__
   return False
 
