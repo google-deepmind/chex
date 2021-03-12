@@ -102,10 +102,10 @@ def _assert_leaves_all_eq_comparator(
     error_msg_fn: Callable[[TLeaf, TLeaf, str, int, int],
                            str], path: Sequence[Any], *leaves: Sequence[TLeaf]):
   """Asserts all leaves are equal using custom comparator."""
-  path_ = "/".join(map(str, path))
+  path_str = "/".join(str(p) for p in path)
   for i in range(1, len(leaves)):
     if not equality_comparator(leaves[0], leaves[i]):
-      raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_, 0, i))
+      raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_str, 0, i))
 
 
 _TRACE_COUNTER = collections.Counter()
@@ -597,17 +597,45 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
-def assert_tree_shape_prefix(tree: ArrayTree, shape_prefix: Sequence[int]):
-  """Assert all tree leaves shapes' have the same prefix.
+def assert_tree_no_nones(tree: ArrayTree):
+  """Asserts tree does not contain `None`s.
 
   Args:
-    tree: tree to assert.
-    shape_prefix: expected shapes' prefix.
-  Raise:
-    AssertionError: if some leaf's shape doesn't start with the expected prefix.
+    tree: a tree to assert.
+
+  Raises:
+    AssertionError: if the tree contains `None`s.
   """
 
   def _assert_fn(path, leaf):
+    if leaf is None:
+      formatted_path = "/".join(str(p) for p in path)
+      raise AssertionError(f"`None` detected at '{formatted_path}'.")
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+
+
+def assert_tree_shape_prefix(tree: ArrayTree,
+                             shape_prefix: Sequence[int],
+                             *,
+                             ignore_nones: bool = False):
+  """Asserts all tree leaves' shapes have the same prefix.
+
+  Args:
+    tree: a tree to assert.
+    shape_prefix: an expected shapes' prefix.
+    ignore_nones: whether to ignore `None`s in the tree.
+  Raise:
+    AssertionError: if some leaf's shape doesn't start with the expected prefix;
+                    if `ignore_nones` isn't set and the tree contains `None`s.
+  """
+
+  if not ignore_nones:
+    assert_tree_no_nones(tree)
+
+  def _assert_fn(path, leaf):
+    if leaf is None: return
+
     prefix = leaf.shape[:len(shape_prefix)]
     if prefix != shape_prefix:
       raise AssertionError(
@@ -618,7 +646,9 @@ def assert_tree_shape_prefix(tree: ArrayTree, shape_prefix: Sequence[int]):
 
 
 def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
-  """Assert trees have the same structure.
+  """Asserts trees have the same structure.
+
+  Note that `None`s are treated as PyTree nodes.
 
   Args:
     *trees: trees which structures to assert on equality.
@@ -627,7 +657,7 @@ def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
     AssertionError: if structures of any two trees are different.
   """
   first_treedef = jax.tree_structure(trees[0])
-  other_treedefs = map(jax.tree_structure, trees[1:])
+  other_treedefs = (jax.tree_structure(t) for t in trees[1:])
   for i, treedef in enumerate(other_treedefs, start=1):
     if first_treedef != treedef:
       raise AssertionError(
@@ -638,25 +668,49 @@ def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
 
 def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
                                      error_msg_fn: TLeavesEqCmpErrorFn,
-                                     *trees: Sequence[ArrayTree]):
-  """Assert all trees are equal using custom comparator for leaves."""
-  if len(trees) < 2:
-    return
-  assert_tree_all_equal_structs(*trees)
+                                     *trees: Sequence[ArrayTree],
+                                     ignore_nones: bool = False):
+  """Asserts all trees are equal as per the custom comparator for leaves.
 
-  def _tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
+  Args:
+    equality_comparator: a custom function that accepts two leaves and checks
+                         whether they are equal. Expected to be transitive.
+    error_msg_fn: a function accepting two unequal as per `equality_comparator`
+                  leaves and returning an error message.
+    *trees: trees to check on equality as per `equality_comparator`.
+    ignore_nones: whether to ignore `None`s in the trees.
+
+  Raises:
+    AssertionError: if `equality_comparator` returns False on any pair of trees.
+  """
+  if len(trees) < 2: return
+  assert_tree_all_equal_structs(*trees)
+  if not ignore_nones: assert_tree_no_nones(trees)
+
+  def tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
     msg = error_msg_fn(l_1, l_2)
     return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."
 
+  def wrapped_equality_comparator(leaf_1, leaf_2):
+    if leaf_1 is None or leaf_1 is None:
+      # Either both or none of leaves can be `None`s.
+      assert leaf_1 is None and leaf_2 is None, (
+          "non-mutual cases must be caught by assert_tree_all_equal_structs")
+      if ignore_nones:
+        return True
+
+    return equality_comparator(leaf_1, leaf_2)
+
   cmp = functools.partial(_assert_leaves_all_eq_comparator,
-                          equality_comparator, _tree_error_msg_fn)
+                          wrapped_equality_comparator, tree_error_msg_fn)
   dm_tree.map_structure_with_path(cmp, *trees)
 
 
 def assert_tree_all_close(*trees: Sequence[ArrayTree],
                           rtol: float = 1e-07,
-                          atol: float = .0):
-  """Assert trees have leaves with approximately equal values.
+                          atol: float = .0,
+                          ignore_nones: bool = False):
+  """Asserts trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired to
    atol + rtol * abs(desired).
@@ -665,30 +719,41 @@ def assert_tree_all_close(*trees: Sequence[ArrayTree],
     *trees: a sequence of trees with array leaves.
     rtol: relative tolerance.
     atol: absolute tolerance.
+    ignore_nones: whether to ignore `None`s in the trees.
+
   Raise:
     AssertionError: if the leaf values actual and desired are not equal up to
-      specified tolerance.
+      specified tolerance, or trees contain `None`s (with `ignore_nones=False`).
   """
   assert_fn = functools.partial(
       np.testing.assert_allclose, rtol=rtol, atol=atol,
       err_msg="Error in value equality check: Values not approximately equal")
-  cmp_fn = lambda arr_1, arr_2: bool(assert_fn(arr_1, arr_2) is None)
-  err_msg_fn = lambda arr_1, arr_2: None
-  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
+
+  def cmp_fn(arr_1, arr_2):
+    assert_fn(arr_1, arr_2)  # Raises an AssertionError if values are not close.
+    return True
+
+  dummy_err_msg_fn = lambda arr_1, arr_2: None
+  assert_tree_all_equal_comparator(
+      cmp_fn, dummy_err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-def assert_tree_all_equal_shapes(*trees: Sequence[ArrayTree]):
-  """Assert trees have the same structure and leaves' shapes.
+def assert_tree_all_equal_shapes(*trees: Sequence[ArrayTree],
+                                 ignore_nones: bool = False):
+  """Asserts trees have the same structure and leaves' shapes.
 
   Args:
     *trees: a sequence of trees with array leaves.
+    ignore_nones: whether to ignore `None`s in the trees.
 
-  Raise:
-    AssertionError: if trees' structures or leaves' shapes are different.
+  Raises:
+    AssertionError: if trees' structures or leaves' shapes are different;
+                    if trees contain `None`s (with `ignore_nones=False`).
   """
   cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
   err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
-  assert_tree_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
+  assert_tree_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
 def assert_devices_available(

@@ -599,6 +599,7 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree3 = [get_val(), [get_val(), get_val()]]
     tree4 = [get_val(), [get_val(), get_val()], get_val()]
     tree5 = dict(x=1, y=2, z=3)
+    tree6 = dict(x=1, y=2, z=3, n=None)
 
     with self.assertRaisesRegex(
         AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
@@ -619,6 +620,11 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
       assert_fn(tree2, tree1, tree4)
+
+    # Test `None`s.
+    with self.assertRaisesRegex(
+        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+      assert_fn(tree5, tree6)
 
   def test_tree_all_finite_passes_finite(self):
     finite_tree = {'a': jnp.ones((3,)), 'b': jnp.array([0.0, 0.0])}
@@ -649,6 +655,30 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree1 = (jnp.array([1.0, 1.0]),)
     tree2 = (jnp.array([1.0, 1.0 + 1e-9]),)
     asserts.assert_tree_all_close(tree1, tree2)
+
+  def test_assert_tree_all_close_nones(self):
+    tree = {'a': [jnp.zeros((1,))], 'b': None}
+    asserts.assert_tree_all_close(tree, tree, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+      asserts.assert_tree_all_close(tree, tree, ignore_nones=False)
+
+  def test_assert_tree_all_equal_shapes_nones(self):
+    tree = {'a': [jnp.zeros((1,))], 'b': None}
+    asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+      asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=False)
+
+  def test_assert_tree_no_nones(self):
+    tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
+    asserts.assert_tree_no_nones(tree_ok)
+
+    tree_with_none = {'a': [jnp.zeros((1,))], 'b': None}
+    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+      asserts.assert_tree_no_nones(tree_with_none)
+
+    # Check `None`.
+    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+      asserts.assert_tree_no_nones(None)
 
   def test_assert_tree_all_close_fails_different_structure(self):
     self._assert_tree_structs_validation(asserts.assert_tree_all_close)
@@ -707,6 +737,13 @@ class TreeAssertionsTest(parameterized.TestCase):
         r'Tree leaf \'x/y\' .* diffent from expected: \(3, 2\) != \(3, 2, 1\)'
     ):
       asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
+
+  def test_assert_tree_shape_prefix_none(self):
+    tree = {'x': np.zeros([3]), 'n': None}
+    asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=True)
+
+    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+      asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
 
 
 class NumDevicesAssertTest(parameterized.TestCase):

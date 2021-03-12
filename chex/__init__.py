@@ -42,6 +42,7 @@ from chex._src.asserts import assert_tree_all_equal_comparator
 from chex._src.asserts import assert_tree_all_equal_shapes
 from chex._src.asserts import assert_tree_all_equal_structs
 from chex._src.asserts import assert_tree_all_finite
+from chex._src.asserts import assert_tree_no_nones
 from chex._src.asserts import assert_tree_shape_prefix
 from chex._src.asserts import assert_type
 from chex._src.asserts import clear_trace_counter
@@ -110,6 +111,7 @@ __all__ = (
     "assert_tree_all_equal_shapes",
     "assert_tree_all_equal_structs",
     "assert_tree_all_finite",
+    "assert_tree_no_nones",
     "assert_tree_shape_prefix",
     "assert_type",
     "ChexVariantType",
