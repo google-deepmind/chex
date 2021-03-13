@@ -24,13 +24,7 @@ Array = jnp.ndarray
 ArrayBatched = jax.interpreters.batching.BatchTracer
 ArrayNumpy = np.ndarray
 ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
-# Use this type for type annotation. For instance checking,  use
-# `isinstance(x, jax.DeviceArray)`.
-# `jax.interpreters.xla._DeviceArray` appears in jax > 0.2.5
-if hasattr(jax.interpreters.xla, '_DeviceArray'):
-  ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint:disable=protected-access
-else:
-  ArrayDevice = jax.interpreters.xla.DeviceArray
+ArrayDevice = jax.interpreters.xla.DeviceArray
 
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
