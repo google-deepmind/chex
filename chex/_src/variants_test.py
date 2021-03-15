@@ -37,7 +37,6 @@ import numpy as np
 
 FLAGS = flags.FLAGS
 
-ArrayDevice = pytypes.ArrayDevice
 ArrayBatched = pytypes.ArrayBatched
 
 DEFAULT_FN = lambda arg_0, arg_1: arg_1 - arg_0
@@ -285,7 +284,7 @@ class OneFailedVariantTest(variants.TestCase):
 
       @self.variant
       def fails_for_without_device_variant(x):
-        self.assertIsInstance(x, ArrayDevice)
+        self.assertIsInstance(x, jnp.DeviceArray)
 
       fails_for_without_device_variant(42)
 
@@ -630,8 +629,8 @@ class WithJitTest(parameterized.TestCase):
 
 def _test_fn_without_device(arg_0, arg_1):
   tc = unittest.TestCase()
-  tc.assertNotIsInstance(arg_0, ArrayDevice)
-  tc.assertNotIsInstance(arg_1, ArrayDevice)
+  tc.assertNotIsInstance(arg_0, jnp.DeviceArray)
+  tc.assertNotIsInstance(arg_1, jnp.DeviceArray)
   return DEFAULT_FN(arg_0, arg_1)
 
 
@@ -652,8 +651,8 @@ class WithoutDeviceTest(parameterized.TestCase):
 
 def _test_fn_with_device(arg_0, arg_1):
   tc = unittest.TestCase()
-  tc.assertIsInstance(arg_0, ArrayDevice)
-  tc.assertIsInstance(arg_1, ArrayDevice)
+  tc.assertIsInstance(arg_0, jnp.DeviceArray)
+  tc.assertIsInstance(arg_1, jnp.DeviceArray)
   return DEFAULT_FN(arg_0, arg_1)
 
 
@@ -679,7 +678,7 @@ class WithDeviceTest(parameterized.TestCase):
     @self.variant(ignore_argnums=(0, 2))
     def fn(arg_0, arg_1, float_arg):
       self.assertIsInstance(arg_0, static_type)
-      self.assertIsInstance(arg_1, ArrayDevice)
+      self.assertIsInstance(arg_1, jnp.DeviceArray)
       self.assertIsInstance(float_arg, float)
       return DEFAULT_FN(arg_0, arg_1)
 
