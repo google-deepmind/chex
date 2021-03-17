@@ -143,7 +143,7 @@ Can be used with `jax.pmap()` as well:
   def fn_sub(x, y):
     return x - y
 
-  fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
+  fn_sub_pmapped = jax.pmap(chex.assert_max_traces(fn_sub, n=10))
 ```
 
 [More about tracing](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
