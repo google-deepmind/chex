@@ -569,7 +569,7 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
 
 
 def assert_numerical_grads(
-    f: Callable[[Sequence[Array]], Array],
+    f: Callable[..., Array],
     f_args: Sequence[Array],
     order: int,
     atol: float = 0.01,
