@@ -74,14 +74,15 @@ class AssertMaxTracesTest(variants.TestCase):
     asserts.clear_trace_counter()
 
   def _init(self, fn_, init_type, max_traces, kwargs, static_arg):
-    variant_kwargs = dict()
+    """Initializes common test cases."""
+    variant_kwargs = {}
     if static_arg:
       variant_kwargs['static_argnums'] = 1
 
     if kwargs:
-      args, kwargs = list(), dict(n=max_traces)
+      args, kwargs = [], {'n': max_traces}
     else:
-      args, kwargs = [max_traces], dict()
+      args, kwargs = [max_traces], {}
 
     if init_type == 't1':
 
@@ -394,13 +395,15 @@ class RankAssertTest(parameterized.TestCase):
       asserts.assert_rank(rank_array(2), np.array([2]))
 
   def test_rank_should_fail_wrong_expectation_structure(self):
+    # pytype: disable=wrong-arg-types
     with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
         ValueError, 'Expected ranks should be integers or sets of integers'):
-      asserts.assert_rank(rank_array(2), [[1, 2]])  # pytype: disable=wrong-arg-types
+      asserts.assert_rank(rank_array(2), [[1, 2]])
 
     with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
         ValueError, 'Expected ranks should be integers or sets of integers'):
-      asserts.assert_rank([rank_array(1), rank_array(2)], [[1], [2]])  # pytype: disable=wrong-arg-types
+      asserts.assert_rank([rank_array(1), rank_array(2)], [[1], [2]])
+    # pytype: enable=wrong-arg-types
 
   @parameterized.named_parameters(
       ('rank_1', rank_array(1), 2),
@@ -534,7 +537,7 @@ class TypeAssertTest(parameterized.TestCase):
   )
   def test_type_should_fail_wrong_length(self, array, wrong_type):
     with self.assertRaisesRegex(
-        AssertionError, 'Length of `inputs` and `expected_types` must match:'):
+        AssertionError, 'Length of `inputs` and `expected_types` must match'):
       asserts.assert_type(array, wrong_type)
 
   def test_type_should_fail_unsupported_dtype(self):
@@ -593,6 +596,8 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
 class TreeAssertionsTest(parameterized.TestCase):
 
   def _assert_tree_structs_validation(self, assert_fn):
+    """Checks that assert_fn correctly processes invalid args' structs."""
+
     get_val = lambda: jnp.zeros([3])
     tree1 = [[get_val(), get_val()], get_val()]
     tree2 = [[get_val(), get_val()], get_val()]

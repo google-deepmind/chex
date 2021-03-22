@@ -16,6 +16,7 @@
 """Tests for `dataclass.py`."""
 
 import typing
+
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
@@ -67,8 +68,11 @@ class ClassWithoutMap:
 
 
 def _get_mappable_dataclasses(test_type):
+  """Generates shallow and nested mappable dataclasses."""
 
   class Class:
+    """Shallow class."""
+
     k_tuple: tuple  # pylint:disable=g-bare-generic
     k_dict: dict  # pylint:disable=g-bare-generic
 
@@ -76,6 +80,8 @@ def _get_mappable_dataclasses(test_type):
       raise RuntimeError('Class.some_method() was called.')
 
   class NestedClass:
+    """Nested class."""
+
     k_any: typing.Any
     k_int: int
     k_str: str
@@ -109,6 +115,7 @@ def _get_mappable_dataclasses(test_type):
 class MappableDataclassTest(parameterized.TestCase):
 
   def _init_testdata(self, test_type):
+    """Initializes test data."""
     map_cls, nested_map_cls = _get_mappable_dataclasses(test_type)
 
     self.dcls_with_map_inner = map_cls(
@@ -342,9 +349,11 @@ class DataclassesTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, 'cannot inherit non-frozen dataclass from a frozen one'):
 
-      @chex_dataclass  # pylint:disable=unused-variable
+      # pylint:disable=unused-variable
+      @chex_dataclass
       class DerivedMutable(FrozenBase):
         j: int
+      # pylint:enable=unused-variable
 
 
 if __name__ == '__main__':

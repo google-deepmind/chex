@@ -31,10 +31,10 @@ class DevicesSetterTest(absltest.TestCase):
     try:
       # Should not initialize backends.
       fake.set_n_cpu_devices(4)
-    except RuntimeError:
+    except RuntimeError as set_cpu_exception:
       raise unittest.SkipTest(
           "set_n_cpu_devices: backend's already been initialized. "
-          'Run this test in isolation from others.')
+          'Run this test in isolation from others.') from set_cpu_exception
 
     # Hence, this one does not fail.
     fake.set_n_cpu_devices(6)

@@ -240,7 +240,7 @@ class ParamsProductTest(absltest.TestCase):
     self.assertEqual(named_product, named_expected)
 
 
-class FailedTestsTest(variants.TestCase):
+class FailedTestsTest(absltest.TestCase):
   # Inner class prevents FailedTest being run by `absltest.main()`.
 
   class FailedTest(variants.TestCase):
@@ -251,8 +251,7 @@ class FailedTestsTest(variants.TestCase):
 
     @variants.variants(without_jit=True)
     def test_error(self):
-      msg = 'this message does not specify the Chex variant'
-      raise ValueError(msg)
+      raise ValueError('this message does not specify the Chex variant')
 
   def setUp(self):
     super().setUp()
@@ -326,6 +325,7 @@ class BaseClassesTest(parameterized.TestCase):
   """Tests different combinations of base classes for a variants test."""
 
   def generate_test_class(self, base_1, base_2):
+    """Returns a test class derived from the specified bases."""
 
     class InnerBaseClassTest(base_1, base_2):
 

@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from chex._src import asserts
 from chex._src import fake
 from chex._src import pytypes
-
 import jax
 import jax.numpy as jnp
 

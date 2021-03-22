@@ -25,11 +25,11 @@ from absl import flags
 from absl.testing import parameterized
 from chex._src import fake
 from chex._src import pytypes
-
 import jax
 from jax import tree_util
 import jax.numpy as jnp
 import toolz
+
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool(
@@ -52,9 +52,9 @@ flags.DEFINE_bool(
 class TestCase(parameterized.TestCase):
 
   def variant(self, *args, **kwargs):
-    """To pass pytype checks."""
-    raise NotImplementedError("self.variant is not implemented: "
-                              "forgot to wrap a test in @chex.variants?")
+    """Raises a RuntimeError if not overriden or redefined."""
+    raise RuntimeError(
+        "self.variant is not defined: forgot to wrap a test in @chex.variants?")
 
 
 class ChexVariantType(enum.Enum):
@@ -68,7 +68,7 @@ tree_map = tree_util.tree_map
 
 
 def params_product(*params_lists, named=False):
-  """Generate a cartesian product of params_lists."""
+  """Generates a cartesian product of params_lists."""
 
   def generate():
     for combination in itertools.product(*params_lists):
@@ -84,7 +84,7 @@ def params_product(*params_lists, named=False):
 
 
 def count_num_calls(fn):
-  """Counts number of function calls."""
+  """Counts the number of times the function was called."""
   num_calls = 0
 
   @functools.wraps(fn)
@@ -104,7 +104,7 @@ class VariantsTestCaseGenerator:
     self._generated_names_freq = {}
     if hasattr(test_object, "__iter__"):
       # `test_object` is a generator (e.g. parameterised test).
-      self._test_methods = [m for m in test_object]
+      self._test_methods = list(test_object)
     else:
       # `test_object` is a single test method.
       self._test_methods = [test_object]
@@ -539,8 +539,8 @@ _variant_decorators = dict({
 })
 
 
-# Wrap variants in a class for typing and string representation.
 class Variant:
+  """Variant class for typing and string representation."""
 
   def __init__(self, name, fn):
     self._fn = fn

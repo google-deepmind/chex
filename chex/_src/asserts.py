@@ -15,6 +15,7 @@
 # ==============================================================================
 """Chex assertion utilities."""
 import collections
+import collections.abc
 import functools
 import inspect
 import itertools
@@ -22,6 +23,7 @@ import traceback
 from typing import Any, Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
+
 from chex._src import pytypes
 import jax
 import jax.numpy as jnp
@@ -34,14 +36,13 @@ Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
 
 # Custom pytypes.
-TIndex = int
 TLeaf = Any
 TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
 TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
 
-def _num_devices_available(devtype: str, backend: Optional[str] = None):
-  """Returns number of available device of the given type."""
+def _num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
+  """Returns the number of available device of the given type."""
   devtype = devtype.lower()
   supported_types = ("cpu", "gpu", "tpu")
   if devtype not in supported_types:
@@ -251,7 +252,7 @@ def assert_equal_shape(inputs: Sequence[Array]):
   Raises:
     AssertionError: if the shapes of all arrays do not match.
   """
-  if isinstance(inputs, Sequence):
+  if isinstance(inputs, collections.abc.Sequence):
     shape = inputs[0].shape
     expected_shapes = [shape] * len(inputs)
     shapes = [x.shape for x in inputs]
@@ -326,7 +327,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
         "Expected shapes should be a list or tuple of ints.")
 
   # Ensure inputs and expected shapes are sequences.
-  if not isinstance(inputs, Sequence):
+  if not isinstance(inputs, collections.abc.Sequence):
     inputs = [inputs]
 
   # Shapes are always lists or tuples, not scalars.
@@ -382,7 +383,7 @@ def assert_equal_rank(inputs: Sequence[Array]):
   Raises:
     AssertionError: if the ranks of all arrays do not match.
   """
-  if isinstance(inputs, Sequence):
+  if isinstance(inputs, collections.abc.Sequence):
     rank = len(inputs[0].shape)
     expected_ranks = [rank] * len(inputs)
     ranks = [len(x.shape) for x in inputs]
@@ -423,10 +424,10 @@ def assert_rank(
                      "be a collection of integers but was an array.")
 
   # Ensure inputs and expected ranks are sequences.
-  if not isinstance(inputs, Sequence):
+  if not isinstance(inputs, collections.abc.Sequence):
     inputs = [inputs]
-  if (not isinstance(expected_ranks, Sequence) or
-      isinstance(expected_ranks, Set)):
+  if (not isinstance(expected_ranks, collections.abc.Sequence) or
+      isinstance(expected_ranks, collections.abc.Set)):
     expected_ranks = [expected_ranks] * len(inputs)
   if len(inputs) != len(expected_ranks):
     raise AssertionError(
@@ -444,12 +445,13 @@ def assert_rank(
     # Multiple expected options can be specified.
 
     # Check against old usage where options could be any sequence
-    if isinstance(expected, Sequence) and not isinstance(expected, Set):
-      raise ValueError(
-          "Error in rank compatibility check: "
-          "Expected ranks should be integers or sets of integers.")
+    if (isinstance(expected, collections.abc.Sequence) and
+        not isinstance(expected, collections.abc.Set)):
+      raise ValueError("Error in rank compatibility check: "
+                       "Expected ranks should be integers or sets of integers.")
 
-    options = expected if isinstance(expected, Set) else {expected}
+    options = (
+        expected if isinstance(expected, collections.abc.Set) else {expected})
 
     if rank not in options:
       errors.append((idx, rank, shape, expected))
@@ -499,9 +501,8 @@ def assert_type(
 
   errors = []
   if len(inputs) != len(expected_types):
-    raise AssertionError(
-        "Length of `inputs` and `expected_types` must match: `inputs` has length "
-        f"{len(inputs)}, `expected_types` has length {len(expected_types)}.")
+    raise AssertionError(f"Length of `inputs` and `expected_types` must match, "
+                         f"got {len(inputs)} != {len(expected_types)}.")
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
     if jnp.issubdtype(expected, jnp.floating):
       parent = jnp.floating

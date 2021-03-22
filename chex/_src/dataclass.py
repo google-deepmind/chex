@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""JAX/dm-tree friendly dataclass implementation reusing the dataclasses library."""
+"""JAX/dm-tree friendly dataclass implementation reusing Python dataclasses."""
 
 import collections
 import functools
+
 from absl import logging
 import dataclasses
 import jax
