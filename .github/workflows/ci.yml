@@ -26,8 +26,8 @@ jobs:
           set -xe
           pip install --upgrade pip setuptools wheel
           pip install flake8 pytest-xdist pytype pylint pylint-exit
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
+          pip install -r requirements/requirements.txt
+          pip install -r requirements/requirements-test.txt
         shell: bash
       - name: Lint with flake8
         run: |
