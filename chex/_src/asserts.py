@@ -91,6 +91,12 @@ def _is_traceable(fn):
       if "api_boundary" in fn_globals:
         # api_boundary is a JAX wrapper for traced functions.
         return True
+
+      try:
+        if isinstance(fn_, jax.lib.xla_extension.jax_jit.CompiledFunction):
+          return True
+      except AttributeError:
+        pass
     else:
       break
 
