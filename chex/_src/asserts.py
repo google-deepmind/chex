@@ -41,6 +41,10 @@ TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
 TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
 
+def _format_tree_path(path: Sequence[Any]) -> str:
+  return "/".join(str(p) for p in path)
+
+
 def _num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
   """Returns the number of available device of the given type."""
   devtype = devtype.lower()
@@ -109,7 +113,7 @@ def _assert_leaves_all_eq_comparator(
     error_msg_fn: Callable[[TLeaf, TLeaf, str, int, int],
                            str], path: Sequence[Any], *leaves: Sequence[TLeaf]):
   """Asserts all leaves are equal using custom comparator."""
-  path_str = "/".join(str(p) for p in path)
+  path_str = _format_tree_path(path)
   for i in range(1, len(leaves)):
     if not equality_comparator(leaves[0], leaves[i]):
       raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_str, 0, i))
@@ -616,8 +620,7 @@ def assert_tree_no_nones(tree: ArrayTree):
 
   def _assert_fn(path, leaf):
     if leaf is None:
-      formatted_path = "/".join(str(p) for p in path)
-      raise AssertionError(f"`None` detected at '{formatted_path}'.")
+      raise AssertionError(f"`None` detected at '{_format_tree_path(path)}'.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
@@ -646,7 +649,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
     prefix = leaf.shape[:len(shape_prefix)]
     if prefix != shape_prefix:
       raise AssertionError(
-          f"Tree leaf '{'/'.join(path)}' has a shape prefix "
+          f"Tree leaf '{_format_tree_path(path)}' has a shape prefix "
           f"diffent from expected: {prefix} != {shape_prefix}.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
