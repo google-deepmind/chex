@@ -72,8 +72,9 @@ def _is_traceable(fn):
 
   tokens = (
       "_python_jit.",  # PyJIT  in Python ver. < 3.7
-      "_cpp_jit.",  # CppJIT in Python ver. < 3.7
+      "_cpp_jit.",  # CppJIT in Python ver. < 3.7 (deprecated)
       ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
+      "CompiledFunction",  # C++ JIT in jaxlib 0.1.66 or newer.
       "pmap.",  # pmap
       "vmap.",  # vmap
   )
