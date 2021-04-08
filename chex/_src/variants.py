@@ -342,7 +342,8 @@ def _with_jit(fn,
               **unused_kwargs):
   """Variant that applies `jax.jit` to fn."""
 
-  return jax.jit(fn, static_argnums, device, backend)
+  return jax.jit(fn, static_argnums=static_argnums, device=device,
+                 backend=backend)
 
 
 @toolz.curry
