@@ -95,7 +95,7 @@ def dataclass(
     eq=True,
     order=False,
     unsafe_hash=False,
-    frozen=False,
+    frozen=True,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
     restricted_inheritance=True,
 ):
