@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +15,7 @@
 """Tests for `asserts.py`."""
 
 import functools
+
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts

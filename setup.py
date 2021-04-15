@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +32,6 @@ def _get_version():
 
 
 def _parse_requirements(path):
-
   with open(os.path.join(_CURRENT_DIR, path)) as f:
     return [
         line.rstrip()
@@ -59,6 +57,7 @@ setup(
     tests_require=_parse_requirements(
         os.path.join(_CURRENT_DIR, 'requirements', 'requirements-test.txt')),
     zip_safe=False,  # Required for full installation.
+    include_package_data=True,
     python_requires='>=3.6',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
