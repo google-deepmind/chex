@@ -1,3 +1,4 @@
 include README.md
 include LICENSE
 include requirements/*
+include chex/py.typed
