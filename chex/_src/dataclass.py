@@ -136,13 +136,6 @@ class _Dataclass():
 
   def __call__(self, cls):
     """Forwards class to dataclasses's wrapper and registers it with JAX."""
-
-    # Remove once https://github.com/python/cpython/pull/24484 is merged.
-    for base in cls.__bases__:
-      if (dataclasses.is_dataclass(base) and
-          getattr(base, "__dataclass_params__").frozen and not self.frozen):
-        raise TypeError("cannot inherit non-frozen dataclass from a frozen one")
-
     # pytype: disable=wrong-keyword-args
     dcls = dataclasses.dataclass(
         cls,
