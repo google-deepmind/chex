@@ -907,6 +907,16 @@ class EqualAssertionsTest(parameterized.TestCase):
       asserts.assert_equal(first, second)
 
 
+class IsDivisibleTest(parameterized.TestCase):
+
+  def test_assert_is_divisible(self):
+    asserts.assert_is_divisible(6, 3)
+
+  def test_assert_is_divisible_fail(self):
+    with self.assertRaises(AssertionError):
+      asserts.assert_is_divisible(7, 3)
+
+
 if __name__ == '__main__':
   jax.config.update('jax_numpy_rank_promotion', 'raise')
   absltest.main()

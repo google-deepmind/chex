@@ -873,3 +873,9 @@ def if_args_not_none(fn, *args, **kwargs):
     found_none = found_none or (x is None)
   if not found_none:
     fn(*args, **kwargs)
+
+
+def assert_is_divisible(numerator: int, denominator: int):
+  """Assert that the numerator is divisible exactly by the denominator."""
+  if numerator % denominator != 0:
+    raise AssertionError(f"{numerator} is not divisible by {denominator}")

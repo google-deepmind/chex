@@ -25,6 +25,7 @@ from chex._src.asserts import assert_equal_shape_suffix
 from chex._src.asserts import assert_exactly_one_is_none
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_is_broadcastable
+from chex._src.asserts import assert_is_divisible
 from chex._src.asserts import assert_max_traces
 from chex._src.asserts import assert_not_both_none
 from chex._src.asserts import assert_numerical_grads
@@ -94,6 +95,7 @@ __all__ = (
     "assert_exactly_one_is_none",
     "assert_gpu_available",
     "assert_is_broadcastable",
+    "assert_is_divisible",
     "assert_max_traces",
     "assert_not_both_none",
     "assert_numerical_grads",
