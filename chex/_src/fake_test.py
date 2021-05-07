@@ -215,6 +215,41 @@ class PmapFakeTest(parameterized.TestCase):
       asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
 
   @parameterized.named_parameters([
+      ('fake_nothing', False, 1),
+      ('fake_pmap', True, 1),
+      ('fake_nothing_no_static_args', False, ()),
+      ('fake_pmap_no_static_args', True, ()),
+  ])
+  def test_with_static_broadcasted_argnums(self, fake_pmap, static_argnums):
+    with fake.fake_pmap_and_jit(fake_pmap, enable_jit_patching=False):
+      num_devices = len(jax.devices())
+
+      # Note: mode='bar' is intended to test that we correctly handle kwargs
+      # with defaults for which we don't pass a value at call time.
+      @functools.partial(jax.pmap,
+                         axis_size=num_devices,
+                         static_broadcasted_argnums=static_argnums)
+      @jax.jit
+      def foo(x, multiplier, y, mode='bar'):
+        if mode == 'bar':
+          return (x * multiplier) + y
+        else:
+          return x
+
+      # pmap over all available devices
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      func = lambda: foo(inputs, 100, inputs)   # Pass multiplier=100.
+
+      if static_argnums == 1:  # Should work.
+        expected = jnp.broadcast_to(jnp.array([101, 202]), (num_devices, 2))
+        result = func()
+        asserts.assert_tree_all_close(result, expected)
+      else:  # Should error.
+        with self.assertRaises(ValueError):
+          result = func()
+
+  @parameterized.named_parameters([
       ('fake_nothing', False, False),
       ('fake_pmap', True, False),
       ('fake_jit', False, True),

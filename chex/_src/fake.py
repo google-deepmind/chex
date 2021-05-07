@@ -25,7 +25,7 @@ import functools
 import inspect
 import os
 import re
-from typing import Optional
+from typing import Any, Iterable, Optional, Union
 from unittest import mock
 from absl import flags
 import jax
@@ -93,23 +93,45 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 
 @functools.wraps(jax.pmap)
-def _fake_pmap(fn, axis_name=None, *, in_axes=0, static_broadcasted_argnums=(),
-               jit_result=False, **unused_kwargs):
+def _fake_pmap(
+    fn,
+    axis_name: Optional[Any] = None,
+    *,
+    in_axes=0,
+    static_broadcasted_argnums: Union[int, Iterable[int]] = (),
+    jit_result: bool = False,
+    **unused_kwargs):
   """Fake implementation of pmap using vmap."""
-  if static_broadcasted_argnums:
-    raise ValueError('fake pmap does not currently support non-empty '
-                     f'static_broadcasted_argnums={static_broadcasted_argnums}')
+
+  if isinstance(static_broadcasted_argnums, int):
+    static_broadcasted_argnums = (static_broadcasted_argnums,)
+  if static_broadcasted_argnums and isinstance(in_axes, dict):
+    raise NotImplementedError(
+        'static_broadcasted_argnums with dict in_axes not supported.')
 
   fn_signature = inspect.signature(fn)
-  vmapped_fn = jax.vmap(fn, in_axes=in_axes, axis_name=axis_name)
-  if jit_result:
-    vmapped_fn = jax.jit(vmapped_fn)
 
   @functools.wraps(fn)
   def wrapped_fn(*args, **kwargs):
     # Convert kwargs to varargs
     # This is a workaround for vmapped functions not working with kwargs
     call_args = convert_to_varargs(fn_signature, *args, **kwargs)
+
+    if static_broadcasted_argnums:
+      if isinstance(in_axes, int):
+        vmap_in_axes = jax.tree_map(lambda _: in_axes, call_args)
+      else:
+        vmap_in_axes = in_axes
+      vmap_in_axes = list(vmap_in_axes)
+      for argnum in static_broadcasted_argnums:
+        vmap_in_axes[argnum] = jax.tree_map(lambda _: None, call_args[argnum])
+    else:
+      vmap_in_axes = in_axes
+
+    vmapped_fn = jax.vmap(fn, in_axes=vmap_in_axes, axis_name=axis_name)
+    if jit_result:
+      vmapped_fn = jax.jit(vmapped_fn)
+
     output = vmapped_fn(*call_args)
     return output
 
