@@ -325,6 +325,7 @@ class ShapeAssertTest(parameterized.TestCase):
       ('some_wrong_shape', [[1, 2], [3, 4]], [(1, 2), (1, 3)]),
       ('wrong_common_shape', [[1, 2], [3, 4, 3]], (2,)),
       ('wrong_common_shape_2', [[1, 2, 3], [1, 2]], (2,)),
+      ('some_wrong_shape_set', [[1, 2], [3, 4]], [(1, 2), (1, {3, 4})]),
   )
   def test_shape_should_fail(self, arrays, shapes):
     arrays = as_arrays(arrays)
@@ -349,7 +350,7 @@ class ShapeAssertTest(parameterized.TestCase):
       ('matrices_variable_shape', [[[1, 2], [3, 4]]], (None, 2)),
       ('vectors_common_shape', [[1, 2], [3, 4]], (2,)),
       ('variable_common_shape', [[[1, 2], [3, 4]], [[1], [3]]], (2, None)),
-
+      ('common_shape_set', [[[1, 2], [3, 4]], [[1], [3]]], (2, {1, 2})),
   )
   def test_shape_should_pass(self, arrays, shapes):
     arrays = as_arrays(arrays)
@@ -358,6 +359,7 @@ class ShapeAssertTest(parameterized.TestCase):
   def test_pytypes_pass(self):
     arrays = as_arrays([[[1, 2], [3, 4]], [[1], [3]]])
     asserts.assert_shape(arrays, (2, None))
+    asserts.assert_shape(arrays, (2, {1, 2}))
     asserts.assert_shape(arrays, (2, ...))
 
   @parameterized.named_parameters(

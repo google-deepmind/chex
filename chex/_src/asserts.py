@@ -39,7 +39,7 @@ TLeaf = Any
 TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
 TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
-_DimMatcher = Optional[Union[int, type(Ellipsis)]]
+_DimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
 _ShapeMatcher = Sequence[_DimMatcher]
 
 
@@ -311,14 +311,17 @@ def assert_equal_shape_suffix(inputs, suffix_len):
     raise AssertionError(f"Arrays have different shape suffixes: {shapes}")
 
 
-def _unelided_shape_matches(actual_shape: Sequence[int],
-                            expected_shape: Sequence[Optional[int]]) -> bool:
+def _unelided_shape_matches(
+    actual_shape: Sequence[int],
+    expected_shape: Sequence[Optional[Union[int, Set[int]]]]) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   if len(actual_shape) != len(expected_shape):
     return False
   for actual, expected in zip(actual_shape, expected_shape):
     if expected is None:
       continue
+    if isinstance(expected, set):
+      return actual in expected
     if actual != expected:
       return False
   return True
@@ -328,8 +331,8 @@ def _shape_matches(actual_shape: Sequence[int],
                    expected_shape: _ShapeMatcher) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   # Splits `expected_shape` based on the position of the ellipsis, if present.
-  expected_prefix: List[int] = []
-  expected_suffix: Optional[List[int]] = None
+  expected_prefix: List[Union[int, Set[int]]] = []
+  expected_suffix: Optional[List[Union[int, Set[int]]]] = None
   for dim in expected_shape:
     if dim is Ellipsis:
       if expected_suffix is not None:
@@ -374,6 +377,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
   ```
     assert_shape(x, ())                  # x is scalar
     assert_shape(x, (2, 3))              # x has shape (2, 3)
+    assert_shape(x, (2, {1, 3}))         # x has shape (2, 1) or (2, 3)
     assert_shape(x, (2, None))           # x has rank 2 and `x.shape[0] == 2`
     assert_shape(x, (2, ...))            # x has rank >= 1 and `x.shape[0] == 2`
     assert_shape([x, y], ())             # x and y are scalar
