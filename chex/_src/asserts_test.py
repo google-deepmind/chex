@@ -29,6 +29,10 @@ def as_arrays(arrays):
   return [np.asarray(a) for a in arrays]
 
 
+def array_from_shape(*shape):
+  return np.ones(shape=shape)
+
+
 def emplace(arrays):
   return arrays
 
@@ -354,6 +358,44 @@ class ShapeAssertTest(parameterized.TestCase):
   def test_pytypes_pass(self):
     arrays = as_arrays([[[1, 2], [3, 4]], [[1], [3]]])
     asserts.assert_shape(arrays, (2, None))
+    asserts.assert_shape(arrays, (2, ...))
+
+  @parameterized.named_parameters(
+      ('prefix_2', array_from_shape(2, 3, 4, 5, 6), (..., 4, 5, 6)),
+      ('prefix_1', array_from_shape(3, 4, 5, 6), (..., 4, 5, 6)),
+      ('prefix_0', array_from_shape(4, 5, 6), (..., 4, 5, 6)),
+      ('inner_2', array_from_shape(2, 3, 4, 5, 6), (2, 3, ..., 6)),
+      ('inner_1', array_from_shape(2, 3, 4, 6), (2, 3, ..., 6)),
+      ('inner_0', array_from_shape(2, 3, 6), (2, 3, ..., 6)),
+      ('suffix_2', array_from_shape(2, 3, 4, 5, 6), (2, 3, 4, ...)),
+      ('suffix_1', array_from_shape(2, 3, 4, 5), (2, 3, 4, ...)),
+      ('suffix_0', array_from_shape(2, 3, 4), (2, 3, 4, ...)),
+  )
+  def test_ellipsis_should_pass(self, array, expected_shape):
+    asserts.assert_shape(array, expected_shape)
+
+  @parameterized.named_parameters(
+      ('prefix', array_from_shape(3, 1, 5), (..., 4, 5, 6)),
+      ('inner_bad_prefix', array_from_shape(2, 1, 4, 6), (2, 3, ..., 6)),
+      ('inner_bad_suffix', array_from_shape(2, 3, 1, 5), (2, 3, ..., 6)),
+      ('inner_both_bad', array_from_shape(2, 1, 4, 5), (2, 3, ..., 6)),
+      ('suffix', array_from_shape(2, 3, 1, 5), (2, 3, 4, ...)),
+      ('short_rank_prefix', array_from_shape(2, 3), (..., 4, 5, 6)),
+      ('short_rank_inner', array_from_shape(2, 3), (2, 3, ..., 6)),
+      ('short_rank_suffix', array_from_shape(2, 3), (2, 3, 4, ...)),
+  )
+  def test_ellipsis_should_fail(self, array, expected_shape):
+    with self.assertRaisesRegex(AssertionError,
+                                'input .+ has shape .+ but expected .+'):
+      asserts.assert_shape(array, expected_shape)
+
+  @parameterized.named_parameters(
+      ('prefix_and_suffix', array_from_shape(2, 3), (..., 2, 3, ...)),)
+  def test_multiple_ellipses(self, array, expected_shape):
+    with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
+        ValueError,
+        '`expected_shape` may not contain more than one ellipsis, but got .+'):
+      asserts.assert_shape(array, expected_shape)
 
 
 def rank_array(n):

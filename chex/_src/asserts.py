@@ -19,7 +19,7 @@ import functools
 import inspect
 import itertools
 import traceback
-from typing import Any, Sequence, Type, Union, Callable, Optional, Set
+from typing import Any, List, Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
 
@@ -39,9 +39,16 @@ TLeaf = Any
 TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
 TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
+_DimMatcher = Optional[Union[int, type(Ellipsis)]]
+_ShapeMatcher = Sequence[_DimMatcher]
+
 
 def _format_tree_path(path: Sequence[Any]) -> str:
   return "/".join(str(p) for p in path)
+
+
+def _format_shape_matcher(shape: _ShapeMatcher) -> str:
+  return f"({', '.join('...' if d is Ellipsis else str(d) for d in shape)})"
 
 
 def _num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
@@ -304,19 +311,73 @@ def assert_equal_shape_suffix(inputs, suffix_len):
     raise AssertionError(f"Arrays have different shape suffixes: {shapes}")
 
 
+def _unelided_shape_matches(actual_shape: Sequence[int],
+                            expected_shape: Sequence[Optional[int]]) -> bool:
+  """Returns True if `actual_shape` is compatible with `expected_shape`."""
+  if len(actual_shape) != len(expected_shape):
+    return False
+  for actual, expected in zip(actual_shape, expected_shape):
+    if expected is None:
+      continue
+    if actual != expected:
+      return False
+  return True
+
+
+def _shape_matches(actual_shape: Sequence[int],
+                   expected_shape: _ShapeMatcher) -> bool:
+  """Returns True if `actual_shape` is compatible with `expected_shape`."""
+  # Splits `expected_shape` based on the position of the ellipsis, if present.
+  expected_prefix: List[int] = []
+  expected_suffix: Optional[List[int]] = None
+  for dim in expected_shape:
+    if dim is Ellipsis:
+      if expected_suffix is not None:
+        raise ValueError(
+            "`expected_shape` may not contain more than one ellipsis, "
+            f"but got {_format_shape_matcher(expected_shape)}")
+      expected_suffix = []
+    elif expected_suffix is None:
+      expected_prefix.append(dim)
+    else:
+      expected_suffix.append(dim)
+
+  # If there is no ellipsis, just compare to the full `actual_shape`.
+  if expected_suffix is None:
+    assert len(expected_prefix) == len(expected_shape)
+    return _unelided_shape_matches(actual_shape, expected_prefix)
+
+  # Checks that the actual rank is least the number of non-elided dimensions.
+  if len(actual_shape) < len(expected_prefix) + len(expected_suffix):
+    return False
+
+  if expected_prefix:
+    actual_prefix = actual_shape[:len(expected_prefix)]
+    if not _unelided_shape_matches(actual_prefix, expected_prefix):
+      return False
+
+  if expected_suffix:
+    actual_suffix = actual_shape[-len(expected_suffix):]
+    if not _unelided_shape_matches(actual_suffix, expected_suffix):
+      return False
+
+  return True
+
+
 def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-                 expected_shapes: Union[Sequence[Optional[int]],
-                                        Sequence[Sequence[Optional[int]]]]):
+                 expected_shapes: Union[_ShapeMatcher,
+                                        Sequence[_ShapeMatcher]]):
   """Checks that the shape of all inputs matches specified expected_shapes.
 
   Valid usages include:
 
   ```
-    assert_shape(x, ())                    # x is scalar
-    assert_shape(x, (2, 3))                # x has shape (2, 3)
-    assert_shape(x, (2, None))             # x has rank 2 and `x.shape[0] == 2`
-    assert_shape([x, y], ())               # x and y are scalar
-    assert_shape([x, y], [(), (2,3)])      # x is scalar and y has shape (2, 3)
+    assert_shape(x, ())                  # x is scalar
+    assert_shape(x, (2, 3))              # x has shape (2, 3)
+    assert_shape(x, (2, None))           # x has rank 2 and `x.shape[0] == 2`
+    assert_shape(x, (2, ...))            # x has rank >= 1 and `x.shape[0] == 2`
+    assert_shape([x, y], ())             # x and y are scalar
+    assert_shape([x, y], [(), (2,3)])    # x is scalar and y has shape (2, 3)
   ```
 
   Args:
@@ -351,10 +412,8 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
   errors = []
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
-    if not (
-        len(shape) == len(expected)
-        and all(j is None or i == j for i, j in zip(shape, expected))):
-      errors.append((idx, shape, expected))
+    if not _shape_matches(shape, expected):
+      errors.append((idx, shape, _format_shape_matcher(expected)))
 
   if errors:
     msg = "; ".join(
