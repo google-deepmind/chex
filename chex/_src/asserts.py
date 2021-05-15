@@ -321,8 +321,9 @@ def _unelided_shape_matches(
     if expected is None:
       continue
     if isinstance(expected, set):
-      return actual in expected
-    if actual != expected:
+      if actual not in expected:
+        return False
+    elif actual != expected:
       return False
   return True
 
