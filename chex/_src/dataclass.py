@@ -95,7 +95,7 @@ def dataclass(
     order=False,
     unsafe_hash=False,
     frozen=False,
-    mappable_dataclass=True,  # pylint: disable=redefined-outer-name
+    mappable_dataclass=False,  # pylint: disable=redefined-outer-name
     restricted_inheritance=True,
 ):
   """JAX-friendly wrapper for dataclasses.dataclass."""
