@@ -254,7 +254,7 @@ class FailedTestsTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.chex_info = f'variant == `{variants.ChexVariantType.WITHOUT_JIT}`'
+    self.chex_info = str(variants.ChexVariantType.WITHOUT_JIT)
     self.res = unittest.TestResult()
     ts = unittest.makeSuite(self.FailedTest)  # pytype: disable=module-attr
     ts.run(self.res)
@@ -287,8 +287,8 @@ class OneFailedVariantTest(variants.TestCase):
       fails_for_without_device_variant(42)
 
   def test_useful_failure(self):
-    expected_info = f'variant == `{variants.ChexVariantType.WITHOUT_DEVICE}`'
-    unexpected_info = f'variant == `{variants.ChexVariantType.WITH_DEVICE}`'
+    expected_info = str(variants.ChexVariantType.WITHOUT_DEVICE)
+    unexpected_info = str(variants.ChexVariantType.WITH_DEVICE)
 
     res = unittest.TestResult()
     ts = unittest.makeSuite(self.MaybeFailedTest)  # pytype: disable=module-attr

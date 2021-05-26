@@ -63,6 +63,10 @@ class ChexVariantType(enum.Enum):
   WITHOUT_DEVICE = 4
   WITH_PMAP = 5
 
+  def __str__(self) -> str:
+    return "_" + self.name.lower()
+
+
 tree_map = tree_util.tree_map
 
 
@@ -131,14 +135,14 @@ class VariantsTestCaseGenerator:
     """Set a name for the generated test."""
     name = getattr(test_method, "__name__", "")
     params_repr = getattr(test_method, "__x_params_repr__", "")
-    chex_suffix = f"(chex variant == `{variant}`)"
+    chex_suffix = f"{variant}"
 
-    candidate_name = " ".join(filter(None, [name, params_repr, chex_suffix]))
+    candidate_name = "_".join(filter(None, [name, params_repr, chex_suffix]))
     name_freq = self._generated_names_freq.get(candidate_name, 0)
     if name_freq:
       # Ensure that test names are unique.
       new_name = name + "_" + str(name_freq)
-      unique_name = " ".join(filter(None, [new_name, params_repr, chex_suffix]))
+      unique_name = "_".join(filter(None, [new_name, params_repr, chex_suffix]))
     else:
       unique_name = candidate_name
     self._generated_names_freq[candidate_name] = name_freq + 1
@@ -555,11 +559,11 @@ class Variant:
 
 
 # Expose variant objects.
-without_device = Variant("chex.without_device", _without_device)
-without_jit = Variant("chex.without_jit", _without_jit)
-with_device = Variant("chex.with_device", _with_device)
-with_jit = Variant("chex.with_jit", _with_jit)
-with_pmap = Variant("chex.with_pmap", _with_pmap)
+without_device = Variant("chex_without_device", _without_device)
+without_jit = Variant("chex_without_jit", _without_jit)
+with_device = Variant("chex_with_device", _with_device)
+with_jit = Variant("chex_with_jit", _with_jit)
+with_pmap = Variant("chex_with_pmap", _with_pmap)
 ALL_VARIANTS = (without_device, without_jit, with_device, with_jit, with_pmap)
 
 # Collect valid argument names from all variant decorators.
