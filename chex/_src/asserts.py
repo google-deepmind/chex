@@ -719,7 +719,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
-def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
+def assert_tree_all_equal_structs(*trees: ArrayTree):
   """Asserts trees have the same structure.
 
   Note that `None`s are treated as PyTree nodes.
@@ -742,7 +742,7 @@ def assert_tree_all_equal_structs(*trees: Sequence[ArrayTree]):
 
 def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
                                      error_msg_fn: TLeavesEqCmpErrorFn,
-                                     *trees: Sequence[ArrayTree],
+                                     *trees: ArrayTree,
                                      ignore_nones: bool = False):
   """Asserts all trees are equal as per the custom comparator for leaves.
 
@@ -780,7 +780,7 @@ def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
   dm_tree.map_structure_with_path(cmp, *trees)
 
 
-def assert_tree_all_close(*trees: Sequence[ArrayTree],
+def assert_tree_all_close(*trees: ArrayTree,
                           rtol: float = 1e-07,
                           atol: float = .0,
                           ignore_nones: bool = False):
@@ -812,7 +812,7 @@ def assert_tree_all_close(*trees: Sequence[ArrayTree],
       cmp_fn, dummy_err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-def assert_tree_all_equal_shapes(*trees: Sequence[ArrayTree],
+def assert_tree_all_equal_shapes(*trees: ArrayTree,
                                  ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.
 
