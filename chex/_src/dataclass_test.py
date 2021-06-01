@@ -354,6 +354,27 @@ class DataclassesTest(parameterized.TestCase):
         j: int
       # pylint:enable=unused-variable
 
+  def test_disallowed_fields(self):
+    # pylint:disable=unused-variable
+    with self.assertRaisesRegex(ValueError, 'dataclass fields are disallowed'):
+
+      @chex_dataclass(mappable_dataclass=False)
+      class InvalidNonMappable:
+        from_tuple: int
+
+    @chex_dataclass(mappable_dataclass=False)
+    class ValidMappable:
+      get: int
+
+    with self.assertRaisesRegex(ValueError, 'dataclass fields are disallowed'):
+
+      @chex_dataclass(mappable_dataclass=True)
+      class InvalidMappable:
+        get: int
+        from_tuple: int
+
+    # pylint:enable=unused-variable
+
 
 if __name__ == '__main__':
   absltest.main()

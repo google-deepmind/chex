@@ -22,6 +22,7 @@ import dataclasses
 import jax
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
+_RESERVED_DCLS_FIELD_NAMES = frozenset(("from_tuple", "replace", "to_tuple"))
 
 
 def mappable_dataclass(cls, restricted_inheritance=True):
@@ -154,8 +155,19 @@ class _Dataclass():
         frozen=self.frozen)
     # pytype: enable=wrong-keyword-args
 
+    fields_names = set(f.name for f in dataclasses.fields(dcls))
+    invalid_fields = fields_names.intersection(_RESERVED_DCLS_FIELD_NAMES)
+    if invalid_fields:
+      raise ValueError(f"The following dataclass fields are disallowed: "
+                       f"{invalid_fields} ({dcls}).")
+
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls, self.restricted_inheritance)
+      # We remove `collection.abc.Mappable` mixin methods here to allow
+      # fields with these names.
+      for attr in ("values", "keys", "get", "items"):
+        setattr(dcls, attr, None)  # redefine
+        delattr(dcls, attr)        # delete
 
     def _from_tuple(args):
       return dcls(zip(dcls.__dataclass_fields__.keys(), args))
