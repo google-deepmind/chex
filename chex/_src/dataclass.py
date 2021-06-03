@@ -196,8 +196,8 @@ class _Dataclass():
 
 def _register_dataclass_type(data_class):
   """Register dataclass so JAX knows how to handle it."""
-  flatten = lambda d: jax.tree_flatten(d.__dict__)
-  unflatten = lambda s, xs: data_class(**s.unflatten(xs))
+  flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
+  unflatten = lambda keys, values: data_class(**dict(zip(keys, values)))
   try:
     jax.tree_util.register_pytree_node(
         nodetype=data_class, flatten_func=flatten, unflatten_func=unflatten)

@@ -14,7 +14,7 @@
 # ==============================================================================
 """Tests for `dataclass.py`."""
 
-import typing
+from typing import Any, Mapping
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -81,7 +81,7 @@ def _get_mappable_dataclasses(test_type):
   class NestedClass:
     """Nested class."""
 
-    k_any: typing.Any
+    k_any: Any
     k_int: int
     k_str: str
     k_arr: np.ndarray
@@ -374,6 +374,41 @@ class DataclassesTest(parameterized.TestCase):
         from_tuple: int
 
     # pylint:enable=unused-variable
+
+  @parameterized.parameters(True, False)
+  def test_flatten_is_leaf(self, is_mappable):
+
+    @chex_dataclass(mappable_dataclass=is_mappable)
+    class _InnerDcls:
+      v_1: int
+      v_2: int
+
+    @chex_dataclass(mappable_dataclass=is_mappable)
+    class _Dcls:
+      str_val: str
+      inner_dcls: _InnerDcls
+      dct: Mapping[str, _InnerDcls]
+
+    dcls = _Dcls(
+        str_val='test',
+        inner_dcls=_InnerDcls(v_1=1, v_2=11),
+        dct={
+            'md1': _InnerDcls(v_1=2, v_2=22),
+            'md2': _InnerDcls(v_1=3, v_2=33)
+        })
+
+    def _is_leaf(value) -> bool:
+      # Must not traverse over integers.
+      self.assertNotIsInstance(value, int)
+      return isinstance(value, (_InnerDcls, str))
+
+    leaves = jax.tree_flatten(dcls, is_leaf=_is_leaf)[0]
+    self.assertCountEqual(
+        (dcls.str_val, dcls.inner_dcls, dcls.dct['md1'], dcls.dct['md2']),
+        leaves)
+
+    asserts.assert_tree_all_equal_structs(
+        jax.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
 
 
 if __name__ == '__main__':
