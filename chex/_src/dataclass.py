@@ -163,11 +163,6 @@ class _Dataclass():
 
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls, self.restricted_inheritance)
-      # We remove `collection.abc.Mappable` mixin methods here to allow
-      # fields with these names.
-      for attr in ("values", "keys", "get", "items"):
-        setattr(dcls, attr, None)  # redefine
-        delattr(dcls, attr)        # delete
 
     def _from_tuple(args):
       return dcls(zip(dcls.__dataclass_fields__.keys(), args))

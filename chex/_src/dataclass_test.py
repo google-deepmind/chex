@@ -354,26 +354,33 @@ class DataclassesTest(parameterized.TestCase):
         j: int
       # pylint:enable=unused-variable
 
-  def test_disallowed_fields(self):
+  @parameterized.parameters(True, False)
+  def test_disallowed_fields(self, is_mappable):
     # pylint:disable=unused-variable
     with self.assertRaisesRegex(ValueError, 'dataclass fields are disallowed'):
 
-      @chex_dataclass(mappable_dataclass=False)
+      @chex_dataclass(mappable_dataclass=is_mappable)
       class InvalidNonMappable:
         from_tuple: int
+    # pylint:enable=unused-variable
 
-    @chex_dataclass(mappable_dataclass=False)
-    class ValidMappable:
+  @parameterized.parameters(True, False)
+  def test_overriding_mappable(self, is_mappable):
+    @chex_dataclass(mappable_dataclass=is_mappable)
+    class OverrideAsField:
       get: int
 
-    with self.assertRaisesRegex(ValueError, 'dataclass fields are disallowed'):
+    dcls = OverrideAsField(get=1)
+    self.assertEqual(dcls.get, 1)
 
-      @chex_dataclass(mappable_dataclass=True)
-      class InvalidMappable:
-        get: int
-        from_tuple: int
+    @chex_dataclass(mappable_dataclass=is_mappable)
+    class OverrideAsMethod:
 
-    # pylint:enable=unused-variable
+      def get(self):
+        return 1
+
+    dcls = OverrideAsMethod()
+    self.assertEqual(dcls.get(), 1)
 
   @parameterized.parameters(True, False)
   def test_flatten_is_leaf(self, is_mappable):
