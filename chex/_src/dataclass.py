@@ -167,7 +167,7 @@ class _Dataclass():
       # fields with these names.
       for attr in ("values", "keys", "get", "items"):
         setattr(dcls, attr, None)  # redefine
-        delattr(dcls, attr)        # delete
+        # delattr(dcls, attr)        # delete
 
     def _from_tuple(args):
       return dcls(zip(dcls.__dataclass_fields__.keys(), args))
