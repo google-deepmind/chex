@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for `dataclass.py`."""
-
+import copy
 from typing import Any, Mapping
 
 from absl.testing import absltest
@@ -156,7 +156,23 @@ class MappableDataclassTest(parameterized.TestCase):
         (('k_str',), 'test_str'),
     ]
 
+    self.dcls_flattened_with_path_up_to = [
+        (('k_any',), None),
+        (('k_arr',), np.array(16)),
+        (('k_dclass_no_map',), self.dcls_no_map),
+        (('k_dclass_with_map',), self.dcls_with_map_inner),
+        (('k_default',), 'default_str'),
+        (('k_dict_factory', 'x'), 'x'),
+        (('k_dict_factory', 'y'), 'y'),
+        (('k_int',), 1),
+        (('k_non_init',), 10),
+        (('k_str',), 'test_str'),
+    ]
+
     self.dcls_flattened = [v for (_, v) in self.dcls_flattened_with_path]
+    self.dcls_flattened_up_to = [
+        v for (_, v) in self.dcls_flattened_with_path_up_to
+    ]
     self.dcls_tree_size = 18
     self.dcls_tree_size_no_dicts = 14
 
@@ -174,6 +190,13 @@ class MappableDataclassTest(parameterized.TestCase):
     self.assertEqual(dataclass_in_seq,
                      tree.unflatten_as(dataclass_in_seq, dataclass_in_seq_flat))
 
+  def testFlattenUpTo(self, test_type):
+    self._init_testdata(test_type)
+    structure = copy.copy(self.dcls_with_map)
+    structure.k_dclass_with_map = None  # Do not flatten 'k_dclass_with_map'
+    self.assertEqual(self.dcls_flattened_up_to,
+                     tree.flatten_up_to(structure, self.dcls_with_map))
+
   def testFlattenWithPath(self, test_type):
     self._init_testdata(test_type)
 
@@ -181,11 +204,66 @@ class MappableDataclassTest(parameterized.TestCase):
         tree.flatten_with_path(self.dcls_with_map),
         self.dcls_flattened_with_path)
 
+  def testFlattenWithPathUpTo(self, test_type):
+    self._init_testdata(test_type)
+    structure = copy.copy(self.dcls_with_map)
+    structure.k_dclass_with_map = None  # Do not flatten 'k_dclass_with_map'
+    self.assertEqual(
+        tree.flatten_with_path_up_to(structure, self.dcls_with_map),
+        self.dcls_flattened_with_path_up_to)
+
   def testMapStructure(self, test_type):
     self._init_testdata(test_type)
 
     add_one_to_ints_fn = lambda x: x + 1 if isinstance(x, int) else x
     mapped_inc_ints = tree.map_structure(add_one_to_ints_fn, self.dcls_with_map)
+
+    self.assertEqual(self.dcls_with_map_inc_ints, mapped_inc_ints)
+    self.assertEqual(self.dcls_with_map_inc_ints.k_non_init,
+                     self.dcls_with_map_inc_ints.k_int * 10)
+    self.assertEqual(mapped_inc_ints.k_non_init, mapped_inc_ints.k_int * 10)
+
+  def testMapStructureUpTo(self, test_type):
+    self._init_testdata(test_type)
+
+    structure = copy.copy(self.dcls_with_map)
+    structure.k_dclass_with_map = None  # Do not map over 'k_dclass_with_map'
+    add_one_to_ints_fn = lambda x: x + 1 if isinstance(x, int) else x
+    mapped_inc_ints = tree.map_structure_up_to(structure, add_one_to_ints_fn,
+                                               self.dcls_with_map)
+
+    # k_dclass_with_map should be passed through unchanged
+    class_with_map = self.dcls_with_map.k_dclass_with_map
+    self.dcls_with_map_inc_ints.k_dclass_with_map = class_with_map
+    self.assertEqual(self.dcls_with_map_inc_ints, mapped_inc_ints)
+    self.assertEqual(self.dcls_with_map_inc_ints.k_non_init,
+                     self.dcls_with_map_inc_ints.k_int * 10)
+    self.assertEqual(mapped_inc_ints.k_non_init, mapped_inc_ints.k_int * 10)
+
+  def testMapStructureWithPath(self, test_type):
+    self._init_testdata(test_type)
+
+    add_one_to_ints_fn = lambda path, x: x + 1 if isinstance(x, int) else x
+    mapped_inc_ints = tree.map_structure_with_path(add_one_to_ints_fn,
+                                                   self.dcls_with_map)
+
+    self.assertEqual(self.dcls_with_map_inc_ints, mapped_inc_ints)
+    self.assertEqual(self.dcls_with_map_inc_ints.k_non_init,
+                     self.dcls_with_map_inc_ints.k_int * 10)
+    self.assertEqual(mapped_inc_ints.k_non_init, mapped_inc_ints.k_int * 10)
+
+  def testMapStructureWithPathUpTo(self, test_type):
+    self._init_testdata(test_type)
+
+    structure = copy.copy(self.dcls_with_map)
+    structure.k_dclass_with_map = None  # Do not map over 'k_dclass_with_map'
+    add_one_to_ints_fn = lambda path, x: x + 1 if isinstance(x, int) else x
+    mapped_inc_ints = tree.map_structure_with_path_up_to(
+        structure, add_one_to_ints_fn, self.dcls_with_map)
+
+    # k_dclass_with_map should be passed through unchanged
+    class_with_map = self.dcls_with_map.k_dclass_with_map
+    self.dcls_with_map_inc_ints.k_dclass_with_map = class_with_map
 
     self.assertEqual(self.dcls_with_map_inc_ints, mapped_inc_ints)
     self.assertEqual(self.dcls_with_map_inc_ints.k_non_init,
@@ -352,6 +430,7 @@ class DataclassesTest(parameterized.TestCase):
       @chex_dataclass
       class DerivedMutable(FrozenBase):
         j: int
+
       # pylint:enable=unused-variable
 
   def test_disallowed_fields(self):
