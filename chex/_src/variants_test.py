@@ -431,6 +431,20 @@ class UnusedVariantTest(absltest.TestCase):
           msg, 'RuntimeError: Test is wrapped .+ but never calls self.variant')
 
 
+class NoVariantsTest(absltest.TestCase):
+  """Checks that Chex raises ValueError when no variants are selected."""
+
+  def test_no_variants(self):
+
+    with self.assertRaisesRegex(ValueError, 'No variants selected'):
+
+      class InnerTest(variants.TestCase):  # pylint:disable=unused-variable
+
+        @variants.variants()
+        def test_noop(self):
+          pass
+
+
 class UnknownVariantArgumentsTest(absltest.TestCase):
   # Inner class prevents InnerTest being run by `absltest.main()`.
 
@@ -485,35 +499,25 @@ class CountVariantsTest(absltest.TestCase):
     test_2_count = 0
     test_3_count = 0
     test_4_count = 0
-    test_5_count = 0
-    test_6_count = 0
 
-    @variants.variants
+    @variants.all_variants
     def test_1(self):
       type(self).test_1_count += 1
 
-    @variants.variants()
+    @variants.all_variants(with_pmap=False)
     def test_2(self):
       type(self).test_2_count += 1
 
-    @variants.all_variants
+    @variants.variants(with_jit=True)
     def test_3(self):
       type(self).test_3_count += 1
-
-    @variants.all_variants(with_pmap=False)
-    def test_4(self):
-      type(self).test_4_count += 1
-
-    @variants.variants(with_jit=True)
-    def test_5(self):
-      type(self).test_5_count += 1
 
     @variants.variants(with_jit=True)
     @variants.variants(without_jit=False)
     @variants.variants(with_device=True)
     @variants.variants(without_device=False)
-    def test_6(self):
-      type(self).test_6_count += 1
+    def test_4(self):
+      type(self).test_4_count += 1
 
   def test_counters(self):
     res = unittest.TestResult()
@@ -521,12 +525,10 @@ class CountVariantsTest(absltest.TestCase):
     ts.run(res)
 
     active_pmap = int(jax.device_count() > 1)
-    self.assertEqual(self.InnerTest.test_1_count, 0)
-    self.assertEqual(self.InnerTest.test_2_count, 0)
-    self.assertEqual(self.InnerTest.test_3_count, 4 + active_pmap)
-    self.assertEqual(self.InnerTest.test_4_count, 4)
-    self.assertEqual(self.InnerTest.test_5_count, 1)
-    self.assertEqual(self.InnerTest.test_6_count, 2)
+    self.assertEqual(self.InnerTest.test_1_count, 4 + active_pmap)
+    self.assertEqual(self.InnerTest.test_2_count, 4)
+    self.assertEqual(self.InnerTest.test_3_count, 1)
+    self.assertEqual(self.InnerTest.test_4_count, 2)
 
     # Test methods do not use `self.variant`.
     self.assertLen(res.errors, 1 + 2 + 4 + 4 + active_pmap)
@@ -548,16 +550,6 @@ class MultipleVariantsTest(parameterized.TestCase):
     # self.variant must be used at least once.
     self.variant(lambda x: x)(0)
     self.assertNotEqual('meaning of life', 1337)
-
-  @variants.variants()
-  def test_no_variants(self):
-    # This test should not run.
-    self.assertEqual('meaning of life', 42)
-
-  @variants.variants
-  def test_no_variants_no_parens(self):
-    # This test should not run.
-    self.assertEqual('meaning of life', 42)
 
   @variants.variants(
       with_jit=True, without_jit=True, with_device=True, without_device=True)

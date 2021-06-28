@@ -197,9 +197,14 @@ class VariantsTestCaseGenerator:
       self._set_test_name(test, variant)
       return test
 
-    return (make_test(var_name)
-            for var_name, is_included in self._which_variants.items()
-            if is_included)
+    selected_variants = [
+        var_name for var_name, is_included in self._which_variants.items()
+        if is_included
+    ]
+    if not selected_variants:
+      raise ValueError(f"No variants selected for test: {test_method}.")
+
+    return (make_test(var_name) for var_name in selected_variants)
 
   def __iter__(self):
     """Generate chex variants for each test case."""
