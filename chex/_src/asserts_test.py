@@ -15,6 +15,7 @@
 """Tests for `asserts.py`."""
 
 import functools
+import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -23,6 +24,21 @@ from chex._src import variants
 import jax
 import jax.numpy as jnp
 import numpy as np
+
+
+def _get_err_regex(message: str) -> str:
+  """Constructs a regexp for the exception message.
+
+  Args:
+    message: an exception message.
+
+  Returns:
+    Regexp that ensures the message follows the standard chex formatting.
+  """
+  prefix = re.escape(asserts._ERR_PREFIX)
+
+  # _ERR_PREFIX + any symbols (incl. \n) + message
+  return f'{prefix}[\\s\\S]*{message}'
 
 
 def as_arrays(arrays):
@@ -163,7 +179,8 @@ class AssertMaxTracesTest(variants.TestCase):
       self.assertEqual(fn('a', 'b'), 'ab')
 
     # (max_traces + 1)-th re-tracing.
-    with self.assertRaisesRegex(AssertionError, 'fn.* is traced > .* times!'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('fn.* is traced > .* times!')):
       arg = jnp.zeros(max_traces + 1)
       fn_jitted(arg, 2)
 
@@ -210,14 +227,15 @@ class AssertMaxTracesTest(variants.TestCase):
     self.assertEqual(outer_fn(3), 6)
 
     # Fails since the traced inner function is redefined at each call.
-    with self.assertRaisesRegex(AssertionError, 'fn.* is traced > .* times!'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('fn.* is traced > .* times!')):
       outer_fn(4)
 
     asserts.clear_trace_counter()
     for i in range(10):
       if i > 2:
-        with self.assertRaisesRegex(AssertionError,
-                                    'fn.* is traced > .* times!'):
+        with self.assertRaisesRegex(
+            AssertionError, _get_err_regex('fn.* is traced > .* times!')):
           outer_fn(1)
       else:
         outer_fn(1)
@@ -244,37 +262,45 @@ class ScalarAssertTest(parameterized.TestCase):
   def test_scalar(self):
     asserts.assert_scalar(1)
     asserts.assert_scalar(1.)
-    with self.assertRaisesRegex(AssertionError, 'must be a scalar'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('must be a scalar')):
       asserts.assert_scalar(np.array(1.))  # pytype: disable=wrong-arg-types
 
   def test_scalar_positive(self):
     asserts.assert_scalar_positive(0.5)
-    with self.assertRaisesRegex(AssertionError, 'must be positive'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('must be positive')):
       asserts.assert_scalar_positive(-0.5)
 
   def test_scalar_non_negative(self):
     asserts.assert_scalar_non_negative(0.5)
     asserts.assert_scalar_non_negative(0.)
-    with self.assertRaisesRegex(AssertionError, 'must be non negative'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('must be non negative')):
       asserts.assert_scalar_non_negative(-0.5)
 
   def test_scalar_negative(self):
     asserts.assert_scalar_negative(-0.5)
-    with self.assertRaisesRegex(AssertionError, 'argument must be negative'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('argument must be negative')):
       asserts.assert_scalar_negative(0.5)
 
   def test_scalar_in(self):
     asserts.assert_scalar_in(0.5, 0, 1)
-    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('argument must be in')):
       asserts.assert_scalar_in(-0.5, 0, 1)
-    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('argument must be in')):
       asserts.assert_scalar_in(1.5, 0, 1)
 
   def test_scalar_in_excluded(self):
     asserts.assert_scalar_in(0.5, 0, 1, included=False)
-    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('argument must be in')):
       asserts.assert_scalar_in(0, 0, 1, included=False)
-    with self.assertRaisesRegex(AssertionError, 'argument must be in'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('argument must be in')):
       asserts.assert_scalar_in(1, 0, 1, included=False)
 
 
@@ -287,7 +313,8 @@ class EqualShapeAssertTest(parameterized.TestCase):
   )
   def test_equal_shape_should_fail(self, arrays):
     arrays = as_arrays(arrays)
-    with self.assertRaisesRegex(AssertionError, 'Arrays have different shapes'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Arrays have different shapes')):
       asserts.assert_equal_shape(arrays)
 
   @parameterized.named_parameters(
@@ -313,7 +340,8 @@ class EqualShapeAssertTest(parameterized.TestCase):
   )
   def test_equal_shape_prefix_should_fail(self, arrays):
     arrays = as_arrays(arrays)
-    with self.assertRaisesRegex(AssertionError, 'different shape prefixes'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('different shape prefixes')):
       asserts.assert_equal_shape_prefix(arrays, prefix_len=1)
 
 
@@ -329,8 +357,9 @@ class ShapeAssertTest(parameterized.TestCase):
   )
   def test_shape_should_fail(self, arrays, shapes):
     arrays = as_arrays(arrays)
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has shape .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('input .+ has shape .+ but expected .+')):
       asserts.assert_shape(arrays, shapes)
 
   @parameterized.named_parameters(
@@ -340,7 +369,8 @@ class ShapeAssertTest(parameterized.TestCase):
   def test_shape_should_fail_wrong_length(self, arrays, shapes):
     arrays = as_arrays(arrays)
     with self.assertRaisesRegex(
-        AssertionError, 'Length of `inputs` and `expected_shapes` must match'):
+        AssertionError,
+        _get_err_regex('Length of `inputs` and `expected_shapes` must match')):
       asserts.assert_shape(arrays, shapes)
 
   @parameterized.named_parameters(
@@ -387,8 +417,9 @@ class ShapeAssertTest(parameterized.TestCase):
       ('short_rank_suffix', array_from_shape(2, 3), (2, 3, 4, ...)),
   )
   def test_ellipsis_should_fail(self, array, expected_shape):
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has shape .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('input .+ has shape .+ but expected .+')):
       asserts.assert_shape(array, expected_shape)
 
   @parameterized.named_parameters(
@@ -456,8 +487,8 @@ class RankAssertTest(parameterized.TestCase):
   )
   def test_rank_should_fail_single(self, array, rank):
     array = np.asarray(array)
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has rank .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('input .+ has rank .+ but expected .+')):
       asserts.assert_rank(array, rank)
 
   @parameterized.named_parameters(
@@ -468,8 +499,8 @@ class RankAssertTest(parameterized.TestCase):
   )
   def test_assert_rank_should_fail_sequence(self, arrays, ranks):
     arrays = as_arrays(arrays)
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has rank .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('input .+ has rank .+ but expected .+')):
       asserts.assert_rank(arrays, ranks)
 
   @parameterized.named_parameters(
@@ -479,7 +510,8 @@ class RankAssertTest(parameterized.TestCase):
   def test_rank_should_fail_wrong_length(self, array, rank):
     array = np.asarray(array)
     with self.assertRaisesRegex(
-        AssertionError, 'Length of inputs and expected_ranks must match.'):
+        AssertionError,
+        _get_err_regex('Length of inputs and expected_ranks must match.')):
       asserts.assert_rank(array, rank)
 
   @parameterized.named_parameters(
@@ -523,8 +555,8 @@ class TypeAssertTest(parameterized.TestCase):
       ('one_int_as_bool', 3, bool),
   )
   def test_type_should_fail_scalar(self, scalars, wrong_type):
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has type .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('input .+ has type .+ but expected .+')):
       asserts.assert_type(scalars, wrong_type)
 
   @variants.variants(with_device=True, without_device=True)
@@ -534,8 +566,8 @@ class TypeAssertTest(parameterized.TestCase):
   )
   def test_type_should_fail_array(self, array, wrong_type):
     array = self.variant(emplace)(array)
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has type .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('input .+ has type .+ but expected .+')):
       asserts.assert_type(array, wrong_type)
 
   @parameterized.named_parameters(
@@ -562,8 +594,8 @@ class TypeAssertTest(parameterized.TestCase):
     an_int = 2
     a_np_float = np.asarray([3., 4.])
     a_jax_int = jnp.asarray([5, 6])
-    with self.assertRaisesRegex(AssertionError,
-                                'input .+ has type .+ but expected .+'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('input .+ has type .+ but expected .+')):
       asserts.assert_type([a_float, an_int, a_np_float, a_jax_int],
                           [float, int, float, float])
 
@@ -581,7 +613,8 @@ class TypeAssertTest(parameterized.TestCase):
   )
   def test_type_should_fail_wrong_length(self, array, wrong_type):
     with self.assertRaisesRegex(
-        AssertionError, 'Length of `inputs` and `expected_types` must match'):
+        AssertionError,
+        _get_err_regex('Length of `inputs` and `expected_types` must match')):
       asserts.assert_type(array, wrong_type)
 
   def test_type_should_fail_unsupported_dtype(self):
@@ -589,7 +622,8 @@ class TypeAssertTest(parameterized.TestCase):
     an_int = 2
     a_np_float = np.asarray([3., 4.])
     a_jax_int = jnp.asarray([5, 6])
-    with self.assertRaisesRegex(AssertionError, 'unsupported dtype'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('unsupported dtype')):
       asserts.assert_type([a_float, an_int, a_np_float, a_jax_int],
                           [np.complex, np.complex, float, int])
 
@@ -607,33 +641,36 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
     for i in range(-tensor.ndim, tensor.ndim):
       s = tensor.shape[i]
       with self.assertRaisesRegex(
-          AssertionError, 'Expected tensor to have dimension'):
-        asserts.assert_axis_dimension(tensor, axis=i, expected=s+1)
+          AssertionError, _get_err_regex('Expected tensor to have dimension')):
+        asserts.assert_axis_dimension(tensor, axis=i, expected=s + 1)
 
   def test_assert_axis_dimension_axis_invalid(self):
     tensor = jnp.ones((3, 2))
     for i in (2, -3):
-      with self.assertRaisesRegex(AssertionError, 'not available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('not available')):
         asserts.assert_axis_dimension(tensor, axis=i, expected=1)
 
   def test_assert_axis_dimension_gt_pass(self):
     tensor = jnp.ones((3, 2, 7, 2))
     for i in range(-tensor.ndim, tensor.ndim):
       s = tensor.shape[i]
-      asserts.assert_axis_dimension_gt(tensor, axis=i, val=s-1)
+      asserts.assert_axis_dimension_gt(tensor, axis=i, val=s - 1)
 
   def test_assert_axis_dimension_gt_fail(self):
     tensor = jnp.ones((3, 2, 7, 2))
     for i in range(-tensor.ndim, tensor.ndim):
       s = tensor.shape[i]
       with self.assertRaisesRegex(
-          AssertionError, 'Expected tensor to have dimension greater than'):
+          AssertionError,
+          _get_err_regex('Expected tensor to have dimension greater than')):
         asserts.assert_axis_dimension_gt(tensor, axis=i, val=s)
 
   def test_assert_axis_dimension_gt_axis_invalid(self):
     tensor = jnp.ones((3, 2))
     for i in (2, -3):
-      with self.assertRaisesRegex(AssertionError, 'not available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('not available')):
         asserts.assert_axis_dimension_gt(tensor, axis=i, val=0)
 
 
@@ -651,28 +688,34 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree6 = dict(x=1, y=2, z=3, n=None)
 
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 1')):
       assert_fn(tree1, tree5)
 
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 1')):
       assert_fn(tree1, tree3)
 
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 2')):
       assert_fn([], [], tree1)
 
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 3'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 3')):
       assert_fn(tree2, tree1, tree2, tree3, tree1)
 
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 2'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 2')):
       assert_fn(tree2, tree1, tree4)
 
     # Test `None`s.
     with self.assertRaisesRegex(
-        AssertionError, 'Error in tree structs equality check.*trees 0 and 1'):
+        AssertionError,
+        _get_err_regex('Error in tree structs equality check.*trees 0 and 1')):
       assert_fn(tree5, tree6)
 
   def test_tree_all_finite_passes_finite(self):
@@ -684,8 +727,8 @@ class TreeAssertionsTest(parameterized.TestCase):
         'finite_var': jnp.ones((3,)),
         'inf_var': jnp.array([0.0, jnp.inf]),
     }
-    with self.assertRaisesRegex(AssertionError,
-                                'Tree contains non-finite value'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('Tree contains non-finite value')):
       asserts.assert_tree_all_finite(inf_tree)
 
   def test_assert_tree_all_close_passes_same_tree(self):
@@ -708,13 +751,15 @@ class TreeAssertionsTest(parameterized.TestCase):
   def test_assert_tree_all_close_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
     asserts.assert_tree_all_close(tree, tree, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
       asserts.assert_tree_all_close(tree, tree, ignore_nones=False)
 
   def test_assert_tree_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
     asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
       asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=False)
 
   def test_assert_tree_no_nones(self):
@@ -722,11 +767,13 @@ class TreeAssertionsTest(parameterized.TestCase):
     asserts.assert_tree_no_nones(tree_ok)
 
     tree_with_none = {'a': [jnp.zeros((1,))], 'b': None}
-    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
       asserts.assert_tree_no_nones(tree_with_none)
 
     # Check `None`.
-    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
       asserts.assert_tree_no_nones(None)
 
   def test_assert_tree_all_close_fails_different_structure(self):
@@ -736,13 +783,13 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree1 = (jnp.array([0.0, 2.0]))
     tree2 = (jnp.array([0.0, 2.1]))
     asserts.assert_tree_all_close(tree1, tree2, atol=0.1)
-    with self.assertRaisesRegex(AssertionError,
-                                'Values not approximately equal'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_tree_all_close(tree1, tree2, atol=0.01)
 
     asserts.assert_tree_all_close(tree1, tree2, rtol=0.1)
-    with self.assertRaisesRegex(AssertionError,
-                                'Values not approximately equal'):
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_tree_all_close(tree1, tree2, rtol=0.01)
 
   def test_assert_tree_all_equal_shapes(self):
@@ -757,12 +804,16 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(
         AssertionError,
-        r'Trees 0 and 1 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+        _get_err_regex(
+            r'Trees 0 and 1 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\)'
+        )):
       asserts.assert_tree_all_equal_shapes(tree1, tree3)
 
     with self.assertRaisesRegex(
         AssertionError,
-        r'Trees 0 and 3 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\).'):
+        _get_err_regex(
+            r'Trees 0 and 3 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\)'
+        )):
       asserts.assert_tree_all_equal_shapes(tree1, tree2, tree2, tree3, tree1)
 
   def test_assert_tree_all_equal_structs(self):
@@ -783,15 +834,17 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(
         AssertionError,
-        r'Tree leaf \'x/y\' .* diffent from expected: \(3, 2\) != \(3, 2, 1\)'
-    ):
+        _get_err_regex(
+            r'Tree leaf \'x/y\'.*diffent from expected: \(3, 2\) != \(3, 2, 1\)'
+        )):
       asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
 
   def test_assert_tree_shape_prefix_none(self):
     tree = {'x': np.zeros([3]), 'n': None}
     asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=True)
 
-    with self.assertRaisesRegex(AssertionError, '`None` detected'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
       asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
 
 
@@ -809,7 +862,8 @@ class NumDevicesAssertTest(parameterized.TestCase):
     if n > 0:
       asserts.assert_devices_available(
           n - 1, devtype, backend=devtype, not_less_than=True)
-      with self.assertRaisesRegex(AssertionError, f'Only {n} < {n + 1}'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex(f'Only {n} < {n + 1}')):
         asserts.assert_devices_available(
             n + 1, devtype, backend=devtype, not_less_than=True)
     else:
@@ -827,12 +881,15 @@ class NumDevicesAssertTest(parameterized.TestCase):
     if n_gpu:
       asserts.assert_gpu_available()
     else:
-      with self.assertRaisesRegex(AssertionError, 'No 2 GPUs available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('No 2 GPUs available')):
         asserts.assert_devices_available(2, 'gpu')
-      with self.assertRaisesRegex(AssertionError, 'No GPU devices available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('No GPU devices available')):
         asserts.assert_gpu_available()
 
-    with self.assertRaisesRegex(AssertionError, 'No 2 GPUs available'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('No 2 GPUs available')):
       asserts.assert_devices_available(2, 'gpu', backend='cpu')
 
   def test_cpu_assert(self):
@@ -845,11 +902,14 @@ class NumDevicesAssertTest(parameterized.TestCase):
     if n_tpu:
       asserts.assert_tpu_available()
     else:
-      with self.assertRaisesRegex(AssertionError, 'No 3 TPUs available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('No 3 TPUs available')):
         asserts.assert_devices_available(3, 'tpu')
-      with self.assertRaisesRegex(AssertionError, 'No TPU devices available'):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('No TPU devices available')):
         asserts.assert_tpu_available()
-    with self.assertRaisesRegex(AssertionError, 'No 3 TPUs available'):
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('No 3 TPUs available')):
       asserts.assert_devices_available(3, 'tpu', backend='cpu')
 
 
@@ -933,8 +993,8 @@ class EqualAssertionsTest(parameterized.TestCase):
   def test_assert_equal_pass_on_arrays(self):
     # Not using named_parameters, becase JAX cannot be used before app.run().
     asserts.assert_equal(jnp.ones([]), np.ones([]))
-    asserts.assert_equal(jnp.ones([], dtype=jnp.int32),
-                         np.ones([], dtype=np.float64))
+    asserts.assert_equal(
+        jnp.ones([], dtype=jnp.int32), np.ones([], dtype=np.float64))
 
   @parameterized.named_parameters(
       ('dtypes', jnp.int32, jnp.float32),

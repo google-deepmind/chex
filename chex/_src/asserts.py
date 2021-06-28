@@ -42,6 +42,31 @@ TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 _DimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
 _ShapeMatcher = Sequence[_DimMatcher]
 
+_ERR_PREFIX = "[Chex] "
+
+
+def _chex_assertion(assert_fn) -> Callable[..., None]:
+  """Wraps Chex assert functions to control their common behaviour."""
+
+  @functools.wraps(assert_fn)
+  def _wrapper(*args, **kwargs):
+    # Format error's stack trace to remove Chex' internal frames.
+    exc = None
+    try:
+      assert_fn(*args, **kwargs)
+    except AssertionError as e:
+      exc = e
+    finally:
+      if exc is not None:
+        error_msg = str(exc)
+        # Include only the name of the outermost chex assertion.
+        if error_msg.startswith(_ERR_PREFIX):
+          error_msg = error_msg[error_msg.find("failed:") + len("failed:"):]
+        raise AssertionError(
+            f"{_ERR_PREFIX}Assertion {assert_fn.__name__} failed: {error_msg}")
+
+  return _wrapper
+
 
 def _format_tree_path(path: Sequence[Any]) -> str:
   return "/".join(str(p) for p in path)
@@ -205,7 +230,7 @@ def assert_max_traces(fn=None, n=None):
     _TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
     if _TRACE_COUNTER[fn_hash] > n:
       raise AssertionError(
-          f"Function '{fn.__name__}' is traced > {n} times!\n"
+          f"{_ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!\n"
           "It often happens when a jitted function is defined inside another "
           "function that is called multiple times (i.e. the jitted f-n is a "
           "new object every time). Make sure that your code does not exploit "
@@ -219,6 +244,7 @@ def assert_max_traces(fn=None, n=None):
   return fn_wrapped
 
 
+@_chex_assertion
 def assert_scalar(x: Scalar):
   """Checks argument is a scalar, as defined in pytypes.py (int or float)."""
   if not isinstance(x, (int, float)):
@@ -226,8 +252,10 @@ def assert_scalar(x: Scalar):
         "The argument must be a scalar, was {}".format(type(x)))
 
 
+@_chex_assertion
 def assert_scalar_in(
     x: Scalar, min_: Scalar, max_: Scalar, included: bool = True):
+  """Checks argument is a scalar within segment (by default)."""
   assert_scalar(x)
   if included:
     if not min_ <= x <= max_:
@@ -239,6 +267,7 @@ def assert_scalar_in(
           "The argument must be in ({}, {}), was {}".format(min_, max_, x))
 
 
+@_chex_assertion
 def assert_scalar_positive(x: Scalar):
   """Checks that the scalar is strictly positive."""
   assert_scalar(x)
@@ -246,6 +275,7 @@ def assert_scalar_positive(x: Scalar):
     raise AssertionError("The argument must be positive, was {}".format(x))
 
 
+@_chex_assertion
 def assert_scalar_non_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
@@ -253,6 +283,7 @@ def assert_scalar_non_negative(x: Scalar):
     raise AssertionError("The argument must be non negative, was {}".format(x))
 
 
+@_chex_assertion
 def assert_scalar_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
@@ -260,6 +291,7 @@ def assert_scalar_negative(x: Scalar):
     raise AssertionError("The argument must be negative, was {}".format(x))
 
 
+@_chex_assertion
 def assert_equal_shape(inputs: Sequence[Array]):
   """Checks that all arrays have the same shape.
 
@@ -277,6 +309,7 @@ def assert_equal_shape(inputs: Sequence[Array]):
       raise AssertionError(f"Arrays have different shapes: {shapes}.")
 
 
+@_chex_assertion
 def assert_equal_shape_prefix(inputs, prefix_len):
   """Check that the leading `prefix_dims` dims of all inputs have same shape.
 
@@ -294,6 +327,7 @@ def assert_equal_shape_prefix(inputs, prefix_len):
     raise AssertionError(f"Arrays have different shape prefixes: {shapes}")
 
 
+@_chex_assertion
 def assert_equal_shape_suffix(inputs, suffix_len):
   """Check that the final `suffix_len` dims of all inputs have same shape.
 
@@ -368,6 +402,7 @@ def _shape_matches(actual_shape: Sequence[int],
   return True
 
 
+@_chex_assertion
 def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
                  expected_shapes: Union[_ShapeMatcher,
                                         Sequence[_ShapeMatcher]]):
@@ -426,6 +461,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     raise AssertionError("Error in shape compatibility check: " + msg + ".")
 
 
+@_chex_assertion
 def assert_is_broadcastable(shape_a: Sequence[int], shape_b: Sequence[int]):
   """Checks that an array of `shape_a` is broadcastable to one of `shape_b`.
 
@@ -448,6 +484,7 @@ def assert_is_broadcastable(shape_a: Sequence[int], shape_b: Sequence[int]):
         raise error
 
 
+@_chex_assertion
 def assert_equal_rank(inputs: Sequence[Array]):
   """Checks that all arrays have the same rank.
 
@@ -465,6 +502,7 @@ def assert_equal_rank(inputs: Sequence[Array]):
       raise AssertionError(f"Arrays have different rank: {ranks}.")
 
 
+@_chex_assertion
 def assert_rank(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     expected_ranks: Union[int, Set[int], Sequence[Union[int, Set[int]]]]):
@@ -538,6 +576,7 @@ def assert_rank(
     raise AssertionError("Error in rank compatibility check: " + msg + ".")
 
 
+@_chex_assertion
 def assert_type(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     expected_types: Union[Type[Scalar], Sequence[Type[Scalar]]]):
@@ -598,6 +637,7 @@ def assert_type(
     raise AssertionError("Error in type compatibility check: " + msg + ".")
 
 
+@_chex_assertion
 def assert_axis_dimension(tensor: Array, axis: int, expected: int):
   """Assert dimension of a specific axis of a tensor.
 
@@ -621,6 +661,7 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
         " but got {} instead.".format(expected, axis, tensor.shape[axis]))
 
 
+@_chex_assertion
 def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
   """Assert dimension of a specific axis of a tensor.
 
@@ -643,6 +684,7 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
         f" '{axis}' but got '{tensor.shape[axis]}' instead.")
 
 
+@_chex_assertion
 def assert_numerical_grads(
     f: Callable[..., Array],
     f_args: Sequence[Array],
@@ -672,6 +714,7 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
+@_chex_assertion
 def assert_tree_no_nones(tree: ArrayTree):
   """Asserts tree does not contain `None`s.
 
@@ -689,6 +732,7 @@ def assert_tree_no_nones(tree: ArrayTree):
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
+@_chex_assertion
 def assert_tree_shape_prefix(tree: ArrayTree,
                              shape_prefix: Sequence[int],
                              *,
@@ -719,6 +763,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
+@_chex_assertion
 def assert_tree_all_equal_structs(*trees: ArrayTree):
   """Asserts trees have the same structure.
 
@@ -740,6 +785,7 @@ def assert_tree_all_equal_structs(*trees: ArrayTree):
           f"\n tree {i}: {treedef}")
 
 
+@_chex_assertion
 def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
                                      error_msg_fn: TLeavesEqCmpErrorFn,
                                      *trees: ArrayTree,
@@ -763,7 +809,10 @@ def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
 
   def tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
     msg = error_msg_fn(l_1, l_2)
-    return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."
+    if path:
+      return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."
+    else:
+      return f"Trees (arrays) {i_1} and {i_2} differ: {msg}."
 
   def wrapped_equality_comparator(leaf_1, leaf_2):
     if leaf_1 is None or leaf_1 is None:
@@ -780,6 +829,7 @@ def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
   dm_tree.map_structure_with_path(cmp, *trees)
 
 
+@_chex_assertion
 def assert_tree_all_close(*trees: ArrayTree,
                           rtol: float = 1e-07,
                           atol: float = .0,
@@ -803,15 +853,26 @@ def assert_tree_all_close(*trees: ArrayTree,
       np.testing.assert_allclose, rtol=rtol, atol=atol,
       err_msg="Error in value equality check: Values not approximately equal")
 
-  def cmp_fn(arr_1, arr_2):
-    assert_fn(arr_1, arr_2)  # Raises an AssertionError if values are not close.
+  def cmp_fn(arr_1, arr_2) -> bool:
+    try:
+      # Raises an AssertionError if values are not close.
+      assert_fn(arr_1, arr_2)
+    except AssertionError:
+      return False
     return True
 
-  dummy_err_msg_fn = lambda arr_1, arr_2: None
+  def err_msg_fn(arr_1, arr_2) -> str:
+    try:
+      assert_fn(arr_1, arr_2)
+    except AssertionError as e:
+      return str(e)
+    return ""
+
   assert_tree_all_equal_comparator(
-      cmp_fn, dummy_err_msg_fn, *trees, ignore_nones=ignore_nones)
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
+@_chex_assertion
 def assert_tree_all_equal_shapes(*trees: ArrayTree,
                                  ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.
@@ -830,6 +891,7 @@ def assert_tree_all_equal_shapes(*trees: ArrayTree,
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
+@_chex_assertion
 def assert_devices_available(
     n: int,
     devtype: str,
@@ -857,6 +919,7 @@ def assert_devices_available(
     raise AssertionError(f"No {n} {devtype.upper()}s available in {devs}.")
 
 
+@_chex_assertion
 def assert_tpu_available(backend: Optional[str] = None):
   """Checks that at least one TPU device is available.
 
@@ -870,6 +933,7 @@ def assert_tpu_available(backend: Optional[str] = None):
     raise AssertionError(f"No TPU devices available in {jax.devices(backend)}.")
 
 
+@_chex_assertion
 def assert_gpu_available(backend: Optional[str] = None):
   """Checks that at least one GPU device is available.
 
@@ -883,6 +947,7 @@ def assert_gpu_available(backend: Optional[str] = None):
     raise AssertionError(f"No GPU devices available in {jax.devices(backend)}.")
 
 
+@_chex_assertion
 def assert_tree_all_finite(tree_like: ArrayTree):
   """Assert all tensor leaves in a tree are finite.
 
@@ -900,6 +965,7 @@ def assert_tree_all_finite(tree_like: ArrayTree):
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 
+@_chex_assertion
 def assert_equal(first, second):
   """Assert the two objects are equal as determined by the '==' operator.
 
@@ -917,6 +983,7 @@ def assert_equal(first, second):
   testcase.assertEqual(first, second)
 
 
+@_chex_assertion
 def assert_not_both_none(x, y):
   """Assert that at least one of the arguments is not `None`."""
   if x is None and y is None:
@@ -924,6 +991,7 @@ def assert_not_both_none(x, y):
         "At least one of the arguments must be different from `None`")
 
 
+@_chex_assertion
 def assert_exactly_one_is_none(x, y):
   """Assert that one and only one of the arguments is `None`."""
   if (x is None) == (y is None):
@@ -939,6 +1007,7 @@ def if_args_not_none(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
+@_chex_assertion
 def assert_is_divisible(numerator: int, denominator: int):
   """Assert that the numerator is divisible exactly by the denominator."""
   if numerator % denominator != 0:
