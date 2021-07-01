@@ -13,16 +13,18 @@
 # limitations under the License.
 # ==============================================================================
 """Chex assertion utilities."""
+
 import collections
 import collections.abc
 import functools
 import inspect
 import itertools
 import traceback
-from typing import Any, List, Sequence, Type, Union, Callable, Optional, Set
+from typing import List, Sequence, Type, Union, Callable, Optional, Set
 import unittest
 from unittest import mock
 
+from chex._src import asserts_internal as ai
 from chex._src import pytypes
 import jax
 import jax.numpy as jnp
@@ -34,124 +36,21 @@ Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
 
-# Custom pytypes.
-TLeaf = Any
-TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
-TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
+# Private symbols.
+_ERR_PREFIX = ai.ERR_PREFIX
+_TRACE_COUNTER = ai.TRACE_COUNTER
 
-_DimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
-_ShapeMatcher = Sequence[_DimMatcher]
+_TLeaf = ai.TLeaf
+_TLeavesEqCmpFn = ai.TLeavesEqCmpFn
+_TLeavesEqCmpErrorFn = ai.TLeavesEqCmpErrorFn
+_ShapeMatcher = ai.TShapeMatcher
 
-_ERR_PREFIX = "[Chex] "
-
-
-def _chex_assertion(assert_fn) -> Callable[..., None]:
-  """Wraps Chex assert functions to control their common behaviour."""
-
-  @functools.wraps(assert_fn)
-  def _wrapper(*args, **kwargs):
-    # Format error's stack trace to remove Chex' internal frames.
-    exc = None
-    try:
-      assert_fn(*args, **kwargs)
-    except AssertionError as e:
-      exc = e
-    finally:
-      if exc is not None:
-        error_msg = str(exc)
-        # Include only the name of the outermost chex assertion.
-        if error_msg.startswith(_ERR_PREFIX):
-          error_msg = error_msg[error_msg.find("failed:") + len("failed:"):]
-        raise AssertionError(
-            f"{_ERR_PREFIX}Assertion {assert_fn.__name__} failed: {error_msg}")
-
-  return _wrapper
-
-
-def _format_tree_path(path: Sequence[Any]) -> str:
-  return "/".join(str(p) for p in path)
-
-
-def _format_shape_matcher(shape: _ShapeMatcher) -> str:
-  return f"({', '.join('...' if d is Ellipsis else str(d) for d in shape)})"
-
-
-def _num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
-  """Returns the number of available device of the given type."""
-  devtype = devtype.lower()
-  supported_types = ("cpu", "gpu", "tpu")
-  if devtype not in supported_types:
-    raise ValueError(
-        f"Unknown device type '{devtype}' (expected one of {supported_types}).")
-
-  return sum(d.platform == devtype for d in jax.devices(backend))
-
-
-def _is_traceable(fn):
-  """Checks if function is traceable.
-
-  JAX traces a function when it is wrapped with @jit, @pmap, or @vmap.
-  In other words, this function checks whether `fn` is wrapped with any of
-  the aforementioned JAX transformations.
-
-  Args:
-    fn: function to assert.
-
-  Returns:
-    Bool indicating whether fn is traceable.
-  """
-
-  tokens = (
-      "_python_jit.",  # PyJIT  in Python ver. < 3.7
-      "_cpp_jit.",  # CppJIT in Python ver. < 3.7 (deprecated)
-      ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
-      "CompiledFunction",  # C++ JIT in jaxlib 0.1.66 or newer.
-      "pmap.",  # pmap
-      "vmap.",  # vmap
-  )
-
-  # Un-wrap `fn` and check if any internal f-n is jitted by pattern matching.
-  fn_ = fn
-  while True:
-    if any(t in str(fn_) for t in tokens):
-      return True
-
-    if hasattr(fn_, "__wrapped__"):
-      # Wrapper.
-      fn_globals = getattr(fn_, "__globals__", {})
-
-      if fn_globals.get("__name__", None) == "jax.api":
-        # Wrapper from `jax.api`.
-        return True
-
-      if "api_boundary" in fn_globals:
-        # api_boundary is a JAX wrapper for traced functions.
-        return True
-
-      try:
-        if isinstance(fn_, jax.lib.xla_extension.jax_jit.CompiledFunction):
-          return True
-      except AttributeError:
-        pass
-    else:
-      break
-
-    fn_ = fn_.__wrapped__
-  return False
-
-
-def _assert_leaves_all_eq_comparator(
-    equality_comparator: TLeavesEqCmpFn,
-    error_msg_fn: Callable[[TLeaf, TLeaf, str, int, int],
-                           str], path: Sequence[Any], *leaves: Sequence[TLeaf]):
-  """Asserts all leaves are equal using custom comparator."""
-  path_str = _format_tree_path(path)
-  for i in range(1, len(leaves)):
-    if not equality_comparator(leaves[0], leaves[i]):
-      raise AssertionError(error_msg_fn(leaves[0], leaves[i], path_str, 0, i))
-
-
-_TRACE_COUNTER = collections.Counter()
+_assert_leaves_all_eq_comparator = ai.assert_leaves_all_eq_comparator
+_chex_assertion = ai.chex_assertion
+_format_shape_matcher = ai.format_shape_matcher
+_format_tree_path = ai.format_tree_path
+_is_traceable = ai.is_traceable
+_num_devices_available = ai.num_devices_available
 
 
 def clear_trace_counter():
@@ -786,8 +685,8 @@ def assert_tree_all_equal_structs(*trees: ArrayTree):
 
 
 @_chex_assertion
-def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
-                                     error_msg_fn: TLeavesEqCmpErrorFn,
+def assert_tree_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
+                                     error_msg_fn: _TLeavesEqCmpErrorFn,
                                      *trees: ArrayTree,
                                      ignore_nones: bool = False):
   """Asserts all trees are equal as per the custom comparator for leaves.
@@ -807,7 +706,8 @@ def assert_tree_all_equal_comparator(equality_comparator: TLeavesEqCmpFn,
   assert_tree_all_equal_structs(*trees)
   if not ignore_nones: assert_tree_no_nones(trees)
 
-  def tree_error_msg_fn(l_1: TLeaf, l_2: TLeaf, path: str, i_1: int, i_2: int):
+  def tree_error_msg_fn(l_1: _TLeaf, l_2: _TLeaf, path: str, i_1: int,
+                        i_2: int):
     msg = error_msg_fn(l_1, l_2)
     if path:
       return f"Trees {i_1} and {i_2} differ in leaves '{path}': {msg}."

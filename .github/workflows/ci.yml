@@ -48,7 +48,9 @@ jobs:
         run: |
           set -xe
           python -VV
-          python setup.py install
+          python setup.py sdist
+          pip wheel --verbose --no-deps --no-clean dist/chex*.tar.gz
+          pip install chex*.whl
         shell: bash
       - name: Check types with pytype
         run: |

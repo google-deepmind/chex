@@ -15,30 +15,17 @@
 """Tests for `asserts.py`."""
 
 import functools
-import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
+from chex._src import asserts_internal
 from chex._src import variants
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-
-def _get_err_regex(message: str) -> str:
-  """Constructs a regexp for the exception message.
-
-  Args:
-    message: an exception message.
-
-  Returns:
-    Regexp that ensures the message follows the standard chex formatting.
-  """
-  prefix = re.escape(asserts._ERR_PREFIX)
-
-  # _ERR_PREFIX + any symbols (incl. \n) + message
-  return f'{prefix}[\\s\\S]*{message}'
+_get_err_regex = asserts_internal.get_err_regex
 
 
 def as_arrays(arrays):
@@ -51,40 +38,6 @@ def array_from_shape(*shape):
 
 def emplace(arrays):
   return arrays
-
-
-class IsTraceableTest(variants.TestCase):
-
-  @variants.variants(with_jit=True, with_pmap=True)
-  @parameterized.named_parameters(
-      ('CPP_JIT', True),
-      ('PY_JIT', False),
-  )
-  def test_is_traceable(self, cpp_jit):
-    prev_state = jax.api.FLAGS.experimental_cpp_jit
-    jax.api.FLAGS.experimental_cpp_jit = cpp_jit
-
-    def dummy_wrapper(fn):
-
-      @functools.wraps(fn)
-      def fn_wrapped(fn, *args):
-        return fn(args)
-
-      return fn_wrapped
-
-    fn = lambda x: x.sum()
-    wrapped_fn = dummy_wrapper(fn)
-    self.assertFalse(asserts._is_traceable(fn))
-    self.assertFalse(asserts._is_traceable(wrapped_fn))
-
-    var_fn = self.variant(fn)
-    wrapped_var_f = dummy_wrapper(var_fn)
-    var_wrapped_f = self.variant(wrapped_fn)
-    self.assertTrue(asserts._is_traceable(var_fn))
-    self.assertTrue(asserts._is_traceable(wrapped_var_f))
-    self.assertTrue(asserts._is_traceable(var_wrapped_f))
-
-    jax.api.FLAGS.experimental_cpp_jit = prev_state
 
 
 class AssertMaxTracesTest(variants.TestCase):
@@ -848,7 +801,7 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
 
 
-class NumDevicesAssertTest(parameterized.TestCase):
+class DevicesAssertTest(parameterized.TestCase):
 
   def _device_count(self, backend):
     try:
