@@ -212,7 +212,7 @@ class PmapFakeTest(parameterized.TestCase):
       inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
       expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
 
-      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
+      asserts.assert_trees_all_close(foo(x=inputs, y=inputs), expected)
 
   @parameterized.named_parameters([
       ('fake_nothing', False, 1),
@@ -244,7 +244,7 @@ class PmapFakeTest(parameterized.TestCase):
       if static_argnums == 1:  # Should work.
         expected = jnp.broadcast_to(jnp.array([101, 202]), (num_devices, 2))
         result = func()
-        asserts.assert_tree_all_close(result, expected)
+        asserts.assert_trees_all_close(result, expected)
       else:  # Should error.
         with self.assertRaises(ValueError):
           result = func()
@@ -273,8 +273,8 @@ class PmapFakeTest(parameterized.TestCase):
       inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
       expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
 
-      asserts.assert_tree_all_close(foo(inputs, inputs), expected)
-      asserts.assert_tree_all_close(foo(x=inputs, y=inputs), expected)
+      asserts.assert_trees_all_close(foo(inputs, inputs), expected)
+      asserts.assert_trees_all_close(foo(x=inputs, y=inputs), expected)
 
   @parameterized.named_parameters([
       ('fake_nothing', False, False),
@@ -296,8 +296,8 @@ class PmapFakeTest(parameterized.TestCase):
       inputs = jnp.array([1, 2])
       inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
       expected = jnp.broadcast_to(jnp.array([3, 6]), (num_devices, 2))
-      asserts.assert_tree_all_close(default_foo(inputs, inputs), expected)
-      asserts.assert_tree_all_close(default_foo(x=inputs, y=inputs), expected)
+      asserts.assert_trees_all_close(default_foo(inputs, inputs), expected)
+      asserts.assert_trees_all_close(default_foo(x=inputs, y=inputs), expected)
 
       # Default overriden by partial to execute other branch
       overidden_foo = functools.partial(foo, flag=False)
@@ -305,8 +305,9 @@ class PmapFakeTest(parameterized.TestCase):
       overidden_foo = jax.jit(overidden_foo)
 
       expected = jnp.broadcast_to(jnp.array([2, 4]), (num_devices, 2))
-      asserts.assert_tree_all_close(overidden_foo(inputs, inputs), expected)
-      asserts.assert_tree_all_close(overidden_foo(x=inputs, y=inputs), expected)
+      asserts.assert_trees_all_close(overidden_foo(inputs, inputs), expected)
+      asserts.assert_trees_all_close(
+          overidden_foo(x=inputs, y=inputs), expected)
 
 
 if __name__ == '__main__':

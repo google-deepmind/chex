@@ -37,13 +37,17 @@ from chex._src.asserts import assert_scalar_non_negative
 from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
 from chex._src.asserts import assert_tpu_available
-from chex._src.asserts import assert_tree_all_close
-from chex._src.asserts import assert_tree_all_equal_comparator
-from chex._src.asserts import assert_tree_all_equal_shapes
-from chex._src.asserts import assert_tree_all_equal_structs
+from chex._src.asserts import assert_tree_all_close  # Deprecated
+from chex._src.asserts import assert_tree_all_equal_comparator  # Deprecated
+from chex._src.asserts import assert_tree_all_equal_shapes  # Deprecated
+from chex._src.asserts import assert_tree_all_equal_structs  # Deprecated
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_tree_no_nones
 from chex._src.asserts import assert_tree_shape_prefix
+from chex._src.asserts import assert_trees_all_close
+from chex._src.asserts import assert_trees_all_equal_comparator
+from chex._src.asserts import assert_trees_all_equal_shapes
+from chex._src.asserts import assert_trees_all_equal_structs
 from chex._src.asserts import assert_type
 from chex._src.asserts import clear_trace_counter
 from chex._src.asserts import if_args_not_none
@@ -107,13 +111,17 @@ __all__ = (
     "assert_scalar_positive",
     "assert_shape",
     "assert_tpu_available",
-    "assert_tree_all_close",
-    "assert_tree_all_equal_comparator",
-    "assert_tree_all_equal_shapes",
-    "assert_tree_all_equal_structs",
+    "assert_tree_all_close",  # Deprecated
+    "assert_tree_all_equal_comparator",  # Deprecated
+    "assert_tree_all_equal_shapes",  # Deprecated
+    "assert_tree_all_equal_structs",  # Deprecated
     "assert_tree_all_finite",
     "assert_tree_no_nones",
     "assert_tree_shape_prefix",
+    "assert_trees_all_close",
+    "assert_trees_all_equal_comparator",
+    "assert_trees_all_equal_shapes",
+    "assert_trees_all_equal_structs",
     "assert_type",
     "ChexVariantType",
     "clear_trace_counter",
