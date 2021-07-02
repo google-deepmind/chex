@@ -684,36 +684,36 @@ class TreeAssertionsTest(parameterized.TestCase):
         AssertionError, _get_err_regex('Tree contains non-finite value')):
       asserts.assert_tree_all_finite(inf_tree)
 
-  def test_assert_tree_all_close_passes_same_tree(self):
+  def test_assert_trees_all_close_passes_same_tree(self):
     tree1 = {
         'a': [jnp.zeros((1,))],
         'b': ([0], (0,), 0),
     }
-    asserts.assert_tree_all_close(tree1, tree1)
+    asserts.assert_trees_all_close(tree1, tree1)
 
-  def test_assert_tree_all_close_passes_values_equal(self):
+  def test_assert_trees_all_close_passes_values_equal(self):
     tree1 = (jnp.array([0.0, 0.0]),)
     tree2 = (jnp.array([0.0, 0.0]),)
-    asserts.assert_tree_all_close(tree1, tree2)
+    asserts.assert_trees_all_close(tree1, tree2)
 
-  def test_assert_tree_all_close_passes_values_close(self):
+  def test_assert_trees_all_close_passes_values_close(self):
     tree1 = (jnp.array([1.0, 1.0]),)
     tree2 = (jnp.array([1.0, 1.0 + 1e-9]),)
-    asserts.assert_tree_all_close(tree1, tree2)
+    asserts.assert_trees_all_close(tree1, tree2)
 
-  def test_assert_tree_all_close_nones(self):
+  def test_assert_trees_all_close_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_tree_all_close(tree, tree, ignore_nones=True)
+    asserts.assert_trees_all_close(tree, tree, ignore_nones=True)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
-      asserts.assert_tree_all_close(tree, tree, ignore_nones=False)
+      asserts.assert_trees_all_close(tree, tree, ignore_nones=False)
 
-  def test_assert_tree_all_equal_shapes_nones(self):
+  def test_assert_trees_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=True)
+    asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=True)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
-      asserts.assert_tree_all_equal_shapes(tree, tree, ignore_nones=False)
+      asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=False)
 
   def test_assert_tree_no_nones(self):
     tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
@@ -729,55 +729,55 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_no_nones(None)
 
-  def test_assert_tree_all_close_fails_different_structure(self):
-    self._assert_tree_structs_validation(asserts.assert_tree_all_close)
+  def test_assert_trees_all_close_fails_different_structure(self):
+    self._assert_tree_structs_validation(asserts.assert_trees_all_close)
 
-  def test_assert_tree_all_close_fails_values_differ(self):
+  def test_assert_trees_all_close_fails_values_differ(self):
     tree1 = (jnp.array([0.0, 2.0]))
     tree2 = (jnp.array([0.0, 2.1]))
-    asserts.assert_tree_all_close(tree1, tree2, atol=0.1)
+    asserts.assert_trees_all_close(tree1, tree2, atol=0.1)
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
-      asserts.assert_tree_all_close(tree1, tree2, atol=0.01)
+      asserts.assert_trees_all_close(tree1, tree2, atol=0.01)
 
-    asserts.assert_tree_all_close(tree1, tree2, rtol=0.1)
+    asserts.assert_trees_all_close(tree1, tree2, rtol=0.1)
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
-      asserts.assert_tree_all_close(tree1, tree2, rtol=0.01)
+      asserts.assert_trees_all_close(tree1, tree2, rtol=0.01)
 
-  def test_assert_tree_all_equal_shapes(self):
+  def test_assert_trees_all_equal_shapes(self):
     get_val = lambda s: jnp.zeros([s])
     tree1 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
     tree2 = dict(a1=get_val(3), d=dict(a2=get_val(4), a3=get_val(5)))
     tree3 = dict(a1=get_val(3), d=dict(a2=get_val(7), a3=get_val(5)))
 
-    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_shapes)
-    asserts.assert_tree_all_equal_shapes(tree1, tree1)
-    asserts.assert_tree_all_equal_shapes(tree2, tree1)
+    self._assert_tree_structs_validation(asserts.assert_trees_all_equal_shapes)
+    asserts.assert_trees_all_equal_shapes(tree1, tree1)
+    asserts.assert_trees_all_equal_shapes(tree2, tree1)
 
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
             r'Trees 0 and 1 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\)'
         )):
-      asserts.assert_tree_all_equal_shapes(tree1, tree3)
+      asserts.assert_trees_all_equal_shapes(tree1, tree3)
 
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
             r'Trees 0 and 3 differ in leaves \'d/a2\': shapes: \(4,\) != \(7,\)'
         )):
-      asserts.assert_tree_all_equal_shapes(tree1, tree2, tree2, tree3, tree1)
+      asserts.assert_trees_all_equal_shapes(tree1, tree2, tree2, tree3, tree1)
 
-  def test_assert_tree_all_equal_structs(self):
+  def test_assert_trees_all_equal_structs(self):
     get_val = lambda: jnp.zeros([3])
     tree1 = [[get_val(), get_val()], get_val()]
     tree2 = [[get_val(), get_val()], get_val()]
     tree3 = [get_val(), [get_val(), get_val()]]
 
-    asserts.assert_tree_all_equal_structs(tree1, tree2, tree2, tree1)
-    asserts.assert_tree_all_equal_structs(tree3, tree3)
-    self._assert_tree_structs_validation(asserts.assert_tree_all_equal_structs)
+    asserts.assert_trees_all_equal_structs(tree1, tree2, tree2, tree1)
+    asserts.assert_trees_all_equal_structs(tree3, tree3)
+    self._assert_tree_structs_validation(asserts.assert_trees_all_equal_structs)
 
   def test_assert_tree_shape_prefix(self):
     tree = {'x': {'y': np.zeros([3, 2])}, 'z': np.zeros([3, 2, 1])}

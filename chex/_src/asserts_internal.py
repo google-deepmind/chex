@@ -23,6 +23,7 @@ import functools
 import re
 from typing import Any, Sequence, Union, Callable, Optional, Set
 
+from absl import logging
 import jax
 
 # Custom pytypes.
@@ -37,6 +38,16 @@ TShapeMatcher = Sequence[TDimMatcher]
 # Chex namespace variables.
 ERR_PREFIX = "[Chex] "
 TRACE_COUNTER = collections.Counter()
+
+
+def deprecation_wrapper(new_fn, old_name, new_name):
+  """Allows deprecated functions to continue running, with a warning logged."""
+  def inner_fn(*args, **kwargs):
+    logging.warning(
+        "chex.%s has been renamed to chex.%s, please update your code.",
+        old_name, new_name)
+    return new_fn(*args, **kwargs)
+  return inner_fn
 
 
 def get_err_regex(message: str) -> str:
@@ -58,14 +69,20 @@ def chex_assertion(assert_fn) -> Callable[..., None]:
   @functools.wraps(assert_fn)
   def _wrapper(*args, **kwargs):
     # Format error's stack trace to remove Chex' internal frames.
-    exc = None
+    assertion_exc = None
+    value_exc = None
     try:
       assert_fn(*args, **kwargs)
     except AssertionError as e:
-      exc = e
+      assertion_exc = e
+    except ValueError as e:
+      value_exc = e
     finally:
-      if exc is not None:
-        error_msg = str(exc)
+      if value_exc is not None:
+        raise ValueError(str(value_exc))
+
+      if assertion_exc is not None:
+        error_msg = str(assertion_exc)
         # Include only the name of the outermost chex assertion.
         if error_msg.startswith(ERR_PREFIX):
           error_msg = error_msg[error_msg.find("failed:") + len("failed:"):]

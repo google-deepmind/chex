@@ -106,7 +106,7 @@ assert_type([x, y], [int, float])      # x has type `int` and y has type `float`
 
 assert_equal_shape([x, y, z])          # x, y, and z have equal shapes
 
-assert_tree_all_close(tree_x, tree_y)  # values and structure of trees match
+assert_trees_all_close(tree_x, tree_y) # values and structure of trees match
 assert_tree_all_finite(tree_x)         # all tree_x leaves are finite
 
 assert_devices_available(2, 'gpu')     # 2 GPUs available

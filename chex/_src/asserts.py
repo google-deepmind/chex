@@ -663,17 +663,22 @@ def assert_tree_shape_prefix(tree: ArrayTree,
 
 
 @_chex_assertion
-def assert_tree_all_equal_structs(*trees: ArrayTree):
+def assert_trees_all_equal_structs(*trees: ArrayTree):
   """Asserts trees have the same structure.
 
   Note that `None`s are treated as PyTree nodes.
 
   Args:
-    *trees: trees which structures to assert on equality.
+    *trees: >= 2 trees to assert equal structure between.
 
   Raise:
     AssertionError: if structures of any two trees are different.
   """
+  if len(trees) < 2:
+    raise ValueError(
+        "assert_trees_all_equal_structs on a single tree does not make sense. "
+        "Maybe you wrote `assert_trees_all_equal_structs([a, b])` instead of "
+        "`assert_trees_all_equal_structs(a, b)` ?")
   first_treedef = jax.tree_structure(trees[0])
   other_treedefs = (jax.tree_structure(t) for t in trees[1:])
   for i, treedef in enumerate(other_treedefs, start=1):
@@ -684,11 +689,17 @@ def assert_tree_all_equal_structs(*trees: ArrayTree):
           f"\n tree {i}: {treedef}")
 
 
+assert_tree_all_equal_structs = ai.deprecation_wrapper(
+    assert_trees_all_equal_structs,
+    old_name="assert_tree_all_equal_structs",
+    new_name="assert_trees_all_equal_structs")
+
+
 @_chex_assertion
-def assert_tree_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
-                                     error_msg_fn: _TLeavesEqCmpErrorFn,
-                                     *trees: ArrayTree,
-                                     ignore_nones: bool = False):
+def assert_trees_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
+                                      error_msg_fn: _TLeavesEqCmpErrorFn,
+                                      *trees: ArrayTree,
+                                      ignore_nones: bool = False):
   """Asserts all trees are equal as per the custom comparator for leaves.
 
   Args:
@@ -696,14 +707,19 @@ def assert_tree_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
                          whether they are equal. Expected to be transitive.
     error_msg_fn: a function accepting two unequal as per `equality_comparator`
                   leaves and returning an error message.
-    *trees: trees to check on equality as per `equality_comparator`.
+    *trees: at least 2 trees to check on equality as per `equality_comparator`.
     ignore_nones: whether to ignore `None`s in the trees.
 
   Raises:
+    ValueError: if *trees does not have at least two elements.
     AssertionError: if `equality_comparator` returns False on any pair of trees.
   """
-  if len(trees) < 2: return
-  assert_tree_all_equal_structs(*trees)
+  if len(trees) < 2:
+    raise ValueError(
+        "Assertions over only one tree does not make sense. Maybe you wrote "
+        "`assert_trees_xxx([a, b])` instead of `assert_trees_xxx(a, b)`, or "
+        "forgot the `error_msg_fn` arg to `assert_trees_all_equal_comparator`?")
+  assert_trees_all_equal_structs(*trees)
   if not ignore_nones: assert_tree_no_nones(trees)
 
   def tree_error_msg_fn(l_1: _TLeaf, l_2: _TLeaf, path: str, i_1: int,
@@ -718,7 +734,7 @@ def assert_tree_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
     if leaf_1 is None or leaf_1 is None:
       # Either both or none of leaves can be `None`s.
       assert leaf_1 is None and leaf_2 is None, (
-          "non-mutual cases must be caught by assert_tree_all_equal_structs")
+          "non-mutual cases must be caught by assert_trees_all_equal_structs")
       if ignore_nones:
         return True
 
@@ -729,18 +745,24 @@ def assert_tree_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
   dm_tree.map_structure_with_path(cmp, *trees)
 
 
+assert_tree_all_equal_comparator = ai.deprecation_wrapper(
+    assert_trees_all_equal_comparator,
+    old_name="assert_tree_all_equal_comparator",
+    new_name="assert_trees_all_equal_comparator")
+
+
 @_chex_assertion
-def assert_tree_all_close(*trees: ArrayTree,
-                          rtol: float = 1e-07,
-                          atol: float = .0,
-                          ignore_nones: bool = False):
+def assert_trees_all_close(*trees: ArrayTree,
+                           rtol: float = 1e-07,
+                           atol: float = .0,
+                           ignore_nones: bool = False):
   """Asserts trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired to
    atol + rtol * abs(desired).
 
   Args:
-    *trees: a sequence of trees with array leaves.
+    *trees: a sequence of >= 2 trees with array leaves.
     rtol: relative tolerance.
     atol: absolute tolerance.
     ignore_nones: whether to ignore `None`s in the trees.
@@ -768,17 +790,21 @@ def assert_tree_all_close(*trees: ArrayTree,
       return str(e)
     return ""
 
-  assert_tree_all_equal_comparator(
+  assert_trees_all_equal_comparator(
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
+assert_tree_all_close = ai.deprecation_wrapper(
+    assert_trees_all_close,
+    old_name="assert_tree_all_close",
+    new_name="assert_trees_all_close")
 
-@_chex_assertion
-def assert_tree_all_equal_shapes(*trees: ArrayTree,
-                                 ignore_nones: bool = False):
+
+def assert_trees_all_equal_shapes(*trees: ArrayTree,
+                                  ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.
 
   Args:
-    *trees: a sequence of trees with array leaves.
+    *trees: a sequence of >= 2 trees with array leaves.
     ignore_nones: whether to ignore `None`s in the trees.
 
   Raises:
@@ -787,8 +813,14 @@ def assert_tree_all_equal_shapes(*trees: ArrayTree,
   """
   cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
   err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
-  assert_tree_all_equal_comparator(
+  assert_trees_all_equal_comparator(
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+assert_tree_all_equal_shapes = ai.deprecation_wrapper(
+    assert_trees_all_equal_shapes,
+    old_name="assert_tree_all_equal_shapes",
+    new_name="assert_trees_all_equal_shapes")
 
 
 @_chex_assertion
@@ -870,7 +902,7 @@ def assert_equal(first, second):
   """Assert the two objects are equal as determined by the '==' operator.
 
   Arrays with more than one element cannot be compared.
-  Use `assert_tree_all_close` to compare arrays.
+  Use `assert_trees_all_close` to compare arrays.
 
   Args:
     first: first object.

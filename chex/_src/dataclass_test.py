@@ -309,7 +309,7 @@ class DataclassesTest(parameterized.TestCase):
     factor = 5.
     obj = dummy_dataclass(frozen=frozen)
     target_obj = dummy_dataclass(factor=factor, frozen=frozen)
-    asserts.assert_tree_all_close(
+    asserts.assert_trees_all_close(
         jax.tree_util.tree_map(lambda t: factor * t, obj), target_obj)
 
   @parameterized.parameters([True, False])
@@ -320,7 +320,7 @@ class DataclassesTest(parameterized.TestCase):
     obj = obj.replace(a=obj.a.replace(d=factor * obj.a.d))
     obj = obj.replace(b=factor * obj.b)
     target_obj = dummy_dataclass(factor=factor, frozen=frozen)
-    asserts.assert_tree_all_close(obj, target_obj)
+    asserts.assert_trees_all_close(obj, target_obj)
 
   def test_unfrozen_dataclass_is_mutable(self):
     factor = 5.
@@ -329,7 +329,7 @@ class DataclassesTest(parameterized.TestCase):
     obj.a.d = factor * obj.a.d
     obj.b = factor * obj.b
     target_obj = dummy_dataclass(factor=factor, frozen=False)
-    asserts.assert_tree_all_close(obj, target_obj)
+    asserts.assert_trees_all_close(obj, target_obj)
 
   def test_frozen_dataclass_raise_error(self):
     factor = 5.
@@ -386,7 +386,7 @@ class DataclassesTest(parameterized.TestCase):
   )
   def test_tuple_rev_conversion(self, frozen):
     obj = dummy_dataclass(frozen=frozen)
-    asserts.assert_tree_all_close(type(obj).from_tuple(obj.to_tuple()), obj)
+    asserts.assert_trees_all_close(type(obj).from_tuple(obj.to_tuple()), obj)
 
   @parameterized.named_parameters(
       ('frozen', True),
