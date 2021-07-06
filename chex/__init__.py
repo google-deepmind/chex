@@ -50,6 +50,8 @@ from chex._src.asserts import assert_trees_all_equal_shapes
 from chex._src.asserts import assert_trees_all_equal_structs
 from chex._src.asserts import assert_type
 from chex._src.asserts import clear_trace_counter
+from chex._src.asserts import disable_asserts
+from chex._src.asserts import enable_asserts
 from chex._src.asserts import if_args_not_none
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
@@ -128,6 +130,8 @@ __all__ = (
     "CpuDevice",
     "dataclass",
     "Device",
+    "disable_asserts",
+    "enable_asserts",
     "fake_jit",
     "fake_pmap",
     "fake_pmap_and_jit",

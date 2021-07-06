@@ -40,6 +40,27 @@ def emplace(arrays):
   return arrays
 
 
+class AssertsSwitchTest(parameterized.TestCase):
+  """Tests for enable/disable_asserts."""
+
+  def test_enable_disable_asserts(self):
+    with self.assertRaisesRegex(AssertionError, _get_err_regex('scalar')):
+      asserts.assert_scalar('test')
+
+    asserts.disable_asserts()
+    asserts.assert_scalar('test')
+
+    asserts.enable_asserts()
+    with self.assertRaisesRegex(AssertionError, _get_err_regex('scalar')):
+      asserts.assert_scalar('test')
+
+    asserts.disable_asserts()
+    asserts.assert_is_divisible(13, 5)
+
+    # To avoid side effects.
+    asserts.enable_asserts()
+
+
 class AssertMaxTracesTest(variants.TestCase):
 
   def setUp(self):

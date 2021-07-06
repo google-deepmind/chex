@@ -38,6 +38,7 @@ TShapeMatcher = Sequence[TDimMatcher]
 # Chex namespace variables.
 ERR_PREFIX = "[Chex] "
 TRACE_COUNTER = collections.Counter()
+DISABLE_ASSERTIONS = False
 
 
 def deprecation_wrapper(new_fn, old_name, new_name):
@@ -68,6 +69,10 @@ def chex_assertion(assert_fn) -> Callable[..., None]:
 
   @functools.wraps(assert_fn)
   def _wrapper(*args, **kwargs):
+    global DISABLE_ASSERTIONS
+    if DISABLE_ASSERTIONS:
+      return
+
     # Format error's stack trace to remove Chex' internal frames.
     assertion_exc = None
     value_exc = None

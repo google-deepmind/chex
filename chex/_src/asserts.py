@@ -53,6 +53,19 @@ _is_traceable = ai.is_traceable
 _num_devices_available = ai.num_devices_available
 
 
+def disable_asserts():
+  """Disables all Chex assertions.
+
+  Use wisely.
+  """
+  ai.DISABLE_ASSERTIONS = True
+
+
+def enable_asserts():
+  """Enables Chex assertions."""
+  ai.DISABLE_ASSERTIONS = False
+
+
 def clear_trace_counter():
   """Clears Chex traces' counter for `assert_max_traces` checks.
 
