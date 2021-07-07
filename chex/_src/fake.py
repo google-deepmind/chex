@@ -203,7 +203,10 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
   """Context manager for patching jax.pmap with jax.vmap.
 
   This is intended to be used as a debugging tool to programmatically replace
-  pmap transformations with an equivalent non-parallel vmap transformation.
+  pmap transformations with a non-parallel vmap transformation. Beware that the
+  output is *not* guaranteed to be identical with `jax.pmap`! In particular, all
+  `jax.lax.p*` operations are replaced with identity maps when `fake_pmap` is
+  used.
 
   Can be used either as a context managed scope:
 
