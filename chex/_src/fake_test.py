@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for `fake.py`."""
+"""Tests for `fake.py`.
+
+Testing this module is somewhat awkward for fake_pmap as executing a pmapped
+function is supposed to return the same result as vmapped one. We rely on the
+type of output (ShardedDeviceArray vs. DeviceArray) to test which transformation
+has been used on the function. This also requires we turn off the feature in
+`mock_pmap` that converts the output to a SharededDeviceArray.
+"""
 
 import functools
 
@@ -135,18 +142,25 @@ class PmapFakeTest(parameterized.TestCase):
       return x * 2
 
     # Call with context manager
-    with fake.fake_pmap(enable_patching=enable_patching, jit_result=jit_result):
+    with fake.fake_pmap(
+        enable_patching=enable_patching,
+        jit_result=jit_result,
+        output_sharded_array=False):
       _assert_pmapped(foo, fn_input, is_pmapped, jit_result)
 
     # Call with start/stop
-    ctx = fake.fake_pmap(enable_patching=enable_patching, jit_result=jit_result)
+    ctx = fake.fake_pmap(
+        enable_patching=enable_patching,
+        jit_result=jit_result,
+        output_sharded_array=False)
     ctx.start()
     _assert_pmapped(foo, fn_input, is_pmapped, jit_result)
     ctx.stop()
 
   def test_fake_pmap_axis_name(self):
 
-    with fake.fake_pmap():
+    with fake.fake_pmap(output_sharded_array=False):
+
       @jax.partial(jax.pmap, axis_name='i')
       @jax.partial(jax.pmap, axis_name='j')
       def f(_):
@@ -181,12 +195,12 @@ class PmapFakeTest(parameterized.TestCase):
       return x * 2
 
     # Call with context manager
-    with fake.fake_pmap_and_jit(**fake_kwargs):
+    with fake.fake_pmap_and_jit(output_sharded_array=False, **fake_kwargs):
       _assert_pmapped(foo, fn_input, is_pmapped)
       _assert_jitted(foo, fn_input, is_jitted)
 
     # Call with start/stop
-    ctx = fake.fake_pmap_and_jit(**fake_kwargs)
+    ctx = fake.fake_pmap_and_jit(output_sharded_array=False, **fake_kwargs)
     ctx.start()
     _assert_pmapped(foo, fn_input, is_pmapped)
     _assert_jitted(foo, fn_input, is_jitted)
@@ -199,7 +213,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_kwargs(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        fake_pmap, fake_jit, output_sharded_array=False):
       num_devices = len(jax.devices())
 
       @functools.partial(jax.pmap, axis_size=num_devices)
@@ -221,7 +236,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_pmap_no_static_args', True, ()),
   ])
   def test_with_static_broadcasted_argnums(self, fake_pmap, static_argnums):
-    with fake.fake_pmap_and_jit(fake_pmap, enable_jit_patching=False):
+    with fake.fake_pmap_and_jit(
+        fake_pmap, enable_jit_patching=False, output_sharded_array=False):
       num_devices = len(jax.devices())
 
       # Note: mode='bar' is intended to test that we correctly handle kwargs
@@ -256,7 +272,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_partial(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        fake_pmap, fake_jit, output_sharded_array=False):
       num_devices = len(jax.devices())
 
       # Testing a common use-case where non-parallel arguments are partially
@@ -283,7 +300,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_default_params(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        fake_pmap, fake_jit, output_sharded_array=False):
       num_devices = len(jax.devices())
 
       # Default flag specified at definition time
@@ -308,6 +326,19 @@ class PmapFakeTest(parameterized.TestCase):
       asserts.assert_trees_all_close(overidden_foo(inputs, inputs), expected)
       asserts.assert_trees_all_close(
           overidden_foo(x=inputs, y=inputs), expected)
+
+  def test_pmap_sharded_array_output(self):
+    with fake.fake_pmap_and_jit(output_sharded_array=True):
+      num_devices = len(jax.devices())
+
+      def foo(x):
+        return x * 2
+
+      inputs = jnp.array([1, 2])
+      inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
+      outputs = jax.pmap(foo, axis_size=num_devices)(inputs)
+      # We want to check exact types here
+      self.assertEqual(type(outputs), ArraySharded)
 
 
 if __name__ == '__main__':

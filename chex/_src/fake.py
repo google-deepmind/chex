@@ -95,14 +95,14 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 
 @functools.wraps(jax.pmap)
-def _fake_pmap(
-    fn,
-    axis_name: Optional[Any] = None,
-    *,
-    in_axes=0,
-    static_broadcasted_argnums: Union[int, Iterable[int]] = (),
-    jit_result: bool = False,
-    **unused_kwargs):
+def _fake_pmap(fn,
+               axis_name: Optional[Any] = None,
+               *,
+               in_axes=0,
+               static_broadcasted_argnums: Union[int, Iterable[int]] = (),
+               jit_result: bool = False,
+               output_sharded_array: bool = True,
+               **unused_kwargs):
   """Fake implementation of pmap using vmap."""
 
   if isinstance(static_broadcasted_argnums, int):
@@ -135,6 +135,12 @@ def _fake_pmap(
       vmapped_fn = jax.jit(vmapped_fn)
 
     output = vmapped_fn(*call_args)
+
+    if output_sharded_array:
+      # Real pmap will output a ShardedDeviceArray and vmap will return a
+      # DeviceArray, so we call put_sharded to convert to a ShardedDeviceArray
+      output = jax.device_put_sharded([output], jax.devices()[0:1])
+
     return output
 
   return wrapped_fn
@@ -199,7 +205,9 @@ def fake_jit(enable_patching: bool = True):
   return stack
 
 
-def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
+def fake_pmap(enable_patching: bool = True,
+              jit_result: bool = False,
+              output_sharded_array: bool = True):
   """Context manager for patching jax.pmap with jax.vmap.
 
   This is intended to be used as a debugging tool to programmatically replace
@@ -225,6 +233,8 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
     enable_patching: Whether to patch jax.pmap
     jit_result: Whether the transformed function should be jitted despite not
       being pmapped.
+    output_sharded_array: Whether the transformed function should return a
+      ShardedDeviceArray, as pmap does
 
   Returns:
     Context where jax.pmap is patched with jax.vmap
@@ -232,9 +242,11 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
   # Improve implementation to automatically track JAX collectives development.
   stack = FakeContext()
   if enable_patching:
-    stack.enter_context(
-        mock.patch('jax.pmap',
-                   functools.partial(_fake_pmap, jit_result=jit_result)))
+    fake_pmap_partial = functools.partial(
+        _fake_pmap,
+        jit_result=jit_result,
+        output_sharded_array=output_sharded_array)
+    stack.enter_context(mock.patch('jax.pmap', fake_pmap_partial))
     stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
     stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
     stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))
@@ -244,7 +256,8 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
 
 
 def fake_pmap_and_jit(enable_pmap_patching: bool = True,
-                      enable_jit_patching: bool = True):
+                      enable_jit_patching: bool = True,
+                      output_sharded_array: bool = True):
   """Context manager for patching jax.jit and jax.pmap.
 
   This is a convenience function, equivalent to nested `chex.fake_pmap` and
@@ -257,12 +270,17 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
   Args:
     enable_pmap_patching: Whether to patch jax.pmap
     enable_jit_patching: Whether to patch jax.jit
+    output_sharded_array: Whether the transformed function should return a
+      ShardedDeviceArray, as pmap does
 
   Returns:
     Context where jax.pmap and jax.jit are patched with jax.vmap and the
     identity function
   """
   stack = FakeContext()
-  stack.enter_context(fake_pmap(enable_pmap_patching))
+  stack.enter_context(
+      fake_pmap(
+          enable_pmap_patching,
+          output_sharded_array=output_sharded_array))
   stack.enter_context(fake_jit(enable_jit_patching))
   return stack
