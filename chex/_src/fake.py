@@ -111,7 +111,11 @@ def _fake_pmap(
     raise NotImplementedError(
         'static_broadcasted_argnums with dict in_axes not supported.')
 
-  fn_signature = inspect.signature(fn)
+  fn_signature = inspect.signature(
+      fn,
+      # Disable 'follow wrapped' because we want the exact signature of fn,
+      # not the signature of any function it might wrap.
+      follow_wrapped=False)
 
   @functools.wraps(fn)
   def wrapped_fn(*args, **kwargs):
