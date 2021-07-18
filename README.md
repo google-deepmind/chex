@@ -118,7 +118,7 @@ assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 JAX re-traces JIT'ted function every time the structure of passed arguments
 changes. Often this behavior is inadvertent and leads to a significant
 performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
-decorator asserts that the function is not re-traced more that `n` times during
+decorator asserts that the function is not re-traced more than `n` times during
 program execution.
 
 Global trace counter can be cleared by calling
