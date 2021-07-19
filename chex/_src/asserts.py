@@ -676,6 +676,44 @@ def assert_tree_shape_prefix(tree: ArrayTree,
 
 
 @_chex_assertion
+def assert_tree_shape_suffix(tree: ArrayTree,
+                             shape_suffix: Sequence[int],
+                             *,
+                             ignore_nones: bool = False):
+  """Asserts all tree leaves' shapes have the same suffix.
+
+  Args:
+    tree: a tree to assert.
+    shape_suffix: an expected shapes' suffix.
+    ignore_nones: whether to ignore `None`s in the tree.
+  Raise:
+    AssertionError: if some leaf's shape doesn't start with the expected suffix;
+                    if `ignore_nones` isn't set and the tree contains `None`s.
+  """
+
+  if not ignore_nones:
+    assert_tree_no_nones(tree)
+
+  def _assert_fn(path, leaf):
+    if leaf is None: return
+    if not shape_suffix: return  # No suffix, this is trivially true.
+
+    if len(shape_suffix) > len(leaf.shape):
+      raise AssertionError(
+          f"Tree leaf '{_format_tree_path(path)}' has a shape suffix "
+          f"of length {len(leaf.shape)} which is smaller than the expected "
+          f"suffix of length {len(shape_suffix)}.")
+
+    suffix = leaf.shape[-len(shape_suffix):]
+    if suffix != shape_suffix:
+      raise AssertionError(
+          f"Tree leaf '{_format_tree_path(path)}' has a shape suffix "
+          f"diffent from expected: {suffix} != {shape_suffix}.")
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+
+
+@_chex_assertion
 def assert_trees_all_equal_structs(*trees: ArrayTree):
   """Asserts trees have the same structure.
 

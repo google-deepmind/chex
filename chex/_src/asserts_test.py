@@ -821,6 +821,45 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
 
+  def test_assert_tree_shape_suffix_matching(self):
+    tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([2, 1])}
+    asserts.assert_tree_shape_suffix(tree, ())
+    asserts.assert_tree_shape_suffix(tree, (1,))
+    asserts.assert_tree_shape_suffix(tree, (2, 1))
+
+  def test_assert_tree_shape_suffix_mismatch(self):
+    tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([1, 1])}
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(
+            r'Tree leaf \'z\'.*diffent from expected: \(1, 1\) != \(2, 1\)'
+        )):
+      asserts.assert_tree_shape_suffix(tree, (2, 1))
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(
+            r'Tree leaf \'x/y\'.*diffent from expected: \(2, 1\) != \(1, 1\)'
+        )):
+      asserts.assert_tree_shape_suffix(tree, (1, 1))
+
+  def test_assert_tree_shape_suffix_long_suffix(self):
+    tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([4, 2, 1])}
+    asserts.assert_tree_shape_suffix(tree, (4, 2, 1))
+
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('which is smaller than the expected')):
+      asserts.assert_tree_shape_suffix(tree, (3, 4, 2, 1))
+
+  def test_assert_tree_shape_suffix_none(self):
+    tree = {'x': np.zeros([3]), 'n': None}
+    asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=True)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=False)
+
 
 class DevicesAssertTest(parameterized.TestCase):
 
