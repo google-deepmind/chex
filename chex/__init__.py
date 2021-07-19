@@ -44,6 +44,7 @@ from chex._src.asserts import assert_tree_all_equal_structs  # Deprecated
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_tree_no_nones
 from chex._src.asserts import assert_tree_shape_prefix
+from chex._src.asserts import assert_tree_shape_suffix
 from chex._src.asserts import assert_trees_all_close
 from chex._src.asserts import assert_trees_all_equal_comparator
 from chex._src.asserts import assert_trees_all_equal_shapes
@@ -120,6 +121,7 @@ __all__ = (
     "assert_tree_all_finite",
     "assert_tree_no_nones",
     "assert_tree_shape_prefix",
+    "assert_tree_shape_suffix",
     "assert_trees_all_close",
     "assert_trees_all_equal_comparator",
     "assert_trees_all_equal_shapes",
