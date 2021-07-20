@@ -803,6 +803,35 @@ assert_tree_all_equal_comparator = ai.deprecation_wrapper(
 
 
 @_chex_assertion
+def assert_trees_all_equal_dtypes(*trees: ArrayTree,
+                                  ignore_nones: bool = False):
+  """Asserts trees' leaves have the same dtypes.
+
+  Note that `None`s are treated as PyTree nodes.
+
+  Args:
+    *trees: >= 2 trees to assert equal types between.
+    ignore_nones: whether to ignore `None`s in the trees.
+  Raise:
+    AssertionError: if leaves' types for any two trees are different.
+  """
+
+  def cmp_fn(arr_1, arr_2):
+    return (hasattr(arr_1, "dtype") and hasattr(arr_2, "dtype") and
+            arr_1.dtype == arr_2.dtype)
+
+  def err_msg_fn(arr_1, arr_2):
+    if not hasattr(arr_1, "dtype"):
+      return f"{type(arr_1)} is not a (j-)np array (has no `dtype` property)"
+    if not hasattr(arr_2, "dtype"):
+      return f"{type(arr_2)} is not a (j-)np array (has no `dtype` property)"
+    return f"types: {arr_1.dtype} != {arr_2.dtype}"
+
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+@_chex_assertion
 def assert_trees_all_close(*trees: ArrayTree,
                            rtol: float = 1e-07,
                            atol: float = .0,

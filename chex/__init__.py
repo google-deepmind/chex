@@ -47,6 +47,7 @@ from chex._src.asserts import assert_tree_shape_prefix
 from chex._src.asserts import assert_tree_shape_suffix
 from chex._src.asserts import assert_trees_all_close
 from chex._src.asserts import assert_trees_all_equal_comparator
+from chex._src.asserts import assert_trees_all_equal_dtypes
 from chex._src.asserts import assert_trees_all_equal_shapes
 from chex._src.asserts import assert_trees_all_equal_structs
 from chex._src.asserts import assert_type
@@ -124,6 +125,7 @@ __all__ = (
     "assert_tree_shape_suffix",
     "assert_trees_all_close",
     "assert_trees_all_equal_comparator",
+    "assert_trees_all_equal_dtypes",
     "assert_trees_all_equal_shapes",
     "assert_trees_all_equal_structs",
     "assert_type",

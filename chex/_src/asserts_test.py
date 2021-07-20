@@ -860,6 +860,68 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=False)
 
+  def test_assert_trees_all_equal_dtypes(self):
+    t_0 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+    t_1 = {'x': np.zeros(5, dtype=np.uint16), 'y': np.ones(4, dtype=np.float32)}
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 1 differ')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_1)
+
+    t_2 = {'x': np.zeros(6, dtype=jnp.int16), 'y': np.ones(6, dtype=np.float32)}
+    asserts.assert_trees_all_equal_dtypes(t_0, t_2, t_0)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 4 differ')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_0, t_2, t_0, t_1, t_2)
+
+    # np vs jnp
+    t_3 = {'x': np.zeros(1, dtype=np.int16), 'y': np.ones(2, dtype=jnp.float32)}
+    t_4 = {
+        'x': np.zeros(1, dtype=jnp.int16),
+        'y': np.ones(2, dtype=jnp.float32)
+    }
+    asserts.assert_trees_all_equal_dtypes(t_0, t_2, t_3, t_4)
+
+    # bfloat16
+    t_5 = {'y': np.ones(2, dtype=np.float16)}
+    t_6 = {'y': np.ones(2, dtype=jnp.bfloat16)}
+    asserts.assert_trees_all_equal_dtypes(t_6, t_6)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 1 differ')):
+      asserts.assert_trees_all_equal_dtypes(t_5, t_6)
+
+  def test_assert_trees_all_equal_wrong_usage(self):
+    # not an array
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex(r'is not a \(j-\)np array')):
+      asserts.assert_trees_all_equal_dtypes({'x': 1.}, {'x': np.array(1.)})
+
+    # 1 tree
+    with self.assertRaisesRegex(  # pylint:disable=g-error-prone-assert-raises
+        ValueError, 'Assertions over only one tree does not make sense'):
+      asserts.assert_trees_all_equal_dtypes({'x': 1.})
+
+  def test_assert_trees_all_equal_none(self):
+    t_0 = {'x': None, 'y': np.array(2, dtype=np.int32)}
+    t_1 = {'x': None, 'y': np.array([23], dtype=np.int32)}
+    t_2 = {'x': None, 'y': np.array(3, dtype=np.float32)}
+    t_3 = {'y': np.array([23], dtype=np.int32)}
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 2 differ')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_1, t_2, ignore_nones=True)
+    asserts.assert_trees_all_equal_dtypes(t_0, t_1, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_1, ignore_nones=False)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('trees 0 and 1 do not match')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_3, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('trees 0 and 1 do not match')):
+      asserts.assert_trees_all_equal_dtypes(t_0, t_3, ignore_nones=False)
+
 
 class DevicesAssertTest(parameterized.TestCase):
 
