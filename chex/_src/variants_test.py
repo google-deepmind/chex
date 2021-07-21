@@ -788,9 +788,8 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
 
     actual_shape = (n_copies,)
     varg_0 = _scalar_to_ndarray(arg_0, actual_shape)
-    varg_1 = _scalar_to_ndarray(arg_1, actual_shape)
     arg_0_type = type(varg_0)
-    arg_1_type = type(varg_1)
+    arg_1_type = type(arg_1)
 
     @self.variant(
         reduce_fn=None,
@@ -803,6 +802,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
       self.assertNotIsInstance(arg_0, arg_0_type)
       self.assertIsInstance(arg_1, arg_1_type)
       asserts.assert_shape(arg_0, [n_copies])
+      arg_1 = _scalar_to_ndarray(arg_1, actual_shape)
       asserts.assert_shape(arg_1, [n_copies])
 
       arg_1 = np.array(arg_1)  # don't stage out operations on arg_1
@@ -812,7 +812,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
       psum_res = jax.lax.psum(res, axis_name='j')
       return psum_res
 
-    actual = fn_static(varg_0, varg_1)
+    actual = fn_static(varg_0, arg_1)
     self.assertEqual(actual.shape, (n_devices, n_copies))
     # Exponents of `n_devices`:
     # +1: psum() inside fn()
@@ -824,7 +824,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     n_devices, backend = self.n_devices, self.backend
     n_copies = 5
 
-    varg_0 = jnp.zeros(n_copies) + 10
+    varg_0 = 10
     varg_1 = jnp.zeros(n_copies) + 20
     arg_0_type = type(varg_0)
     arg_1_type = type(varg_1)
@@ -838,6 +838,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     def fn_static(arg_0, arg_1):
       self.assertIsInstance(arg_0, arg_0_type)
       self.assertNotIsInstance(arg_1, arg_1_type)
+      arg_0 = jnp.zeros(n_copies) + arg_0
       asserts.assert_shape(arg_0, [n_copies])
       asserts.assert_shape(arg_1, [n_copies])
 
