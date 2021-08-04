@@ -71,15 +71,17 @@ def _assert_pmapped(fn, fn_input, is_pmapped, should_jit=False):
   # We test whether the function has been pmapped by inspecting the type of
   # the function output, if it is a sharded array type then the function has
   # been pmapped
-  if not is_pmapped and hasattr(jax.interpreters.xla, 'type_is_device_array'):
+  if is_pmapped:
+    expected_type = ArraySharded
+    assert_message = f'Output is type {type(output)}, expected {expected_type}'
+    assert isinstance(output, expected_type), assert_message
+  else:
     expected_type = 'DeviceArray'
     assert_message = f'Output is type {type(output)}, expected {expected_type}'
-    assert jax.interpreters.xla.type_is_device_array(output), assert_message
-  else:
-    expected_type = ArraySharded if is_pmapped else jnp.DeviceArray
-    assert_message = f'Output is type {type(output)}, expected {expected_type}'
-    # We want to check exact types here
-    assert type(output) == expected_type, assert_message    # pylint: disable=unidiomatic-typecheck
+    # ShardedDeviceArray is a subclass of DeviceArray. So, to enforce we have
+    # a DeviceArray, we also check it's not a sharded one.
+    assert (isinstance(output, jnp.DeviceArray) and
+            not isinstance(output, ArraySharded)), assert_message
 
 
 class PmapFakeTest(parameterized.TestCase):
