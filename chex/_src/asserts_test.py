@@ -942,7 +942,8 @@ class DevicesAssertTest(parameterized.TestCase):
         asserts.assert_devices_available(
             n + 1, devtype, backend=devtype, not_less_than=True)
     else:
-      with self.assertRaisesRegex(RuntimeError, 'Unknown backend'):  # pylint: disable=g-error-prone-assert-raises
+      with self.assertRaisesRegex(RuntimeError,  # pylint: disable=g-error-prone-assert-raises
+                                  '(failed to initialize)|(Unknown backend)'):
         asserts.assert_devices_available(
             n - 1, devtype, backend=devtype, not_less_than=True)
 
