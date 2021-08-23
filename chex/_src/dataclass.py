@@ -15,10 +15,11 @@
 """JAX/dm-tree friendly dataclass implementation reusing Python dataclasses."""
 
 import collections
+import dataclasses
 import functools
+from typing import Generic
 
 from absl import logging
-import dataclasses
 import jax
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
@@ -45,8 +46,8 @@ def mappable_dataclass(cls, restricted_inheritance=True):
     raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
 
   is_dataclass_base = all(map(dataclasses.is_dataclass, cls.__bases__))
-  if (restricted_inheritance and (cls.__bases__ !=
-                                  (object,) and not is_dataclass_base)):
+  if (restricted_inheritance and cls.__bases__ != (object,) and cls.__bases__ !=
+      (Generic,) and not is_dataclass_base):
     raise ValueError(
         f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__})."
         "Disable `restricted_inheritance` to suppress this check.")

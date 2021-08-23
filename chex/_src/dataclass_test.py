@@ -14,14 +14,14 @@
 # ==============================================================================
 """Tests for `dataclass.py`."""
 import copy
-from typing import Any, Mapping
+import dataclasses
+from typing import Any, Generic, Mapping, TypeVar
 
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
 from chex._src import dataclass
 from chex._src import pytypes
-import dataclasses
 import jax
 import numpy as np
 import tree
@@ -47,6 +47,15 @@ class Dataclass():
 class FrozenDataclass():
   a: NestedDataclass
   b: pytypes.ArrayDevice
+
+
+T = TypeVar('T')
+
+
+@chex_dataclass(frozen=True)
+class GenericFrozenDataclass(Generic[T]):
+  a: NestedDataclass
+  b: T
 
 
 def dummy_dataclass(factor=1., frozen=False):
