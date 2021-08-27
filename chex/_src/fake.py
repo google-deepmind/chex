@@ -192,14 +192,30 @@ def fake_jit(enable_patching: bool = True):
     fake_jit.context.stop()
 
   Args:
-    enable_patching: Whether to patch jax.jit
+    enable_patching: Whether to patch jax.jit.
 
   Returns:
-    Context where jax.jit is patched with the identity function
+    Context where jax.jit is patched with the identity function jax is
+    configured to avoid jitting internally whenever possible in functions
+    such as jax.lax.scan, etc.
   """
   stack = FakeContext()
   if enable_patching:
     stack.enter_context(mock.patch('jax.jit', _fake_jit))
+
+    # Some functions like jax.lax.scan also internally use jit. Most respect
+    # the config setting `jax_disable_jit` and replace its implementation
+    # with a dummy, jit-free one if the setting is one. Use this mechanism too.
+    @contextlib.contextmanager
+    def _jax_disable_jit():
+      original_value = jax.config.jax_disable_jit
+      jax.config.update('jax_disable_jit', True)
+      try:
+        yield
+      finally:
+        jax.config.update('jax_disable_jit', original_value)
+    stack.enter_context(_jax_disable_jit())
+
   return stack
 
 
