@@ -809,7 +809,7 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
-            r'Tree leaf \'x/y\'.*diffent from expected: \(3, 2\) != \(3, 2, 1\)'
+            r'leaf \'x/y\'.*different from expected: \(3, 2\) != \(3, 2, 1\)'
         )):
       asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
 
@@ -833,14 +833,14 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
-            r'Tree leaf \'z\'.*diffent from expected: \(1, 1\) != \(2, 1\)'
+            r'Tree leaf \'z\'.*different from expected: \(1, 1\) != \(2, 1\)'
         )):
       asserts.assert_tree_shape_suffix(tree, (2, 1))
 
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
-            r'Tree leaf \'x/y\'.*diffent from expected: \(2, 1\) != \(1, 1\)'
+            r'Tree leaf \'x/y\'.*different from expected: \(2, 1\) != \(1, 1\)'
         )):
       asserts.assert_tree_shape_suffix(tree, (1, 1))
 

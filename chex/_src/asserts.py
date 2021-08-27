@@ -670,7 +670,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
     if prefix != shape_prefix:
       raise AssertionError(
           f"Tree leaf '{_format_tree_path(path)}' has a shape prefix "
-          f"diffent from expected: {prefix} != {shape_prefix}.")
+          f"different from expected: {prefix} != {shape_prefix}.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
@@ -708,7 +708,7 @@ def assert_tree_shape_suffix(tree: ArrayTree,
     if suffix != shape_suffix:
       raise AssertionError(
           f"Tree leaf '{_format_tree_path(path)}' has a shape suffix "
-          f"diffent from expected: {suffix} != {shape_suffix}.")
+          f"different from expected: {suffix} != {shape_suffix}.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
