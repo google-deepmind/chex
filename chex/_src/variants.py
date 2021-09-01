@@ -345,13 +345,19 @@ def check_variant_arguments(variant_fn):
 @check_variant_arguments
 def _with_jit(fn,
               static_argnums=(),
+              static_argnames=(),
               device=None,
               backend=None,
               **unused_kwargs):
   """Variant that applies `jax.jit` to fn."""
 
-  return jax.jit(fn, static_argnums=static_argnums, device=device,
-                 backend=backend)
+  return jax.jit(
+      fn,
+      static_argnums=static_argnums,
+      static_argnames=static_argnames,
+      device=device,
+      backend=backend,
+  )
 
 
 @toolz.curry
