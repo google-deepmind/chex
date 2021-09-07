@@ -344,14 +344,19 @@ def check_variant_arguments(variant_fn):
 @toolz.curry
 @check_variant_arguments
 def _with_jit(fn,
-              static_argnums=(),
+              static_argnums=None,
+              static_argnames=None,
               device=None,
               backend=None,
               **unused_kwargs):
   """Variant that applies `jax.jit` to fn."""
 
-  return jax.jit(fn, static_argnums=static_argnums, device=device,
-                 backend=backend)
+  return jax.jit(
+      fn,
+      static_argnums=static_argnums,
+      static_argnames=static_argnames,
+      device=device,
+      backend=backend)
 
 
 @toolz.curry
@@ -368,7 +373,10 @@ def _without_jit(fn, **unused_kwargs):
 
 @toolz.curry
 @check_variant_arguments
-def _with_device(fn, ignore_argnums=(), static_argnums=(), **unused_kwargs):
+def _with_device(fn,
+                 ignore_argnums=(),
+                 static_argnums=(),
+                 **unused_kwargs):
   """Variant that applies `jax.device_put` to the args of fn."""
 
   if isinstance(ignore_argnums, int):

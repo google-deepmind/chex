@@ -596,26 +596,59 @@ class WithJitTest(parameterized.TestCase):
   @variants.variants(with_jit=True)
   @parameterized.parameters(*DEFAULT_PARAMS)
   def test_different_jit_kwargs(self, arg_0, arg_1, expected):
+    kwarg_0 = arg_0
+    kwarg_1 = arg_1
 
     arg_0_type = type(arg_0)
     arg_1_type = type(arg_1)
+    kwarg_0_type = type(kwarg_0)
+    kwarg_1_type = type(kwarg_1)
 
-    @self.variant(static_argnums=(0,))
-    def fn_0(arg_0, arg_1):
+    @self.variant(static_argnums=(0,), static_argnames=('kwarg_1',))
+    def fn_0(arg_0, arg_1, kwarg_0, kwarg_1):
+      self.assertIsInstance(arg_0, arg_0_type)
+      self.assertNotIsInstance(arg_1, arg_1_type)
+      self.assertNotIsInstance(kwarg_0, kwarg_0_type)
+      self.assertIsInstance(kwarg_1, kwarg_1_type)
+      return DEFAULT_FN(arg_0 + kwarg_0, arg_1 + kwarg_1)
+
+    actual_0 = fn_0(arg_0, arg_1, kwarg_0=kwarg_0, kwarg_1=kwarg_1)
+    self.assertEqual(actual_0, 2 * expected)
+
+    @self.variant(static_argnums=(1, 3), static_argnames=('kwarg_1',))
+    def fn_1(arg_0, arg_1, kwarg_0, kwarg_1):
+      self.assertNotIsInstance(arg_0, arg_0_type)
+      self.assertIsInstance(arg_1, arg_1_type)
+      self.assertNotIsInstance(kwarg_0, kwarg_0_type)
+      self.assertIsInstance(kwarg_1, kwarg_1_type)
+      return DEFAULT_FN(arg_0 + kwarg_0, arg_1 + kwarg_1)
+
+    actual_1 = fn_1(arg_0, arg_1, kwarg_0=kwarg_0, kwarg_1=kwarg_1)
+    self.assertEqual(actual_1, 2 * expected)
+
+    @self.variant(static_argnums=(), static_argnames=('kwarg_0',))
+    def fn_2(arg_0, arg_1, kwarg_0, kwarg_1):
+      self.assertNotIsInstance(arg_0, arg_0_type)
+      self.assertNotIsInstance(arg_1, arg_1_type)
+      self.assertIsInstance(kwarg_0, kwarg_0_type)
+      self.assertNotIsInstance(kwarg_1, kwarg_1_type)
+      return DEFAULT_FN(arg_0 + kwarg_0, arg_1 + kwarg_1)
+
+    actual_2 = fn_2(arg_0, arg_1, kwarg_0=kwarg_0, kwarg_1=kwarg_1)
+    self.assertEqual(actual_2, 2 * expected)
+
+    def fn_3(arg_0, arg_1):
       self.assertIsInstance(arg_0, arg_0_type)
       self.assertNotIsInstance(arg_1, arg_1_type)
       return DEFAULT_FN(arg_0, arg_1)
 
-    @self.variant(static_argnums=(1,))
-    def fn_1(arg_0, arg_1):
-      self.assertNotIsInstance(arg_0, arg_0_type)
-      self.assertIsInstance(arg_1, arg_1_type)
-      return DEFAULT_FN(arg_0, arg_1)
-
-    actual_0 = fn_0(arg_0, arg_1)
-    actual_1 = fn_1(arg_0, arg_1)
-    self.assertEqual(actual_0, expected)
-    self.assertEqual(actual_1, expected)
+    fn_3_v0 = self.variant(static_argnums=0, static_argnames='arg_0')(fn_3)
+    fn_3_v1 = self.variant(static_argnums=0)(fn_3)
+    fn_3_v2 = self.variant(static_argnums=(), static_argnames='arg_0')(fn_3)
+    self.assertEqual(fn_3_v0(arg_0, arg_1), expected)
+    self.assertEqual(fn_3_v1(arg_0=arg_0, arg_1=arg_1), expected)
+    self.assertEqual(fn_3_v1(arg_0, arg_1=arg_1), expected)
+    self.assertEqual(fn_3_v2(arg_0=arg_0, arg_1=arg_1), expected)
 
 
 def _test_fn_without_device(arg_0, arg_1):
