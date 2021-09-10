@@ -31,8 +31,8 @@ class IsTraceableTest(variants.TestCase):
       ('PY_JIT', False),
   )
   def test_is_traceable(self, cpp_jit):
-    prev_state = jax.api.FLAGS.experimental_cpp_jit
-    jax.api.FLAGS.experimental_cpp_jit = cpp_jit
+    prev_state = jax.config.FLAGS.experimental_cpp_jit
+    jax.config.FLAGS.experimental_cpp_jit = cpp_jit
 
     def dummy_wrapper(fn):
 
@@ -54,7 +54,7 @@ class IsTraceableTest(variants.TestCase):
     self.assertTrue(ai.is_traceable(wrapped_var_f))
     self.assertTrue(ai.is_traceable(var_wrapped_f))
 
-    jax.api.FLAGS.experimental_cpp_jit = prev_state
+    jax.config.FLAGS.experimental_cpp_jit = prev_state
 
 
 if __name__ == '__main__':
