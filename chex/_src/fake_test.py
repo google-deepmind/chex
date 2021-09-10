@@ -149,8 +149,9 @@ class PmapFakeTest(parameterized.TestCase):
   def test_fake_pmap_axis_name(self):
 
     with fake.fake_pmap():
-      @jax.partial(jax.pmap, axis_name='i')
-      @jax.partial(jax.pmap, axis_name='j')
+
+      @functools.partial(jax.pmap, axis_name='i')
+      @functools.partial(jax.pmap, axis_name='j')
       def f(_):
         return jax.lax.axis_index('i'), jax.lax.axis_index('j')
       x, y = f(jnp.zeros((4, 2)))
