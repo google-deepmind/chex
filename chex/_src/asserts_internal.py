@@ -69,7 +69,6 @@ def chex_assertion(assert_fn) -> Callable[..., None]:
 
   @functools.wraps(assert_fn)
   def _wrapper(*args, **kwargs):
-    global DISABLE_ASSERTIONS
     if DISABLE_ASSERTIONS:
       return
 

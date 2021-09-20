@@ -160,8 +160,7 @@ def assert_max_traces(fn=None, n=None):
 def assert_scalar(x: Scalar):
   """Checks argument is a scalar, as defined in pytypes.py (int or float)."""
   if not isinstance(x, (int, float)):
-    raise AssertionError(
-        "The argument must be a scalar, was {}".format(type(x)))
+    raise AssertionError(f"The argument must be a scalar, was {type(x)}.")
 
 
 @_chex_assertion
@@ -171,12 +170,10 @@ def assert_scalar_in(
   assert_scalar(x)
   if included:
     if not min_ <= x <= max_:
-      raise AssertionError(
-          "The argument must be in [{}, {}], was {}".format(min_, max_, x))
+      raise AssertionError(f"The argument must be in [{min_}, {max_}], was {x}")
   else:
     if not min_ < x < max_:
-      raise AssertionError(
-          "The argument must be in ({}, {}), was {}".format(min_, max_, x))
+      raise AssertionError(f"The argument must be in ({min_}, {max_}), was {x}")
 
 
 @_chex_assertion
@@ -184,7 +181,7 @@ def assert_scalar_positive(x: Scalar):
   """Checks that the scalar is strictly positive."""
   assert_scalar(x)
   if x <= 0:
-    raise AssertionError("The argument must be positive, was {}".format(x))
+    raise AssertionError(f"The argument must be positive, was {x}.")
 
 
 @_chex_assertion
@@ -192,7 +189,7 @@ def assert_scalar_non_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
   if x < 0:
-    raise AssertionError("The argument must be non negative, was {}".format(x))
+    raise AssertionError(f"The argument must be non negative, was {x}.")
 
 
 @_chex_assertion
@@ -200,7 +197,7 @@ def assert_scalar_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
   if x >= 0:
-    raise AssertionError("The argument must be negative, was {}".format(x))
+    raise AssertionError(f"The argument must be negative, was {x}.")
 
 
 @_chex_assertion
@@ -369,8 +366,8 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
 
   if errors:
     msg = "; ".join(
-        "input {} has shape {} but expected {}".format(*err) for err in errors)
-    raise AssertionError("Error in shape compatibility check: " + msg + ".")
+        f"input {e[0]} has shape {e[1]} but expected {e[2]}" for e in errors)
+    raise AssertionError(f"Error in shape compatibility check: {msg}.")
 
 
 @_chex_assertion
@@ -482,10 +479,10 @@ def assert_rank(
 
   if errors:
     msg = "; ".join(
-        "input {} has rank {} (shape {}) but expected {}".format(*err)
-        for err in errors)
+        f"input {e[0]} has rank {e[1]} (shape {e[2]}) but expected {e[3]}"
+        for e in errors)
 
-    raise AssertionError("Error in rank compatibility check: " + msg + ".")
+    raise AssertionError(f"Error in rank compatibility check: {msg}.")
 
 
 @_chex_assertion
@@ -544,9 +541,9 @@ def assert_type(
 
   if errors:
     msg = "; ".join(
-        "input {} has type {} but expected {}".format(*err) for err in errors)
+        f"input {e[0]} has type {e[1]} but expected {e[2]}" for e in errors)
 
-    raise AssertionError("Error in type compatibility check: " + msg + ".")
+    raise AssertionError(f"Error in type compatibility check: {msg}.")
 
 
 @_chex_assertion
@@ -569,8 +566,8 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
         f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
   if tensor.shape[axis] != expected:
     raise AssertionError(
-        "Expected tensor to have dimension {} along the axis {}"
-        " but got {} instead.".format(expected, axis, tensor.shape[axis]))
+        f"Expected tensor to have dimension {expected} along the axis {axis} "
+        f"but got {tensor.shape[axis]} instead.")
 
 
 @_chex_assertion
