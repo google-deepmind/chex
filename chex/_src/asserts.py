@@ -341,7 +341,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
                     if `expected_shapes` has wrong type;
                     if shape of `input` does not match `expected_shapes`.
   """
-  if isinstance(expected_shapes, Array):
+  if isinstance(expected_shapes, (np.ndarray, Array)):
     raise AssertionError(
         "Error in shape compatibility check:"
         "Expected shapes should be a list or tuple of ints.")
@@ -440,7 +440,7 @@ def assert_rank(
                     if `expected_ranks` has wrong type;
                     if the ranks of input do not match the expected ranks.
   """
-  if isinstance(expected_ranks, Array):
+  if isinstance(expected_ranks, (np.ndarray, Array)):
     raise ValueError("Error in rank compatibility check: expected ranks should "
                      "be a collection of integers but was an array.")
 
