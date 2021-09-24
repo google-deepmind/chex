@@ -24,7 +24,10 @@ import re
 from typing import Any, Sequence, Union, Callable, Optional, Set
 
 from absl import logging
+from chex._src import pytypes
 import jax
+import jax.numpy as jnp
+import numpy as np
 
 # Custom pytypes.
 TLeaf = Any
@@ -41,13 +44,27 @@ TRACE_COUNTER = collections.Counter()
 DISABLE_ASSERTIONS = False
 
 
+def jnp_to_np_array(arr: pytypes.Array) -> pytypes.Array:
+  """Converts `jnp.ndarray` to `np.ndarray`."""
+  if isinstance(arr, jnp.ndarray):
+    if arr.dtype == jnp.bfloat16:
+      # Numpy does not support `bfloat16`.
+      return np.asarray(arr, np.float32)
+    else:
+      return np.asarray(arr, arr.dtype)
+  else:
+    return arr
+
+
 def deprecation_wrapper(new_fn, old_name, new_name):
   """Allows deprecated functions to continue running, with a warning logged."""
+
   def inner_fn(*args, **kwargs):
     logging.warning(
         "chex.%s has been renamed to chex.%s, please update your code.",
         old_name, new_name)
     return new_fn(*args, **kwargs)
+
   return inner_fn
 
 

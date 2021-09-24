@@ -848,9 +848,14 @@ def assert_trees_all_close(*trees: ArrayTree,
     AssertionError: if the leaf values actual and desired are not equal up to
       specified tolerance, or trees contain `None`s (with `ignore_nones=False`).
   """
-  assert_fn = functools.partial(
-      np.testing.assert_allclose, rtol=rtol, atol=atol,
-      err_msg="Error in value equality check: Values not approximately equal")
+
+  def assert_fn(arr_1, arr_2):
+    np.testing.assert_allclose(
+        ai.jnp_to_np_array(arr_1),
+        ai.jnp_to_np_array(arr_2),
+        rtol=rtol,
+        atol=atol,
+        err_msg="Error in value equality check: Values not approximately equal")
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:
@@ -864,7 +869,8 @@ def assert_trees_all_close(*trees: ArrayTree,
     try:
       assert_fn(arr_1, arr_2)
     except AssertionError as e:
-      return str(e)
+      return (f"{str(e)} \nOriginal dtypes: "
+              f"{np.asarray(arr_1).dtype}, {np.asarray(arr_2).dtype}")
     return ""
 
   assert_trees_all_equal_comparator(

@@ -729,6 +729,21 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_trees_all_close(tree, tree, ignore_nones=False)
 
+  def test_assert_trees_all_close_bfloat16(self):
+    tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
+    tree2 = {
+        'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16).astype(jnp.float32)
+    }
+    tree3 = {'a': jnp.asarray([0.8, 1.7], dtype=jnp.bfloat16)}
+    asserts.assert_trees_all_close(tree1, tree1)
+    asserts.assert_trees_all_close(tree1, tree2)
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('Values not approximately equal')):
+      asserts.assert_trees_all_close(tree1, tree3)
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('Values not approximately equal')):
+      asserts.assert_trees_all_close(tree2, tree3)
+
   def test_assert_trees_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
     asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=True)
