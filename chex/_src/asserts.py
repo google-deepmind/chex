@@ -66,6 +66,15 @@ def enable_asserts():
   ai.DISABLE_ASSERTIONS = False
 
 
+def if_args_not_none(fn, *args, **kwargs):
+  """Wrap chex assertion to only be evaluated if positional args not None."""
+  found_none = False
+  for x in args:
+    found_none = found_none or (x is None)
+  if not found_none:
+    fn(*args, **kwargs)
+
+
 def clear_trace_counter():
   """Clears Chex traces' counter for `assert_max_traces` checks.
 
@@ -882,6 +891,7 @@ assert_tree_all_close = ai.deprecation_wrapper(
     new_name="assert_trees_all_close")
 
 
+@_chex_assertion
 def assert_trees_all_equal_shapes(*trees: ArrayTree,
                                   ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.
@@ -1011,15 +1021,6 @@ def assert_exactly_one_is_none(x, y):
   """Assert that one and only one of the arguments is `None`."""
   if (x is None) == (y is None):
     raise ValueError("Must pass one of the arguments, and not both.")
-
-
-def if_args_not_none(fn, *args, **kwargs):
-  """Wrap chex assertion to only be evaluated if positional args not None."""
-  found_none = False
-  for x in args:
-    found_none = found_none or (x is None)
-  if not found_none:
-    fn(*args, **kwargs)
 
 
 @_chex_assertion

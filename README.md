@@ -115,6 +115,29 @@ assert_tpu_available()                 # at least 1 TPU available
 assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 ```
 
+All chex assertions support the following optional kwargs for manipulating the
+emitted exception messages:
+
+* `custom_message`: A string to include into the emitted exception messages.
+* `include_default_message`: Whether to include the default Chex message into
+  the emitted exception messages.
+* `exception_type`: An exception type to use. `AssertionError` by default.
+
+For example, the following code:
+
+```python
+dataset = load_dataset()
+params = init_params()
+for i in range(num_steps):
+  params = update_params(params, dataset.sample())
+  chex.assert_tree_all_finite(params,
+                              custom_message=f'Failed at iteration {i}.',
+                              exception_type=ValueError)
+```
+
+will raise a `ValueError` that includes a step number when `params` get polluted
+with `NaNs` or `None`s.
+
 JAX re-traces JIT'ted function every time the structure of passed arguments
 changes. Often this behavior is inadvertent and leads to a significant
 performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)

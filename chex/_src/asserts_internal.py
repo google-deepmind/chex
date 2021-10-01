@@ -21,7 +21,7 @@ import collections
 import collections.abc
 import functools
 import re
-from typing import Any, Sequence, Union, Callable, Optional, Set
+from typing import Any, Sequence, Union, Callable, Optional, Set, Type
 
 from absl import logging
 from chex._src import pytypes
@@ -81,11 +81,28 @@ def get_err_regex(message: str) -> str:
   return f"{re.escape(ERR_PREFIX)}[\\s\\S]*{message}"
 
 
-def chex_assertion(assert_fn) -> Callable[..., None]:
-  """Wraps Chex assert functions to control their common behaviour."""
+def chex_assertion(assert_fn: Callable[..., None]) -> Callable[..., None]:
+  """Wraps Chex assert functions to control their common behaviour.
+
+  Extends the assertion to support the following optional auxiliary kwargs:
+    custom_message: A string to include into the emitted exception messages.
+    include_default_message: Whether to include the default Chex message into
+      the emitted exception messages.
+    exception_type: An exception type to use. `AssertionError` by default.
+
+  Args:
+    assert_fn: An assertion function.
+
+  Returns:
+   A wrapped assertion function with the auxiliary kwargs.
+  """
 
   @functools.wraps(assert_fn)
-  def _wrapper(*args, **kwargs):
+  def _chex_assertion(*args,
+                      custom_message: Optional[str] = None,
+                      include_default_message: bool = True,
+                      exception_type: Type[Exception] = AssertionError,
+                      **kwargs) -> None:
     if DISABLE_ASSERTIONS:
       return
 
@@ -103,14 +120,25 @@ def chex_assertion(assert_fn) -> Callable[..., None]:
         raise ValueError(str(value_exc))
 
       if assertion_exc is not None:
+        # Format the exception message.
         error_msg = str(assertion_exc)
+
         # Include only the name of the outermost chex assertion.
         if error_msg.startswith(ERR_PREFIX):
           error_msg = error_msg[error_msg.find("failed:") + len("failed:"):]
-        raise AssertionError(
-            f"{ERR_PREFIX}Assertion {assert_fn.__name__} failed: {error_msg}")
 
-  return _wrapper
+        # Whether to include the default error message.
+        default_msg = (f"Assertion {assert_fn.__name__} failed: "
+                       if include_default_message else "")
+        error_msg = f"{ERR_PREFIX}{default_msg}{error_msg}"
+
+        # Whether to include a custom error message.
+        if custom_message:
+          error_msg = f"{error_msg} [{custom_message}]"
+
+        raise exception_type(error_msg)
+
+  return _chex_assertion
 
 
 def format_tree_path(path: Sequence[Any]) -> str:

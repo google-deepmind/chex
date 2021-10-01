@@ -57,6 +57,60 @@ class IsTraceableTest(variants.TestCase):
     jax.config.FLAGS.experimental_cpp_jit = prev_state
 
 
+class ExceptionMessageFormatTest(variants.TestCase):
+
+  @parameterized.product(
+      include_default_msg=(False, True),
+      include_custom_msg=(False, True),
+      exc_type=(AssertionError, ValueError),
+  )
+  def test_format(self, include_default_msg, include_custom_msg, exc_type):
+
+    exc_msg = lambda x: f'{x} is non-positive.'
+
+    @ai.chex_assertion
+    def assert_positive(x):
+      if x <= 0:
+        raise AssertionError(exc_msg(x))
+
+    @ai.chex_assertion
+    def assert_each_positive(*args):
+      for x in args:
+        assert_positive(x)
+
+    # Pass.
+    assert_positive(1)
+    assert_each_positive(1, 2, 3)
+
+    # Check the format of raised exceptions' messages.
+    def expected_exc_msg(x, custom_msg):
+      msg = exc_msg(x) if include_default_msg else ''
+      msg = rf'{msg} \[{custom_msg}\]' if custom_msg else msg
+      return msg
+
+    # Run in a loop to generate different custom messages.
+    for i in range(3):
+      custom_msg = f'failed at iter {i}' if include_custom_msg else ''
+
+      with self.assertRaisesRegex(
+          exc_type, ai.get_err_regex(expected_exc_msg(-1, custom_msg))):
+        assert_positive(  # pylint:disable=unexpected-keyword-arg
+            -1,
+            custom_message=custom_msg,
+            include_default_message=include_default_msg,
+            exception_type=exc_type)
+
+      with self.assertRaisesRegex(
+          exc_type, ai.get_err_regex(expected_exc_msg(-3, custom_msg))):
+        assert_each_positive(  # pylint:disable=unexpected-keyword-arg
+            1,
+            -3,
+            2,
+            custom_message=custom_msg,
+            include_default_message=include_default_msg,
+            exception_type=exc_type)
+
+
 if __name__ == '__main__':
   jax.config.update('jax_numpy_rank_promotion', 'raise')
   absltest.main()
