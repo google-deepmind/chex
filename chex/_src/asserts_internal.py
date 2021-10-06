@@ -179,7 +179,8 @@ def is_traceable(fn):
       "_cpp_jit.",  # CppJIT in Python ver. < 3.7 (deprecated)
       ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
       "CompiledFunction",  # C++ JIT in jaxlib 0.1.66 or newer.
-      "pmap.",  # pmap
+      "pmap.",  # Python pmap
+      "PmapFunction",  # C++ pmap in jaxlib 0.1.72 or newer.
       "vmap.",  # vmap
   )
 
