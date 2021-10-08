@@ -14,7 +14,7 @@
 # ==============================================================================
 
 # Runs CI tests on a local machine.
-set -xe
+set -xeuo pipefail
 
 # Install deps in a virtual env.
 readonly VENV_DIR=/tmp/chex-env
@@ -57,5 +57,6 @@ pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n
 pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu_devices_test"
 cd ..
 
+set +u
 deactivate
 echo "All tests passed. Congrats!"
