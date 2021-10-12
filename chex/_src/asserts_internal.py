@@ -174,7 +174,7 @@ def is_traceable(fn):
     Bool indicating whether fn is traceable.
   """
 
-  tokens = (
+  fn_string_tokens = (
       "_python_jit.",  # PyJIT  in Python ver. < 3.7
       "_cpp_jit.",  # CppJIT in Python ver. < 3.7 (deprecated)
       ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
@@ -184,10 +184,18 @@ def is_traceable(fn):
       "vmap.",  # vmap
   )
 
+  fn_type_tokens = (
+      "CompiledFunction",
+      "PmapFunction",
+  )
+
   # Un-wrap `fn` and check if any internal fn is jitted by pattern matching.
   fn_ = fn
   while True:
-    if any(t in str(fn_) for t in tokens):
+    if any(t in str(fn_) for t in fn_string_tokens):
+      return True
+
+    if any(t in str(type(fn_)) for t in fn_type_tokens):
       return True
 
     if hasattr(fn_, "__wrapped__"):
