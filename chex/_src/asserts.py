@@ -20,7 +20,7 @@ import functools
 import inspect
 import itertools
 import traceback
-from typing import List, Sequence, Type, Union, Callable, Optional, Set
+from typing import Callable, List, Optional, Sequence, Set, Type, Union
 import unittest
 from unittest import mock
 
@@ -210,21 +210,46 @@ def assert_scalar_negative(x: Scalar):
 
 
 @_chex_assertion
-def assert_equal_shape(inputs: Sequence[Array]):
+def assert_equal_shape(inputs: Sequence[Array], *,
+                       dims: Optional[Union[int, Sequence[int]]] = None):
   """Checks that all arrays have the same shape.
 
   Args:
     inputs: sequence of arrays.
+    dims: optional int or sequence of integers. If not provided, every dimension
+      of every shape must match. If provided, equality of shape will only be
+      asserted for the specified dim(s), i.e. to ensure all of a group of arrays
+      have the same size in the first two dimensions, call
+      `assert_equal_shape(tensors_list, dims=[0, 1])`.
 
   Raises:
-    AssertionError: if the shapes of all arrays do not match.
+    AssertionError: if the shapes of all arrays at specified dims do not match.
+    ValueError: if the provided `dims` are invalid indices into any of `arrays`.
   """
+  # NB: Need explicit dims argument, closing over it triggers linter bug.
+  def extract_relevant_dims(shape, dims):
+    try:
+      if dims is None:
+        return shape
+      elif isinstance(dims, int):
+        return shape[dims]
+      else:
+        return [shape[d] for d in dims]
+    except IndexError as err:
+      raise ValueError(
+          f"Indexing error when trying to extra dim(s) {dims} from array shape "
+          f"{shape}") from err
+
   if isinstance(inputs, collections.abc.Sequence):
-    shape = inputs[0].shape
+    shape = extract_relevant_dims(inputs[0].shape, dims)
     expected_shapes = [shape] * len(inputs)
-    shapes = [x.shape for x in inputs]
+    shapes = [extract_relevant_dims(x.shape, dims) for x in inputs]
     if shapes != expected_shapes:
-      raise AssertionError(f"Arrays have different shapes: {shapes}.")
+      if dims is not None:
+        msg = f"Arrays have different shapes at dims {dims}: {shapes}"
+      else:
+        msg = f"Arrays have different shapes: {shapes}."
+      raise AssertionError(msg)
 
 
 @_chex_assertion

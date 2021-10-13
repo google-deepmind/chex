@@ -318,6 +318,30 @@ class EqualShapeAssertTest(parameterized.TestCase):
                                 _get_err_regex('different shape prefixes')):
       asserts.assert_equal_shape_prefix(arrays, prefix_len=1)
 
+  @parameterized.named_parameters(
+      ('first_dim', [[2, 3], [2, 4], [2, 5]], 0),
+      ('last_dim', [[3, 5, 7], [2, 7], [4, 7]], -1),  # Note different ranks.
+      ('first_few_dims', [[1, 2, 3], [1, 2, 4], [1, 2, 5]], [0, 1]),
+      ('first_and_last', [[1, 2, 1], [1, 3, 1], [1, 4, 1]], [0, 2]),
+      ('first_and_last_neg', [[1, 2, 3, 4], [1, 5, 4], [1, 4]], [0, -1]),
+      )
+  def test_equal_shape_at_dims_should_pass(self, shapes, dims):
+    arrays = [array_from_shape(*shape) for shape in shapes]
+    asserts.assert_equal_shape(arrays, dims=dims)
+
+  @parameterized.named_parameters(
+      ('first_dim', [[1, 2], [2, 2]], 0),
+      ('last_dim', [[1, 3], [1, 4]], 1),
+      ('last_dim_neg', [[1, 3], [1, 4]], -1),
+      ('multiple_dims', [[1, 2, 3], [1, 2, 4]], [0, 2]),
+      )
+  def test_equal_shape_at_dims_should_fail(self, shapes, dims):
+    arrays = [array_from_shape(*shape) for shape in shapes]
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('have different shapes at dims')):
+      asserts.assert_equal_shape(arrays, dims=dims)
+
 
 class ShapeAssertTest(parameterized.TestCase):
 
