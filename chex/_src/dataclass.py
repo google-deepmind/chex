@@ -15,17 +15,18 @@
 """JAX/dm-tree friendly dataclass implementation reusing Python dataclasses."""
 
 import collections
+import dataclasses
 import functools
 
 from absl import logging
-import dataclasses
 import jax
+
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
 _RESERVED_DCLS_FIELD_NAMES = frozenset(("from_tuple", "replace", "to_tuple"))
 
 
-def mappable_dataclass(cls, restricted_inheritance=True):
+def mappable_dataclass(cls):
   """Exposes dataclass as `collections.abc.Mapping` descendent.
 
   Allows to traverse dataclasses in methods from `dm-tree` library.
@@ -35,21 +36,12 @@ def mappable_dataclass(cls, restricted_inheritance=True):
 
   Args:
     cls: dataclass to mutate.
-    restricted_inheritance: ensure dataclass inherits from `object` or from
-      another `chex.dataclass`.
 
   Returns:
     Mutated dataclass implementing `collections.abc.Mapping` interface.
   """
   if not dataclasses.is_dataclass(cls):
     raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
-
-  is_dataclass_base = all(map(dataclasses.is_dataclass, cls.__bases__))
-  if (restricted_inheritance and (cls.__bases__ !=
-                                  (object,) and not is_dataclass_base)):
-    raise ValueError(
-        f"Not a pure dataclass: undefined behaviour (bases: {cls.__bases__})."
-        "Disable `restricted_inheritance` to suppress this check.")
 
   # Define methods for compatibility with `collections.abc.Mapping`.
   setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
@@ -78,10 +70,13 @@ def mappable_dataclass(cls, restricted_inheritance=True):
 
   cls.__init__ = new_init
 
-  # Update base class.
+  # Update base class to derive from Mapping
   dct = dict(cls.__dict__)
   if "__dict__" in dct:
     dct.pop("__dict__")  # Avoid self-references.
+
+  # Remove object from the sequence of base classes. Deriving from both Mapping
+  # and object will cause a failure to create a MRO for the updated class
   bases = tuple(b for b in cls.__bases__ if b != object)
   cls = type(cls.__name__, bases + (collections.abc.Mapping,), dct)
   return cls
@@ -97,11 +92,10 @@ def dataclass(
     unsafe_hash=False,
     frozen=False,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
-    restricted_inheritance=True,
 ):
   """JAX-friendly wrapper for dataclasses.dataclass."""
   dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
-                    mappable_dataclass, restricted_inheritance)
+                    mappable_dataclass)
   if cls is None:
     return dcls
   return dcls(cls)
@@ -124,7 +118,6 @@ class _Dataclass():
       unsafe_hash=False,
       frozen=False,
       mappable_dataclass=True,  # pylint: disable=redefined-outer-name
-      restricted_inheritance=True,
   ):
     self.init = init
     self.repr = repr  # pylint: disable=redefined-builtin
@@ -133,7 +126,6 @@ class _Dataclass():
     self.unsafe_hash = unsafe_hash
     self.frozen = frozen
     self.mappable_dataclass = mappable_dataclass
-    self.restricted_inheritance = restricted_inheritance
 
   def __call__(self, cls):
     """Forwards class to dataclasses's wrapper and registers it with JAX."""
@@ -162,7 +154,7 @@ class _Dataclass():
                        f"{invalid_fields} ({dcls}).")
 
     if self.mappable_dataclass:
-      dcls = mappable_dataclass(dcls, self.restricted_inheritance)
+      dcls = mappable_dataclass(dcls)
       # We remove `collection.abc.Mappable` mixin methods here to allow
       # fields with these names.
       for attr in ("values", "keys", "get", "items"):

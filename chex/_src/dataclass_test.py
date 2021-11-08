@@ -14,14 +14,15 @@
 # ==============================================================================
 """Tests for `dataclass.py`."""
 import copy
-from typing import Any, Mapping
+import dataclasses
+import sys
+from typing import Any, Mapping, TypeVar, Generic
 
 from absl.testing import absltest
 from absl.testing import parameterized
 from chex._src import asserts
 from chex._src import dataclass
 from chex._src import pytypes
-import dataclasses
 import jax
 import numpy as np
 import tree
@@ -488,6 +489,43 @@ class DataclassesTest(parameterized.TestCase):
 
     asserts.assert_tree_all_equal_structs(
         jax.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
+
+  @parameterized.named_parameters(
+      ('mappable', True),
+      ('not_mappable', False),
+  )
+  def test_generic_dataclass(self, mappable):
+    # Running under Python 3.6 results in error "TypeError: Cannot inherit from
+    # plain Generic", I'm speculating that this is a bug in cpython since
+    # subsequent versions work
+    if sys.version_info < (3, 7):
+      self.skipTest('Skip test on Python version < 3.7')
+
+    T = TypeVar('T')
+
+    @chex_dataclass(mappable_dataclass=mappable)
+    class GenericDataclass(Generic[T]):
+      a: T
+
+    obj = GenericDataclass(a=np.array([1.0, 1.0]))
+    asserts.assert_tree_all_close(obj.a, 1.0)
+
+  def test_mappable_eq_override(self):
+
+    @chex_dataclass(mappable_dataclass=True)
+    class EqDataclass:
+      a: pytypes.ArrayDevice
+
+      def __eq__(self, other):
+        if isinstance(other, EqDataclass):
+          return other.a[0] == self.a[0]
+        return False
+
+    obj1 = EqDataclass(a=np.array([1.0, 1.0]))
+    obj2 = EqDataclass(a=np.array([1.0, 0.0]))
+    obj3 = EqDataclass(a=np.array([0.0, 1.0]))
+    self.assertEqual(obj1, obj2)
+    self.assertNotEqual(obj1, obj3)
 
 
 if __name__ == '__main__':
