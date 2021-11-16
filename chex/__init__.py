@@ -84,7 +84,7 @@ from chex._src.variants import TestCase
 from chex._src.variants import variants
 
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 
 __all__ = (
     "all_variants",
