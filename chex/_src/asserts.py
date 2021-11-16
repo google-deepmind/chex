@@ -917,6 +917,49 @@ assert_tree_all_close = ai.deprecation_wrapper(
 
 
 @_chex_assertion
+def assert_trees_all_equal(*trees: ArrayTree,
+                           ignore_nones: bool = False):
+  """Asserts trees have leaves with *exactly* equal values.
+
+  If you are comparing floating point numbers, an exact equality check may not
+  be appropriate; consider using assert_trees_all_close.
+
+  Args:
+    *trees: a sequence of >= 2 trees with array leaves.
+    ignore_nones: whether to ignore `None`s in the trees.
+
+  Raise:
+    AssertionError: if the leaf values actual and desired are not exactly equal,
+    or trees contain `None`s (with `ignore_nones=False`).
+  """
+
+  def assert_fn(arr_1, arr_2):
+    np.testing.assert_array_equal(
+        ai.jnp_to_np_array(arr_1),
+        ai.jnp_to_np_array(arr_2),
+        err_msg="Error in value equality check: Values not exactly equal")
+
+  def cmp_fn(arr_1, arr_2) -> bool:
+    try:
+      # Raises an AssertionError if values are not equal.
+      assert_fn(arr_1, arr_2)
+    except AssertionError:
+      return False
+    return True
+
+  def err_msg_fn(arr_1, arr_2) -> str:
+    try:
+      assert_fn(arr_1, arr_2)
+    except AssertionError as e:
+      return (f"{str(e)} \nOriginal dtypes: "
+              f"{np.asarray(arr_1).dtype}, {np.asarray(arr_2).dtype}")
+    return ""
+
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+@_chex_assertion
 def assert_trees_all_equal_shapes(*trees: ArrayTree,
                                   ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.

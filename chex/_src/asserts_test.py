@@ -729,6 +729,32 @@ class TreeAssertionsTest(parameterized.TestCase):
         AssertionError, _get_err_regex('Tree contains non-finite value')):
       asserts.assert_tree_all_finite(inf_tree)
 
+  def test_assert_trees_all_equal_passes_same_tree(self):
+    tree1 = {
+        'a': [jnp.zeros((1,))],
+        'b': ([0], (0,), 0),
+    }
+    asserts.assert_trees_all_equal(tree1, tree1)
+
+  def test_assert_trees_all_equal_passes_values_equal(self):
+    tree1 = (jnp.array([0.0, 0.0]),)
+    tree2 = (jnp.array([0.0, 0.0]),)
+    asserts.assert_trees_all_equal(tree1, tree2)
+
+  def test_assert_trees_all_equal_fail_values_close_but_not_equal(self):
+    tree1 = (jnp.array([1.0, 1.0]),)
+    tree2 = (jnp.array([1.0, 1.0 + 5e-7]),)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Values not exactly equal')):
+      asserts.assert_trees_all_equal(tree1, tree2)
+
+  def test_assert_trees_all_equal_nones(self):
+    tree = {'a': [jnp.zeros((1,))], 'b': None}
+    asserts.assert_trees_all_equal(tree, tree, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_trees_all_equal(tree, tree, ignore_nones=False)
+
   def test_assert_trees_all_close_passes_same_tree(self):
     tree1 = {
         'a': [jnp.zeros((1,))],
@@ -741,10 +767,10 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree2 = (jnp.array([0.0, 0.0]),)
     asserts.assert_trees_all_close(tree1, tree2)
 
-  def test_assert_trees_all_close_passes_values_close(self):
+  def test_assert_trees_all_close_passes_values_close_but_not_equal(self):
     tree1 = (jnp.array([1.0, 1.0]),)
-    tree2 = (jnp.array([1.0, 1.0 + 1e-9]),)
-    asserts.assert_trees_all_close(tree1, tree2)
+    tree2 = (jnp.array([1.0, 1.0 + 5e-7]),)
+    asserts.assert_trees_all_close(tree1, tree2, rtol=1e-6)
 
   def test_assert_trees_all_close_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
