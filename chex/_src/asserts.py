@@ -864,7 +864,7 @@ def assert_trees_all_equal_dtypes(*trees: ArrayTree,
 
 @_chex_assertion
 def assert_trees_all_close(*trees: ArrayTree,
-                           rtol: float = 1e-07,
+                           rtol: float = 1e-06,
                            atol: float = .0,
                            ignore_nones: bool = False):
   """Asserts trees have leaves with approximately equal values.
