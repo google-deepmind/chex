@@ -44,3 +44,5 @@ Device = Union[CpuDevice, GpuDevice, TpuDevice]
 # As of 06/2020 pytype doesn't support recursive types (see b/109648354)
 # pytype: disable=not-supported-yet
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
+
+ArrayDType = jax.numpy.lax_numpy._ScalarMeta  # pylint: disable=protected-access
