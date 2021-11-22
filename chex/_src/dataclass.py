@@ -174,14 +174,19 @@ class _Dataclass():
     def _getstate(self):
       return self.__dict__
 
+    class_self = self
+
+    # Patch __setstate__ to register the object on deserialization.
     def _setstate(self, state):
+      if not class_self.registered:
+        _register_dataclass_type(dcls)
+        class_self.registered = True
       self.__dict__.update(state)
 
-    class_self = self
     orig_init = dcls.__init__
 
-    # Patch object's __init__ such that the class is registered on creation.
-    # This ensures correct registration on deserialization.
+    # Patch object's __init__ such that the class is registered on creation if
+    # it is not registered on deserialization.
     @functools.wraps(orig_init)
     def _init(self, *args, **kwargs):
       if not class_self.registered:
