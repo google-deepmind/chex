@@ -73,7 +73,13 @@ def restrict_backends(
     return ((backend_platform in allowed) if allowed is not None else
             (backend_platform not in forbidden))
 
-  inner_backend_compile = jax.xla.backend_compile
+  # pylint: disable=protected-access
+  # backend_compile was moved to jax._src.dispatch for jaxlib>0.1.74
+  backend_compile_module = jax._src.dispatch if hasattr(jax._src,
+                                                        'dispatch') else jax.xla
+  # pylint: enable=protected-access
+
+  inner_backend_compile = backend_compile_module.backend_compile
 
   @functools.wraps(inner_backend_compile)
   def wrapper(backend, *args, **kwargs):
@@ -84,8 +90,9 @@ def restrict_backends(
     return inner_backend_compile(backend, *args, **kwargs)
 
   try:
-    jax.xla.backend_compile = wrapper
+    backend_compile_module.backend_compile = wrapper
     yield
   finally:
-    assert jax.xla.backend_compile is wrapper, jax.xla.backend_compile
-    jax.xla.backend_compile = inner_backend_compile
+    backend_compile = backend_compile_module.backend_compile
+    assert backend_compile is wrapper, backend_compile
+    backend_compile_module.backend_compile = inner_backend_compile
