@@ -18,13 +18,12 @@ import collections
 import collections.abc
 import functools
 import inspect
-import itertools
 import traceback
 from typing import Callable, List, Optional, Sequence, Set, Type, Union
 import unittest
 from unittest import mock
 
-from chex._src import asserts_internal as ai
+from chex._src import asserts_internal as _ai
 from chex._src import pytypes
 import jax
 import jax.numpy as jnp
@@ -36,34 +35,18 @@ Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
 
-# Private symbols.
-_ERR_PREFIX = ai.ERR_PREFIX
-_TRACE_COUNTER = ai.TRACE_COUNTER
-
-_TLeaf = ai.TLeaf
-_TLeavesEqCmpFn = ai.TLeavesEqCmpFn
-_TLeavesEqCmpErrorFn = ai.TLeavesEqCmpErrorFn
-_ShapeMatcher = ai.TShapeMatcher
-
-_assert_leaves_all_eq_comparator = ai.assert_leaves_all_eq_comparator
-_chex_assertion = ai.chex_assertion
-_format_shape_matcher = ai.format_shape_matcher
-_format_tree_path = ai.format_tree_path
-_is_traceable = ai.is_traceable
-_num_devices_available = ai.num_devices_available
-
 
 def disable_asserts():
   """Disables all Chex assertions.
 
   Use wisely.
   """
-  ai.DISABLE_ASSERTIONS = True
+  _ai.DISABLE_ASSERTIONS = True
 
 
 def enable_asserts():
   """Enables Chex assertions."""
-  ai.DISABLE_ASSERTIONS = False
+  _ai.DISABLE_ASSERTIONS = False
 
 
 def if_args_not_none(fn, *args, **kwargs):
@@ -80,7 +63,7 @@ def clear_trace_counter():
 
   Use it to isolate unit tests that rely on `assert_max_traces`.
   """
-  _TRACE_COUNTER.clear()
+  _ai.TRACE_COUNTER.clear()
 
 
 def assert_max_traces(fn=None, n=None):
@@ -126,7 +109,7 @@ def assert_max_traces(fn=None, n=None):
   assert_scalar_non_negative(n)
 
   # Check wrappers ordering.
-  if _is_traceable(fn):
+  if _ai.is_traceable(fn):
     raise ValueError(
         "@assert_max_traces must not wrap JAX-transformed function "
         "(@jit, @vmap, @pmap etc.); change wrappers ordering.")
@@ -143,15 +126,13 @@ def assert_max_traces(fn=None, n=None):
   def fn_wrapped(*args, **kwargs):
     # We assume that a function without arguments is not being traced.
     # That is, case of n=0 for no-arguments function won't raise a error.
-    has_tracers_in_args = any(
-        isinstance(arg, jax.core.Tracer)
-        for arg in itertools.chain(args, kwargs.values()))
+    has_tracers_in_args = _ai.has_tracers((args, kwargs))
 
     nonlocal fn_hash
-    _TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
-    if _TRACE_COUNTER[fn_hash] > n:
+    _ai.TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
+    if _ai.TRACE_COUNTER[fn_hash] > n:
       raise AssertionError(
-          f"{_ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!\n"
+          f"{_ai.ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!\n"
           "It often happens when a jitted function is defined inside another "
           "function that is called multiple times (i.e. the jitted f-n is a "
           "new object every time). Make sure that your code does not exploit "
@@ -165,14 +146,14 @@ def assert_max_traces(fn=None, n=None):
   return fn_wrapped
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_scalar(x: Scalar):
   """Checks argument is a scalar, as defined in pytypes.py (int or float)."""
   if not isinstance(x, (int, float)):
     raise AssertionError(f"The argument must be a scalar, was {type(x)}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_scalar_in(
     x: Scalar, min_: Scalar, max_: Scalar, included: bool = True):
   """Checks argument is a scalar within segment (by default)."""
@@ -185,7 +166,7 @@ def assert_scalar_in(
       raise AssertionError(f"The argument must be in ({min_}, {max_}), was {x}")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_scalar_positive(x: Scalar):
   """Checks that the scalar is strictly positive."""
   assert_scalar(x)
@@ -193,7 +174,7 @@ def assert_scalar_positive(x: Scalar):
     raise AssertionError(f"The argument must be positive, was {x}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_scalar_non_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
@@ -201,7 +182,7 @@ def assert_scalar_non_negative(x: Scalar):
     raise AssertionError(f"The argument must be non negative, was {x}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_scalar_negative(x: Scalar):
   """Checks that the scalar is non negative."""
   assert_scalar(x)
@@ -209,7 +190,7 @@ def assert_scalar_negative(x: Scalar):
     raise AssertionError(f"The argument must be negative, was {x}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_equal_shape(inputs: Sequence[Array], *,
                        dims: Optional[Union[int, Sequence[int]]] = None):
   """Checks that all arrays have the same shape.
@@ -252,7 +233,7 @@ def assert_equal_shape(inputs: Sequence[Array], *,
       raise AssertionError(msg)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_equal_shape_prefix(inputs, prefix_len):
   """Check that the leading `prefix_dims` dims of all inputs have same shape.
 
@@ -270,7 +251,7 @@ def assert_equal_shape_prefix(inputs, prefix_len):
     raise AssertionError(f"Arrays have different shape prefixes: {shapes}")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_equal_shape_suffix(inputs, suffix_len):
   """Check that the final `suffix_len` dims of all inputs have same shape.
 
@@ -306,7 +287,7 @@ def _unelided_shape_matches(
 
 
 def _shape_matches(actual_shape: Sequence[int],
-                   expected_shape: _ShapeMatcher) -> bool:
+                   expected_shape: _ai.TShapeMatcher) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   # Splits `expected_shape` based on the position of the ellipsis, if present.
   expected_prefix: List[Union[int, Set[int]]] = []
@@ -316,7 +297,7 @@ def _shape_matches(actual_shape: Sequence[int],
       if expected_suffix is not None:
         raise ValueError(
             "`expected_shape` may not contain more than one ellipsis, "
-            f"but got {_format_shape_matcher(expected_shape)}")
+            f"but got {_ai.format_shape_matcher(expected_shape)}")
       expected_suffix = []
     elif expected_suffix is None:
       expected_prefix.append(dim)
@@ -345,10 +326,10 @@ def _shape_matches(actual_shape: Sequence[int],
   return True
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-                 expected_shapes: Union[_ShapeMatcher,
-                                        Sequence[_ShapeMatcher]]):
+                 expected_shapes: Union[_ai.TShapeMatcher,
+                                        Sequence[_ai.TShapeMatcher]]):
   """Checks that the shape of all inputs matches specified expected_shapes.
 
   Valid usages include:
@@ -396,7 +377,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
     if not _shape_matches(shape, expected):
-      errors.append((idx, shape, _format_shape_matcher(expected)))
+      errors.append((idx, shape, _ai.format_shape_matcher(expected)))
 
   if errors:
     msg = "; ".join(
@@ -404,7 +385,7 @@ def assert_shape(inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     raise AssertionError(f"Error in shape compatibility check: {msg}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_is_broadcastable(shape_a: Sequence[int], shape_b: Sequence[int]):
   """Checks that an array of `shape_a` is broadcastable to one of `shape_b`.
 
@@ -427,7 +408,7 @@ def assert_is_broadcastable(shape_a: Sequence[int], shape_b: Sequence[int]):
         raise error
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_equal_rank(inputs: Sequence[Array]):
   """Checks that all arrays have the same rank.
 
@@ -445,7 +426,7 @@ def assert_equal_rank(inputs: Sequence[Array]):
       raise AssertionError(f"Arrays have different rank: {ranks}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_rank(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     expected_ranks: Union[int, Set[int], Sequence[Union[int, Set[int]]]]):
@@ -519,7 +500,7 @@ def assert_rank(
     raise AssertionError(f"Error in rank compatibility check: {msg}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_type(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
     expected_types: Union[Type[Scalar], Sequence[Type[Scalar]]]):
@@ -580,7 +561,7 @@ def assert_type(
     raise AssertionError(f"Error in type compatibility check: {msg}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_axis_dimension(tensor: Array, axis: int, expected: int):
   """Assert dimension of a specific axis of a tensor.
 
@@ -604,7 +585,7 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int):
         f"but got {tensor.shape[axis]} instead.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
   """Assert dimension of a specific axis of a tensor.
 
@@ -627,7 +608,7 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int):
         f" '{axis}' but got '{tensor.shape[axis]}' instead.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_numerical_grads(
     f: Callable[..., Array],
     f_args: Sequence[Array],
@@ -657,7 +638,7 @@ def assert_numerical_grads(
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_tree_no_nones(tree: ArrayTree):
   """Asserts tree does not contain `None`s.
 
@@ -670,12 +651,13 @@ def assert_tree_no_nones(tree: ArrayTree):
 
   def _assert_fn(path, leaf):
     if leaf is None:
-      raise AssertionError(f"`None` detected at '{_format_tree_path(path)}'.")
+      raise AssertionError(
+          f"`None` detected at '{_ai.format_tree_path(path)}'.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_tree_shape_prefix(tree: ArrayTree,
                              shape_prefix: Sequence[int],
                              *,
@@ -700,13 +682,13 @@ def assert_tree_shape_prefix(tree: ArrayTree,
     prefix = leaf.shape[:len(shape_prefix)]
     if prefix != shape_prefix:
       raise AssertionError(
-          f"Tree leaf '{_format_tree_path(path)}' has a shape prefix "
+          f"Tree leaf '{_ai.format_tree_path(path)}' has a shape prefix "
           f"different from expected: {prefix} != {shape_prefix}.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_tree_shape_suffix(tree: ArrayTree,
                              shape_suffix: Sequence[int],
                              *,
@@ -731,20 +713,20 @@ def assert_tree_shape_suffix(tree: ArrayTree,
 
     if len(shape_suffix) > len(leaf.shape):
       raise AssertionError(
-          f"Tree leaf '{_format_tree_path(path)}' has a shape suffix "
+          f"Tree leaf '{_ai.format_tree_path(path)}' has a shape suffix "
           f"of length {len(leaf.shape)} which is smaller than the expected "
           f"suffix of length {len(shape_suffix)}.")
 
     suffix = leaf.shape[-len(shape_suffix):]
     if suffix != shape_suffix:
       raise AssertionError(
-          f"Tree leaf '{_format_tree_path(path)}' has a shape suffix "
+          f"Tree leaf '{_ai.format_tree_path(path)}' has a shape suffix "
           f"different from expected: {suffix} != {shape_suffix}.")
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_trees_all_equal_structs(*trees: ArrayTree):
   """Asserts trees have the same structure.
 
@@ -771,15 +753,15 @@ def assert_trees_all_equal_structs(*trees: ArrayTree):
           f"\n tree {i}: {treedef}")
 
 
-assert_tree_all_equal_structs = ai.deprecation_wrapper(
+assert_tree_all_equal_structs = _ai.deprecation_wrapper(
     assert_trees_all_equal_structs,
     old_name="assert_tree_all_equal_structs",
     new_name="assert_trees_all_equal_structs")
 
 
-@_chex_assertion
-def assert_trees_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
-                                      error_msg_fn: _TLeavesEqCmpErrorFn,
+@_ai.chex_assertion
+def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
+                                      error_msg_fn: _ai.TLeavesEqCmpErrorFn,
                                       *trees: ArrayTree,
                                       ignore_nones: bool = False):
   """Asserts all trees are equal as per the custom comparator for leaves.
@@ -804,7 +786,7 @@ def assert_trees_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
   assert_trees_all_equal_structs(*trees)
   if not ignore_nones: assert_tree_no_nones(trees)
 
-  def tree_error_msg_fn(l_1: _TLeaf, l_2: _TLeaf, path: str, i_1: int,
+  def tree_error_msg_fn(l_1: _ai.TLeaf, l_2: _ai.TLeaf, path: str, i_1: int,
                         i_2: int):
     msg = error_msg_fn(l_1, l_2)
     if path:
@@ -822,18 +804,18 @@ def assert_trees_all_equal_comparator(equality_comparator: _TLeavesEqCmpFn,
 
     return equality_comparator(leaf_1, leaf_2)
 
-  cmp = functools.partial(_assert_leaves_all_eq_comparator,
+  cmp = functools.partial(_ai.assert_leaves_all_eq_comparator,
                           wrapped_equality_comparator, tree_error_msg_fn)
   dm_tree.map_structure_with_path(cmp, *trees)
 
 
-assert_tree_all_equal_comparator = ai.deprecation_wrapper(
+assert_tree_all_equal_comparator = _ai.deprecation_wrapper(
     assert_trees_all_equal_comparator,
     old_name="assert_tree_all_equal_comparator",
     new_name="assert_trees_all_equal_comparator")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_trees_all_equal_dtypes(*trees: ArrayTree,
                                   ignore_nones: bool = False):
   """Asserts trees' leaves have the same dtypes.
@@ -862,7 +844,7 @@ def assert_trees_all_equal_dtypes(*trees: ArrayTree,
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_trees_all_close(*trees: ArrayTree,
                            rtol: float = 1e-06,
                            atol: float = .0,
@@ -885,8 +867,8 @@ def assert_trees_all_close(*trees: ArrayTree,
 
   def assert_fn(arr_1, arr_2):
     np.testing.assert_allclose(
-        ai.jnp_to_np_array(arr_1),
-        ai.jnp_to_np_array(arr_2),
+        _ai.jnp_to_np_array(arr_1),
+        _ai.jnp_to_np_array(arr_2),
         rtol=rtol,
         atol=atol,
         err_msg="Error in value equality check: Values not approximately equal")
@@ -910,13 +892,13 @@ def assert_trees_all_close(*trees: ArrayTree,
   assert_trees_all_equal_comparator(
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
-assert_tree_all_close = ai.deprecation_wrapper(
+assert_tree_all_close = _ai.deprecation_wrapper(
     assert_trees_all_close,
     old_name="assert_tree_all_close",
     new_name="assert_trees_all_close")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_trees_all_equal(*trees: ArrayTree,
                            ignore_nones: bool = False):
   """Asserts trees have leaves with *exactly* equal values.
@@ -935,8 +917,8 @@ def assert_trees_all_equal(*trees: ArrayTree,
 
   def assert_fn(arr_1, arr_2):
     np.testing.assert_array_equal(
-        ai.jnp_to_np_array(arr_1),
-        ai.jnp_to_np_array(arr_2),
+        _ai.jnp_to_np_array(arr_1),
+        _ai.jnp_to_np_array(arr_2),
         err_msg="Error in value equality check: Values not exactly equal")
 
   def cmp_fn(arr_1, arr_2) -> bool:
@@ -959,7 +941,7 @@ def assert_trees_all_equal(*trees: ArrayTree,
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_trees_all_equal_shapes(*trees: ArrayTree,
                                   ignore_nones: bool = False):
   """Asserts trees have the same structure and leaves' shapes.
@@ -978,13 +960,13 @@ def assert_trees_all_equal_shapes(*trees: ArrayTree,
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-assert_tree_all_equal_shapes = ai.deprecation_wrapper(
+assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
     assert_trees_all_equal_shapes,
     old_name="assert_tree_all_equal_shapes",
     new_name="assert_trees_all_equal_shapes")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_devices_available(
     n: int,
     devtype: str,
@@ -1003,7 +985,7 @@ def assert_devices_available(
     AssertionError: if number of available device of a given type is not equal
     or less than `n`.
   """
-  n_available = _num_devices_available(devtype, backend=backend)
+  n_available = _ai.num_devices_available(devtype, backend=backend)
   devs = jax.devices(backend)
   if not_less_than and n_available < n:
     raise AssertionError(
@@ -1012,7 +994,7 @@ def assert_devices_available(
     raise AssertionError(f"No {n} {devtype.upper()}s available in {devs}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_tpu_available(backend: Optional[str] = None):
   """Checks that at least one TPU device is available.
 
@@ -1022,11 +1004,11 @@ def assert_tpu_available(backend: Optional[str] = None):
   Raises:
     AssertionError: if no TPU device available.
   """
-  if not _num_devices_available("tpu", backend=backend):
+  if not _ai.num_devices_available("tpu", backend=backend):
     raise AssertionError(f"No TPU devices available in {jax.devices(backend)}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_gpu_available(backend: Optional[str] = None):
   """Checks that at least one GPU device is available.
 
@@ -1036,11 +1018,11 @@ def assert_gpu_available(backend: Optional[str] = None):
   Raises:
     AssertionError: if no GPU device available.
   """
-  if not _num_devices_available("gpu", backend=backend):
+  if not _ai.num_devices_available("gpu", backend=backend):
     raise AssertionError(f"No GPU devices available in {jax.devices(backend)}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_tree_all_finite(tree_like: ArrayTree):
   """Assert all tensor leaves in a tree are finite.
 
@@ -1058,7 +1040,7 @@ def assert_tree_all_finite(tree_like: ArrayTree):
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_equal(first, second):
   """Assert the two objects are equal as determined by the '==' operator.
 
@@ -1076,7 +1058,7 @@ def assert_equal(first, second):
   testcase.assertEqual(first, second)
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_not_both_none(x, y):
   """Assert that at least one of the arguments is not `None`."""
   if x is None and y is None:
@@ -1084,14 +1066,14 @@ def assert_not_both_none(x, y):
         "At least one of the arguments must be different from `None`")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_exactly_one_is_none(x, y):
   """Assert that one and only one of the arguments is `None`."""
   if (x is None) == (y is None):
     raise ValueError("Must pass one of the arguments, and not both.")
 
 
-@_chex_assertion
+@_ai.chex_assertion
 def assert_is_divisible(numerator: int, denominator: int):
   """Assert that the numerator is divisible exactly by the denominator."""
   if numerator % denominator != 0:

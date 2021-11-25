@@ -734,8 +734,8 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     super().setUp()
 
     # Choose devices and a backend.
-    n_tpu = asserts._num_devices_available('tpu')
-    n_gpu = asserts._num_devices_available('gpu')
+    n_tpu = asserts._ai.num_devices_available('tpu')
+    n_gpu = asserts._ai.num_devices_available('gpu')
     if n_tpu > 1:
       self.n_devices, self.backend = n_tpu, 'tpu'
     elif n_gpu > 1:

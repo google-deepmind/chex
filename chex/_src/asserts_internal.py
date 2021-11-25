@@ -14,14 +14,19 @@
 # ==============================================================================
 """Chex assertion internal utilities and symbols.
 
-Do not import them into your project as they may (and will!) change over time.
+[README!]
+
+We reserve the right to change the code in this module at any time without
+providing any guarantees of backward compatibility. For this reason,
+we strongly recommend that you avoid using this module directly at all costs!
+Instead, consider opening an issue on GitHub and describing your use case.
 """
 
 import collections
 import collections.abc
 import functools
 import re
-from typing import Any, Sequence, Union, Callable, Optional, Set, Type
+from typing import Any, Sequence, Union, Callable, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
@@ -158,6 +163,17 @@ def num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
         f"Unknown device type '{devtype}' (expected one of {supported_types}).")
 
   return sum(d.platform == devtype for d in jax.devices(backend))
+
+
+def get_tracers(tree: pytypes.ArrayTree) -> Tuple[jax.core.Tracer]:
+  """Returns a tuple with tracers from a tree."""
+  return tuple(
+      x for x in jax.tree_leaves(tree) if isinstance(x, jax.core.Tracer))
+
+
+def has_tracers(tree: pytypes.ArrayTree) -> bool:
+  """Checks whether a tree contains any tracers."""
+  return any(isinstance(x, jax.core.Tracer) for x in jax.tree_leaves(tree))
 
 
 def is_traceable(fn):
