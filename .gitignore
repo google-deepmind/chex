@@ -5,6 +5,7 @@
 build/
 dist/
 venv/
+docs/_build/
 
 # Mac OS
 .DS_Store

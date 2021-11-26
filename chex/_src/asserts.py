@@ -67,16 +67,17 @@ def clear_trace_counter():
 
 
 def assert_max_traces(fn=None, n=None):
-  """Checks if a function is traced at most n times (inclusively).
+  """Checks if a function is traced at most `n` times (inclusively).
 
-  JAX re-traces JIT'ted function every time the structure of passed arguments
+  JAX re-traces jitted functions every time the structure of passed arguments
   changes. Often this behavior is inadvertent and leads to a significant
   performance drop which is hard to debug. This wrapper asserts that
-  the function is not re-traced more that `n` times during program execution.
+  the function is re-traced at most `n` times during program execution.
 
   Examples:
 
-  ```
+  .. code-block:: python
+
     @jax.jit
     @chex.assert_max_traces(n=1)
     def fn_sum_jitted(x, y):
@@ -86,7 +87,6 @@ def assert_max_traces(fn=None, n=None):
       return x - y
 
     fn_sub_pmapped = jax.pmap(chex.assert_max_retraces(fn_sub), n=10)
-  ```
 
   More about tracing:
     https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html
@@ -96,7 +96,7 @@ def assert_max_traces(fn=None, n=None):
     n: maximum allowed number of retraces (non-negative).
 
   Returns:
-    Decorated f-n that throws exception when max. number of re-traces exceeded.
+    Decorated function that raises exception when it is re-traced `n+1`-st time.
   """
   if not callable(fn) and n is None:
     # Passed n as a first argument.
@@ -978,12 +978,12 @@ def assert_devices_available(
     n: required number of devices of a given type.
     devtype: type of devices, one of {'cpu', 'gpu', 'tpu'}.
     backend: type of backend to use (uses JAX default if `None`).
-    not_less_than: whether to check if number of devices _not less_ than
-      required `n` instead of precise comparison.
+    not_less_than: whether to check if the number of devices is not less than
+      required `n`, instead of precise comparison.
 
   Raises:
     AssertionError: if number of available device of a given type is not equal
-    or less than `n`.
+                    or less than `n`.
   """
   n_available = _ai.num_devices_available(devtype, backend=backend)
   devs = jax.devices(backend)

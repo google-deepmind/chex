@@ -60,7 +60,8 @@ def set_n_cpu_devices(n: Optional[int] = None):
   See https://github.com/google/jax/issues/1408.
 
   Args:
-    n: required number of CPU devices (`FLAGS.chex_n_cpu_devices` if `None`).
+    n: a required number of CPU devices (`FLAGS.chex_n_cpu_devices` is used by
+       default).
 
   Raises:
     RuntimeError: if XLA backends were already initialized.
@@ -175,6 +176,8 @@ def fake_jit(enable_patching: bool = True):
 
   Can be used either as a context managed scope:
 
+  .. code-block:: python
+
     with chex.fake_jit():
       @jax.jit
       def foo(x):
@@ -182,11 +185,15 @@ def fake_jit(enable_patching: bool = True):
 
   or by calling `start` and `stop`:
 
+  .. code-block:: python
+
     fake_jit_context = chex.fake_jit()
     fake_jit.context.start()
+
     @jax.jit
       def foo(x):
-        ...
+            ...
+
     fake_jit.context.stop()
 
   Args:
