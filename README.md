@@ -1,6 +1,8 @@
 # Chex
 
 ![CI status](https://github.com/deepmind/chex/workflows/ci/badge.svg)
+![docs](https://readthedocs.org/projects/chex/badge/?version=latest)
+![pypi](https://img.shields.io/pypi/v/chex)
 
 Chex is a library of utilities for helping to write reliable JAX code.
 

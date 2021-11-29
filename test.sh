@@ -26,7 +26,6 @@ python --version
 pip install --upgrade pip setuptools wheel
 pip install flake8 pytest-xdist pytype pylint pylint-exit
 pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
 
 # Lint with flake8.
 flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
@@ -48,6 +47,7 @@ pytype `find chex/_src/ -name "*py" | xargs` -k
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
+pip install -r requirements/requirements-test.txt
 mkdir _testing && cd _testing
 
 # Main tests.
@@ -55,6 +55,11 @@ pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n
 
 # Isolate tests that use `chex.set_n_cpu_device()`.
 pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu_devices_test"
+cd ..
+
+# Build Sphinx docs.
+pip install -r requirements/requirements-docs.txt
+cd docs && make html
 cd ..
 
 set +u
