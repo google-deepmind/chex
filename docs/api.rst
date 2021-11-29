@@ -30,8 +30,17 @@ Fakes
 
 .. autosummary::
 
-    set_n_cpu_devices
     fake_jit
+    fake_pmap
+    fake_pmap_and_jit
+    set_n_cpu_devices
+
+Transformations
+~~~~~~~~~~~~~~~
+
+.. autofunction:: fake_jit
+.. autofunction:: fake_pmap
+.. autofunction:: fake_pmap_and_jit
 
 
 Devices
@@ -40,7 +49,16 @@ Devices
 .. autofunction:: set_n_cpu_devices
 
 
-Transformations
-~~~~~~~~~~~~~~~
+Dataclasses
+===========
 
-.. autofunction:: fake_jit
+.. currentmodule:: chex
+
+.. autofunction:: dataclass
+
+Backend restriction
+===================
+
+.. currentmodule:: chex
+
+.. autofunction:: restrict_backends

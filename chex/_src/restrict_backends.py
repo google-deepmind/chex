@@ -53,7 +53,7 @@ def restrict_backends(
 
   Yields:
     None, in a context where compilation for forbidden platforms will raise
-    a RestrictedBackendError.
+    a `RestrictedBackendError`.
 
   Raises:
     ValueError: if neither `allowed` nor `forbidden` is specified (i.e. they

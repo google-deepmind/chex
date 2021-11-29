@@ -169,7 +169,7 @@ class FakeContext(contextlib.ExitStack):
 
 
 def fake_jit(enable_patching: bool = True):
-  """Context manager for patching jax.jit with the identity function.
+  """Context manager for patching `jax.jit` with the identity function.
 
   This is intended to be used as a debugging tool to programmatically enable or
   disable JIT compilation.
@@ -200,9 +200,9 @@ def fake_jit(enable_patching: bool = True):
     enable_patching: Whether to patch jax.jit.
 
   Returns:
-    Context where jax.jit is patched with the identity function jax is
+    Context where `jax.jit` is patched with the identity function jax is
     configured to avoid jitting internally whenever possible in functions
-    such as jax.lax.scan, etc.
+    such as `jax.lax.scan`, etc.
   """
   stack = FakeContext()
   if enable_patching:
@@ -235,12 +235,16 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
 
   Can be used either as a context managed scope:
 
+  .. code-block:: python
+
     with chex.fake_pmap():
       @jax.pmap
       def foo(x):
         ...
 
   or by calling `start` and `stop`:
+
+  .. code-block:: python
 
     fake_pmap_context = chex.fake_pmap()
     fake_pmap.context.start()
@@ -250,12 +254,12 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
     fake_pmap.context.stop()
 
   Args:
-    enable_patching: Whether to patch jax.pmap
+    enable_patching: Whether to patch `jax.pmap`
     jit_result: Whether the transformed function should be jitted despite not
       being pmapped.
 
   Returns:
-    Context where jax.pmap is patched with jax.vmap
+    Context where `jax.pmap` is patched with `jax.vmap`
   """
   # Improve implementation to automatically track JAX collectives development.
   stack = FakeContext()

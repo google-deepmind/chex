@@ -93,7 +93,28 @@ def dataclass(
     frozen=False,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
 ):
-  """JAX-friendly wrapper for dataclasses.dataclass."""
+  """JAX-friendly wrapper for :py:func:`dataclasses.dataclass`.
+
+  This wrapper class registers new dataclasses with JAX so that tree utils
+  operate correctly. Additionally a replace method is provided making it easy
+  to operate on the class when made immutable (frozen=True).
+
+  Args:
+    cls: class to decorate
+    init: See :py:func:`dataclasses.dataclass`
+    repr: See :py:func:`dataclasses.dataclass`
+    eq: See :py:func:`dataclasses.dataclass`
+    order: See :py:func:`dataclasses.dataclass`
+    unsafe_hash: See :py:func:`dataclasses.dataclass`
+    frozen: See :py:func:`dataclasses.dataclass`
+    mappable_dataclass: If True (the default), methods to make the class
+      implement the :py:class:`collections.abc.Mappable` interface will be
+      generated and the class will include :py:class:`collections.abc.Mappable`
+      in its base classes.
+
+  Returns:
+    A JAX-friendly dataclass.
+  """
   dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
                     mappable_dataclass)
   if cls is None:
@@ -102,12 +123,7 @@ def dataclass(
 
 
 class _Dataclass():
-  """JAX-friendly wrapper for dataclasses.dataclass.
-
-  This wrapper class registers new dataclasses with JAX so that tree utils
-  operate correctly. Additionally a replace method is provided making it easy
-  to operate on the class when made immutable (frozen=True).
-  """
+  """JAX-friendly wrapper for `dataclasses.dataclass`."""
 
   def __init__(
       self,
