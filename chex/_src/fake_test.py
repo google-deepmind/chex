@@ -313,5 +313,25 @@ class PmapFakeTest(parameterized.TestCase):
           overidden_foo(x=inputs, y=inputs), expected)
 
 
+class _Counter():
+  """Counts how often an instance is called."""
+
+  def __init__(self):
+    self.count = 0
+
+  def __call__(self, *unused_args, **unused_kwargs):
+    self.count += 1
+
+
+class OnCallOfTransformedFunctionTest(parameterized.TestCase):
+
+  def test_on_call_of_transformed_function(self):
+    counter = _Counter()
+    with fake.OnCallOfTransformedFunction('jax.jit', counter):
+      jax.jit(jnp.sum)(jnp.zeros((10,)))
+      jax.jit(jnp.max)(jnp.zeros((10,)))
+    self.assertEqual(counter.count, 2)
+
+
 if __name__ == '__main__':
   absltest.main()

@@ -25,7 +25,7 @@ import functools
 import inspect
 import os
 import re
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 from unittest import mock
 from absl import flags
 import jax
@@ -298,3 +298,73 @@ def fake_pmap_and_jit(enable_pmap_patching: bool = True,
   stack.enter_context(fake_pmap(enable_pmap_patching))
   stack.enter_context(fake_jit(enable_jit_patching))
   return stack
+
+
+class OnCallOfTransformedFunction():
+  """Injects a callback into any transformed function.
+
+  A typical use-case is jax.jit or jax.pmap which is often hidden deep inside
+  the code. This context manager allows to inject a callback function into
+  functions which are transformed by the user-specified transformation.
+  The callback will receive the transformed function and its arguments.
+
+  The function can be useful to debug, profile and check the calls of any
+  transformed function in a program
+
+  For instance:
+
+  with chex.OnCallOfTransformedFunction('jax.jit', print):
+    [...]
+
+  would print all calls to any function which was jit-compiled within this
+  context.
+
+  We can also automatically create profiles on the first call of all the
+  jit compiled functions in the program:
+
+  class profile_once():
+    def __init__(self):
+      self._first_call = True
+
+    def __call__(self, fn, *args, **kwargs):
+      if self._first_call:
+        self._first_call = False
+        print(profile_from_HLO(fn.lower(*args, **kwargs))
+
+  with chex.OnCallOfTransformedFunction('jax.jit', profile_once()):
+    [...]
+  """
+
+  def __init__(
+      self,
+      fn_transformation: str,
+      callback_fn: Callable[..., Any]):
+    """Creates a new OnCallOfTransformedFunction context manager.
+
+    Args:
+      fn_transformation: identifier of the function transformation e.g.
+        'jax.jit', 'jax.pmap', ...
+      callback_fn: A callback function which receives the transformed function
+        and its arguments on every call.
+    """
+    self._fn_transformation = fn_transformation
+    self._callback_fn = callback_fn
+    self._patch = None
+    self._original_fn_transformation = None
+
+  def __enter__(self):
+    def _new_fn_transformation(fn, *args, **kwargs):
+      """Returns a transformed version of the given function."""
+      transformed_fn = self._original_fn_transformation(fn, *args, **kwargs)
+      @functools.wraps(transformed_fn)
+      def _new_transformed_fn(*args, **kwargs):
+        """Returns result of the returned function and calls the callback."""
+        self._callback_fn(transformed_fn, *args, **kwargs)
+        return transformed_fn(*args, **kwargs)
+      return _new_transformed_fn
+    self._patch = mock.patch(self._fn_transformation, _new_fn_transformation)
+    self._original_fn_transformation, unused_local = self._patch.get_original()
+    self._patch.start()
+
+  def __exit__(self, *unused_args):
+    self._patch.stop()
