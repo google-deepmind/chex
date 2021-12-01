@@ -29,8 +29,20 @@ class RestrictBackendsTest(absltest.TestCase):
   # These tests need an accelerator of some sort, so that JAX can try to use it.
   def setUp(self):
     super().setUp()
-    available_backends = jax.xla.xb.backends()
-    if not any(backend in available_backends for backend in ['gpu', 'tpu']):
+
+    try:
+      jax.devices('gpu')
+      gpu_backend_available = True
+    except RuntimeError:
+      gpu_backend_available = False
+
+    try:
+      jax.devices('tpu')
+      tpu_backend_available = True
+    except RuntimeError:
+      tpu_backend_available = False
+
+    if not tpu_backend_available or gpu_backend_available:
       self.skipTest('No known accelerator backends are available, so these '
                     'tests will not test anything useful.')
 
