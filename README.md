@@ -350,19 +350,8 @@ More examples can be found in [variants_test.py](https://github.com/deepmind/che
 
 ## Citing Chex
 
-To cite this repository:
+This repository is part of the [DeepMind JAX Ecosystem], to cite Chex please use
+the [DeepMind JAX Ecosystem citation].
 
-```
-@software{chex2020github,
-  author = {David Budden and Matteo Hessel and Iurii Kemaev and Stephen Spencer
-            and Fabio Viola},
-  title = {Chex: Testing made fun, in JAX!},
-  url = {http://github.com/deepmind/chex},
-  version = {0.0.1},
-  year = {2020},
-}
-```
-
-In this bibtex entry, the version number is intended to be from
-[chex/\_\_init\_\_.py](https://github.com/deepmind/chex/blob/master/chex/__init__.py),
-and the year corresponds to the project's open-source release.
+[DeepMind JAX Ecosystem]: https://deepmind.com/blog/article/using-jax-to-accelerate-our-research "DeepMind JAX Ecosystem"
+[DeepMind JAX Ecosystem citation]: https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt "Citation"
