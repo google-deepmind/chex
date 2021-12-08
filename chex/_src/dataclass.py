@@ -27,7 +27,7 @@ _RESERVED_DCLS_FIELD_NAMES = frozenset(("from_tuple", "replace", "to_tuple"))
 
 
 def mappable_dataclass(cls):
-  """Exposes dataclass as `collections.abc.Mapping` descendent.
+  """Exposes dataclass as ``collections.abc.Mapping`` descendent.
 
   Allows to traverse dataclasses in methods from `dm-tree` library.
 
@@ -35,13 +35,13 @@ def mappable_dataclass(cls):
   (i.e. positional args aren't supported; however can use generators/iterables).
 
   Args:
-    cls: dataclass to mutate.
+    cls: A dataclass to mutate.
 
   Returns:
-    Mutated dataclass implementing `collections.abc.Mapping` interface.
+    Mutated dataclass implementing ``collections.abc.Mapping`` interface.
   """
   if not dataclasses.is_dataclass(cls):
-    raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?)")
+    raise ValueError(f"Expected dataclass, got {cls} (change wrappers order?).")
 
   # Define methods for compatibility with `collections.abc.Mapping`.
   setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
@@ -100,13 +100,13 @@ def dataclass(
   to operate on the class when made immutable (frozen=True).
 
   Args:
-    cls: class to decorate
-    init: See :py:func:`dataclasses.dataclass`
-    repr: See :py:func:`dataclasses.dataclass`
-    eq: See :py:func:`dataclasses.dataclass`
-    order: See :py:func:`dataclasses.dataclass`
-    unsafe_hash: See :py:func:`dataclasses.dataclass`
-    frozen: See :py:func:`dataclasses.dataclass`
+    cls: A class to decorate.
+    init: See :py:func:`dataclasses.dataclass`.
+    repr: See :py:func:`dataclasses.dataclass`.
+    eq: See :py:func:`dataclasses.dataclass`.
+    order: See :py:func:`dataclasses.dataclass`.
+    unsafe_hash: See :py:func:`dataclasses.dataclass`.
+    frozen: See :py:func:`dataclasses.dataclass`.
     mappable_dataclass: If True (the default), methods to make the class
       implement the :py:class:`collections.abc.Mappable` interface will be
       generated and the class will include :py:class:`collections.abc.Mappable`

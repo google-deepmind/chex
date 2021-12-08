@@ -5,22 +5,119 @@ Assertions
 
 .. autosummary::
 
+    assert_axis_dimension
+    assert_axis_dimension_gt
     assert_devices_available
+    assert_equal
+    assert_equal_rank
+    assert_equal_shape
+    assert_equal_shape_prefix
+    assert_equal_shape_suffix
+    assert_exactly_one_is_none
+    assert_gpu_available
+    assert_is_broadcastable
+    assert_is_divisible
     assert_max_traces
+    assert_not_both_none
+    assert_numerical_grads
+    assert_rank
     assert_scalar
+    assert_scalar_in
+    assert_scalar_negative
+    assert_scalar_non_negative
+    assert_scalar_positive
+    assert_shape
+    assert_tpu_available
+    assert_tree_all_finite
+    assert_tree_no_nones
+    assert_tree_shape_prefix
+    assert_tree_shape_suffix
+    assert_trees_all_close
+    assert_trees_all_equal
+    assert_trees_all_equal_comparator
+    assert_trees_all_equal_dtypes
+    assert_trees_all_equal_shapes
+    assert_trees_all_equal_structs
+    assert_type
+    disable_asserts
+    enable_asserts
+    clear_trace_counter
+    if_args_not_none
 
 
-JaxAssertions
-~~~~~~~~~~~~~
+Jax Assertions
+~~~~~~~~~~~~~~
 
-.. autofunction:: assert_devices_available
 .. autofunction:: assert_max_traces
+.. autofunction:: assert_devices_available
+.. autofunction:: assert_gpu_available
+.. autofunction:: assert_tpu_available
 
 
-GenericAssertions
-~~~~~~~~~~~~~~~~~
+Tree Assertions
+~~~~~~~~~~~~~~~
 
+.. autofunction:: assert_tree_all_finite
+.. autofunction:: assert_tree_no_nones
+.. autofunction:: assert_tree_shape_prefix
+.. autofunction:: assert_tree_shape_suffix
+.. autofunction:: assert_trees_all_close
+.. autofunction:: assert_trees_all_equal
+.. autofunction:: assert_trees_all_equal_comparator
+.. autofunction:: assert_trees_all_equal_dtypes
+.. autofunction:: assert_trees_all_equal_shapes
+.. autofunction:: assert_trees_all_equal_structs
+
+
+Generic Assertions
+~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: assert_axis_dimension
+.. autofunction:: assert_axis_dimension_gt
+.. autofunction:: assert_equal
+.. autofunction:: assert_equal_rank
+.. autofunction:: assert_equal_shape
+.. autofunction:: assert_equal_shape_prefix
+.. autofunction:: assert_equal_shape_suffix
+.. autofunction:: assert_exactly_one_is_none
+.. autofunction:: assert_is_broadcastable
+.. autofunction:: assert_is_divisible
+.. autofunction:: assert_not_both_none
+.. autofunction:: assert_numerical_grads
+.. autofunction:: assert_rank
 .. autofunction:: assert_scalar
+.. autofunction:: assert_scalar_in
+.. autofunction:: assert_scalar_negative
+.. autofunction:: assert_scalar_non_negative
+.. autofunction:: assert_scalar_positive
+.. autofunction:: assert_shape
+.. autofunction:: assert_type
+
+
+Utils
+~~~~~
+
+.. autofunction:: disable_asserts
+.. autofunction:: enable_asserts
+.. autofunction:: clear_trace_counter
+.. autofunction:: if_args_not_none
+
+
+Backend restriction
+===================
+
+.. currentmodule:: chex
+
+.. autofunction:: restrict_backends
+
+
+Dataclasses
+===========
+
+.. currentmodule:: chex
+
+.. autofunction:: dataclass
+.. autofunction:: mappable_dataclass
 
 
 Fakes
@@ -49,16 +146,39 @@ Devices
 .. autofunction:: set_n_cpu_devices
 
 
-Dataclasses
-===========
+Pytypes
+=======
 
 .. currentmodule:: chex
 
-.. autofunction:: dataclass
+.. autosummary::
 
-Backend restriction
-===================
+    Array
+    ArrayBatched
+    Array
+    ArrayBatched
+    ArrayDevice
+    ArrayDType
+    ArrayNumpy
+    ArraySharded
+    ArrayTree
+    Device
+    CpuDevice
+    GpuDevice
+    TpuDevice
+    Numeric
+    PRNGKey
+    Scalar
+    Shape
 
+
+
+Variants
+========
 .. currentmodule:: chex
 
-.. autofunction:: restrict_backends
+.. autoclass:: ChexVariantType
+.. autoclass:: TestCase
+.. autofunction:: variants
+.. autofunction:: all_variants
+.. autofunction:: params_product
