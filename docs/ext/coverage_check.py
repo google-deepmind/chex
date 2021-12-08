@@ -39,7 +39,7 @@ def find_internal_python_modules(
       obj = getattr(mod, name)
       if inspect.ismodule(obj) and obj not in visited:
         if obj.__name__.startswith(_module.__name__):
-          if "_src" not in obj.__name__:
+          if '_src' not in obj.__name__:
             to_visit.append(obj)
             modules.add((obj.__name__, obj))
 
@@ -50,30 +50,46 @@ def get_public_symbols() -> Sequence[Tuple[str, types.ModuleType]]:
   names = set()
   for module_name, module in find_internal_python_modules(_module):
     for name in module.__all__:
-      names.add(module_name + "." + name)
+      names.add(module_name + '.' + name)
   return tuple(names)
 
 
 class CoverageCheck(builders.Builder):
   """Builder that checks all public symbols are included."""
 
-  name = "coverage_check"
+  name = 'coverage_check'
 
   def get_outdated_docs(self) -> str:
-    return "coverage_check"
+    return 'coverage_check'
 
   def write(self, *ignored: Any) -> None:
     pass
 
   def finish(self) -> None:
-    documented_objects = frozenset(self.env.domaindata["py"]["objects"])
+    documented_objects = frozenset(self.env.domaindata['py']['objects'])
     undocumented_objects = set(get_public_symbols()) - documented_objects
+
+    # Exclude deprecated API symbols.
+    assertion_exceptions = ('assert_tree_all_close',
+                            'assert_tree_all_equal_comparator',
+                            'assert_tree_all_equal_shapes',
+                            'assert_tree_all_equal_structs')
+    undocumented_objects -= {'chex.' + s for s in assertion_exceptions}
+
+    # Exclude pytypes.
+    pytypes_exceptions = ('Array', 'ArrayBatched', 'Array', 'ArrayBatched',
+                          'ArrayDevice', 'ArrayDType', 'ArrayNumpy',
+                          'ArraySharded', 'ArrayTree', 'Device', 'CpuDevice',
+                          'GpuDevice', 'TpuDevice', 'Numeric', 'PRNGKey',
+                          'Scalar', 'Shape')
+    undocumented_objects -= {'chex.' + s for s in pytypes_exceptions}
+
     if undocumented_objects:
       undocumented_objects = tuple(sorted(undocumented_objects))
       raise errors.SphinxError(
-          "All public symbols must be included in our documentation, did you "
-          "forget to add an entry to `api.rst`?\n"
-          f"Undocumented symbols: {undocumented_objects}")
+          'All public symbols must be included in our documentation, did you '
+          'forget to add an entry to `api.rst`?\n'
+          f'Undocumented symbols: {undocumented_objects}')
 
 
 def setup(app: application.Sphinx) -> Mapping[str, Any]:

@@ -59,7 +59,9 @@ cd ..
 
 # Build Sphinx docs.
 pip install -r requirements/requirements-docs.txt
-cd docs && make html
+cd docs
+make coverage_check
+make html
 cd ..
 
 set +u

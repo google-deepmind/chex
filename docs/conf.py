@@ -94,7 +94,6 @@ extensions = [
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'coverage_check',
-    'myst_nb',  # This is used for the .ipynb notebooks
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -125,11 +124,6 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 # html_favicon = '_static/favicon.ico'
-
-# -- Options for myst -------------------------------------------------------
-
-jupyter_execute_notebooks = 'force'
-execution_allow_errors = False
 
 # -- Options for katex ------------------------------------------------------
 

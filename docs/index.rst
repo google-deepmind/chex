@@ -11,6 +11,8 @@ This includes utils to help:
 * Debug (e.g. transforming pmaps in vmaps within a context manager).
 * Test JAX code across many variants (e.g. jitted vs non-jitted).
 
+Modules overview can be found `on GitHub <https://github.com/deepmind/chex#modules-overview>`_.
+
 Installation
 ------------
 
@@ -28,6 +30,12 @@ or from PyPI:
 
    api
 
+Citing Chex
+-----------
+
+This repository is part of the `DeepMind JAX Ecosystem <https://deepmind.com/blog/article/using-jax-to-accelerate-our-research>`_.
+
+To cite Chex please use the `DeepMind JAX Ecosystem citation <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_.
 
 Contribute
 ----------
