@@ -250,7 +250,7 @@ class ScalarAssertTest(parameterized.TestCase):
     asserts.assert_scalar_non_negative(0.5)
     asserts.assert_scalar_non_negative(0.)
     with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('must be non negative')):
+                                _get_err_regex('must be non-negative')):
       asserts.assert_scalar_non_negative(-0.5)
 
   def test_scalar_negative(self):
@@ -873,9 +873,7 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(
         AssertionError,
-        _get_err_regex(
-            r'leaf \'x/y\'.*different from expected: \(3, 2\) != \(3, 2, 1\)'
-        )):
+        _get_err_regex(r'leaf \'x/y\' has a shape of length 2')):
       asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
 
   def test_assert_tree_shape_prefix_none(self):

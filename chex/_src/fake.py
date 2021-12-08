@@ -31,7 +31,6 @@ from absl import flags
 import jax
 import jax.numpy as jnp
 
-
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chex_n_cpu_devices', 1,
                      'Number of CPU threads to use as devices in tests.')
@@ -42,7 +41,7 @@ _xla_device_count_flag_regexp = (
     r'[-]{0,2}xla_force_host_platform_device_count=(\d+)?(\s|$)')
 
 
-def get_n_cpu_devices_from_xla_flags():
+def get_n_cpu_devices_from_xla_flags() -> int:
   """Parses number of CPUs from the XLA environment flags."""
   m = re.match(_xla_device_count_flag_regexp, os.getenv('XLA_FLAGS', ''))
 
@@ -51,7 +50,7 @@ def get_n_cpu_devices_from_xla_flags():
   return n_devices
 
 
-def set_n_cpu_devices(n: Optional[int] = None):
+def set_n_cpu_devices(n: Optional[int] = None) -> None:
   """Forces XLA to use `n` CPU threads as host devices.
 
   This allows `jax.pmap` to be tested on a single-CPU platform.
@@ -60,11 +59,11 @@ def set_n_cpu_devices(n: Optional[int] = None):
   See https://github.com/google/jax/issues/1408.
 
   Args:
-    n: a required number of CPU devices (`FLAGS.chex_n_cpu_devices` is used by
-       default).
+    n: A required number of CPU devices (``FLAGS.chex_n_cpu_devices`` is used by
+      default).
 
   Raises:
-    RuntimeError: if XLA backends were already initialized.
+    RuntimeError: If XLA backends were already initialized.
   """
   n = n or FLAGS['chex_n_cpu_devices'].value
 
@@ -94,14 +93,13 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
 
 
 @functools.wraps(jax.pmap)
-def _fake_pmap(
-    fn,
-    axis_name: Optional[Any] = None,
-    *,
-    in_axes=0,
-    static_broadcasted_argnums: Union[int, Iterable[int]] = (),
-    jit_result: bool = False,
-    **unused_kwargs):
+def _fake_pmap(fn,
+               axis_name: Optional[Any] = None,
+               *,
+               in_axes=0,
+               static_broadcasted_argnums: Union[int, Iterable[int]] = (),
+               jit_result: bool = False,
+               **unused_kwargs):
   """Fake implementation of pmap using vmap."""
 
   if isinstance(static_broadcasted_argnums, int):
@@ -168,7 +166,7 @@ class FakeContext(contextlib.ExitStack):
     self.__exit__(None, None, None)
 
 
-def fake_jit(enable_patching: bool = True):
+def fake_jit(enable_patching: bool = True) -> FakeContext:
   """Context manager for patching `jax.jit` with the identity function.
 
   This is intended to be used as a debugging tool to programmatically enable or
@@ -197,7 +195,7 @@ def fake_jit(enable_patching: bool = True):
     fake_jit.context.stop()
 
   Args:
-    enable_patching: Whether to patch jax.jit.
+    enable_patching: Whether to patch `jax.jit`.
 
   Returns:
     Context where `jax.jit` is patched with the identity function jax is
@@ -219,13 +217,15 @@ def fake_jit(enable_patching: bool = True):
         yield
       finally:
         jax.config.update('jax_disable_jit', original_value)
+
     stack.enter_context(_jax_disable_jit())
 
   return stack
 
 
-def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
-  """Context manager for patching jax.pmap with jax.vmap.
+def fake_pmap(enable_patching: bool = True,
+              jit_result: bool = False) -> FakeContext:
+  """Context manager for patching `jax.pmap` with `jax.vmap`.
 
   This is intended to be used as a debugging tool to programmatically replace
   pmap transformations with a non-parallel vmap transformation. Beware that the
@@ -254,12 +254,12 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
     fake_pmap.context.stop()
 
   Args:
-    enable_patching: Whether to patch `jax.pmap`
+    enable_patching: Whether to patch `jax.pmap`.
     jit_result: Whether the transformed function should be jitted despite not
       being pmapped.
 
   Returns:
-    Context where `jax.pmap` is patched with `jax.vmap`
+    Context where `jax.pmap` is patched with `jax.vmap`.
   """
   # Improve implementation to automatically track JAX collectives development.
   stack = FakeContext()
@@ -276,19 +276,19 @@ def fake_pmap(enable_patching: bool = True, jit_result: bool = False):
 
 
 def fake_pmap_and_jit(enable_pmap_patching: bool = True,
-                      enable_jit_patching: bool = True):
-  """Context manager for patching jax.jit and jax.pmap.
+                      enable_jit_patching: bool = True) -> FakeContext:
+  """Context manager for patching `jax.jit` and `jax.pmap`.
 
   This is a convenience function, equivalent to nested `chex.fake_pmap` and
   `chex.fake_jit` contexts.
 
-  Note that calling (the true implementation of) jax.pmap will compile the
-  function, so faking jax.jit in this case will not stop the function from
+  Note that calling (the true implementation of) `jax.pmap` will compile the
+  function, so faking `jax.jit` in this case will not stop the function from
   being compiled.
 
   Args:
-    enable_pmap_patching: Whether to patch jax.pmap
-    enable_jit_patching: Whether to patch jax.jit
+    enable_pmap_patching: Whether to patch `jax.pmap`.
+    enable_jit_patching: Whether to patch `jax.jit`.
 
   Returns:
     Context where jax.pmap and jax.jit are patched with jax.vmap and the
@@ -335,10 +335,7 @@ class OnCallOfTransformedFunction():
     [...]
   """
 
-  def __init__(
-      self,
-      fn_transformation: str,
-      callback_fn: Callable[..., Any]):
+  def __init__(self, fn_transformation: str, callback_fn: Callable[..., Any]):
     """Creates a new OnCallOfTransformedFunction context manager.
 
     Args:
@@ -353,15 +350,19 @@ class OnCallOfTransformedFunction():
     self._original_fn_transformation = None
 
   def __enter__(self):
+
     def _new_fn_transformation(fn, *args, **kwargs):
       """Returns a transformed version of the given function."""
       transformed_fn = self._original_fn_transformation(fn, *args, **kwargs)
+
       @functools.wraps(transformed_fn)
       def _new_transformed_fn(*args, **kwargs):
         """Returns result of the returned function and calls the callback."""
         self._callback_fn(transformed_fn, *args, **kwargs)
         return transformed_fn(*args, **kwargs)
+
       return _new_transformed_fn
+
     self._patch = mock.patch(self._fn_transformation, _new_fn_transformation)
     self._original_fn_transformation, unused_local = self._patch.get_original()
     self._patch.start()
