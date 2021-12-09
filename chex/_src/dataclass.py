@@ -108,8 +108,8 @@ def dataclass(
     unsafe_hash: See :py:func:`dataclasses.dataclass`.
     frozen: See :py:func:`dataclasses.dataclass`.
     mappable_dataclass: If True (the default), methods to make the class
-      implement the :py:class:`collections.abc.Mappable` interface will be
-      generated and the class will include :py:class:`collections.abc.Mappable`
+      implement the :py:class:`collections.abc.Mapping` interface will be
+      generated and the class will include :py:class:`collections.abc.Mapping`
       in its base classes.
 
   Returns:
@@ -172,7 +172,7 @@ class _Dataclass():
 
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls)
-      # We remove `collection.abc.Mappable` mixin methods here to allow
+      # We remove `collection.abc.Mapping` mixin methods here to allow
       # fields with these names.
       for attr in ("values", "keys", "get", "items"):
         setattr(dcls, attr, None)  # redefine
