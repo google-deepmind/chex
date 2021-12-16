@@ -111,6 +111,12 @@ def dataclass(
       implement the :py:class:`collections.abc.Mapping` interface will be
       generated and the class will include :py:class:`collections.abc.Mapping`
       in its base classes.
+      `True` is the default, because being an instance of `Mapping` makes
+      `chex.dataclass` compatible with e.g. `jax.tree_*` methods, the `tree`
+      library, or methods related to tensorflow/python/utils/nest.py.
+      As a side-effect, e.g. `np.testing.assert_array_equal` will only check
+      the field names are equal and not the content. Use `chex.assert_tree_*`
+      instead.
 
   Returns:
     A JAX-friendly dataclass.
