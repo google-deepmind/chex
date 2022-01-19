@@ -310,7 +310,7 @@ def assert_equal_shape_prefix(inputs: Sequence[Array], prefix_len: int) -> None:
 
 @_ai.chex_assertion
 def assert_equal_shape_suffix(inputs: Sequence[Array], suffix_len: int) -> None:
-  """Check that the final ``suffix_len`` dims of all inputs have same shape.
+  """Checks that the final ``suffix_len`` dims of all inputs have same shape.
 
   Args:
     inputs: A collection of input arrays.
@@ -720,6 +720,126 @@ def assert_tree_no_nones(tree: ArrayTree) -> None:
     if leaf is None:
       nonlocal errors
       errors.append(f"`None` detected at '{_ai.format_tree_path(path)}'.")
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+  if errors:
+    raise AssertionError("\n".join(errors))
+
+
+@_ai.chex_assertion
+def assert_tree_has_only_ndarrays(tree: ArrayTree,
+                                  *,
+                                  ignore_nones: bool = False) -> None:
+  """Checks that all `tree`'s leaves are n-dimensional arrays (tensors).
+
+  Args:
+    tree: A tree to assert.
+    ignore_nones: Whether to ignore `None` in the tree.
+
+  Raises:
+    AssertionError: If the tree contains an object which is not a ndarray.
+  """
+  if not ignore_nones:
+    assert_tree_no_nones(tree)
+
+  errors = []
+
+  def _assert_fn(path, leaf):
+    if leaf is not None:
+      if not isinstance(leaf, (np.ndarray, jnp.ndarray)):
+        nonlocal errors
+        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not an "
+                       f"ndarray (type={type(leaf)})."))
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+  if errors:
+    raise AssertionError("\n".join(errors))
+
+
+@_ai.chex_assertion
+def assert_tree_is_on_host(tree: ArrayTree,
+                           *,
+                           allow_cpu_device: bool = True,
+                           ignore_nones: bool = False) -> None:
+  """Checks that all leaves are ndarrays residing in the host memory (on CPU).
+
+  This assertion only accepts trees consisting of ndarrays.
+
+  Args:
+    tree: A tree to assert.
+    allow_cpu_device: Whether to allow JAX arrays that reside on a CPU device.
+    ignore_nones: Whether to ignore `None` in the tree.
+
+  Raises:
+    AssertionError: If the tree contains a leaf that is not a ndarray or does
+      not reside on host.
+  """
+  assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
+  errors = []
+
+  def _assert_fn(path, leaf):
+    if leaf is not None:
+      if not isinstance(leaf, np.ndarray):
+        if not (allow_cpu_device and leaf.device().platform == "cpu"):
+          nonlocal errors
+          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                         f"{leaf.device()}."))
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+  if errors:
+    raise AssertionError("\n".join(errors))
+
+
+@_ai.chex_assertion
+def assert_tree_is_on_device(tree: ArrayTree,
+                             *,
+                             platform: Union[Sequence[str],
+                                             str] = ("gpu", "tpu"),
+                             device: Optional[pytypes.Device] = None,
+                             ignore_nones: bool = False) -> None:
+  """Checks that all leaves are ndarrays residing in device memory (in HBM).
+
+  Args:
+    tree: A tree to assert.
+    platform: A platform or a list of platforms where the leaves are expected to
+      reside. Ignored if `device` is specified.
+    device: An optional device where the tree's arrays are expected to reside.
+      Any device (except CPU) is accepted if not specified.
+    ignore_nones: Whether to ignore `None` in the tree.
+
+  Raises:
+    AssertionError: If the tree contains a leaf that is not a ndarray or does
+      not reside on the specified device or platform.
+  """
+  assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
+
+  # If device is specified, require its platform.
+  if device is not None:
+    platform = (device.platform,)
+  elif not isinstance(platform, collections.abc.Sequence):
+    platform = (platform,)
+
+  errors = []
+
+  def _assert_fn(path, leaf):
+    if leaf is not None:
+      nonlocal errors
+
+      # Check that the leaf is a JAX tensor.
+      if not isinstance(leaf, jnp.ndarray):
+        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
+                       "JAX ndarray (type={type(leaf)})."))
+      else:
+        # Check the platform.
+        if leaf.device().platform not in platform:
+          errors.append(
+              (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+               f"'{leaf.device().platform}', expected '{platform}'."))
+
+        # Check the device.
+        if device is not None and leaf.device() != device:
+          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                         f"{leaf.device()}, expected {device}."))
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
   if errors:

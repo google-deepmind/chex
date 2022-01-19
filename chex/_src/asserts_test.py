@@ -26,6 +26,7 @@ import jax.numpy as jnp
 import numpy as np
 
 _get_err_regex = asserts_internal.get_err_regex
+_num_devices_available = asserts_internal.num_devices_available
 
 
 def as_arrays(arrays):
@@ -324,7 +325,7 @@ class EqualShapeAssertTest(parameterized.TestCase):
       ('first_few_dims', [[1, 2, 3], [1, 2, 4], [1, 2, 5]], [0, 1]),
       ('first_and_last', [[1, 2, 1], [1, 3, 1], [1, 4, 1]], [0, 2]),
       ('first_and_last_neg', [[1, 2, 3, 4], [1, 5, 4], [1, 4]], [0, -1]),
-      )
+  )
   def test_equal_shape_at_dims_should_pass(self, shapes, dims):
     arrays = [array_from_shape(*shape) for shape in shapes]
     asserts.assert_equal_shape(arrays, dims=dims)
@@ -334,12 +335,11 @@ class EqualShapeAssertTest(parameterized.TestCase):
       ('last_dim', [[1, 3], [1, 4]], 1),
       ('last_dim_neg', [[1, 3], [1, 4]], -1),
       ('multiple_dims', [[1, 2, 3], [1, 2, 4]], [0, 2]),
-      )
+  )
   def test_equal_shape_at_dims_should_fail(self, shapes, dims):
     arrays = [array_from_shape(*shape) for shape in shapes]
     with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex('have different shapes at dims')):
+        AssertionError, _get_err_regex('have different shapes at dims')):
       asserts.assert_equal_shape(arrays, dims=dims)
 
 
@@ -801,6 +801,155 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=False)
 
+  def test_assert_tree_has_only_ndarrays(self):
+    # Check correct inputs.
+    asserts.assert_tree_has_only_ndarrays({'a': jnp.zeros(1), 'b': np.ones(3)})
+    asserts.assert_tree_has_only_ndarrays(np.zeros(4))
+    asserts.assert_tree_has_only_ndarrays(())
+
+    # Check incorrect inputs.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' is not an ndarray')):
+      asserts.assert_tree_has_only_ndarrays({'a': jnp.zeros((1,)), 'b': 1})
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b/1\' is not an ndarray')):
+      asserts.assert_tree_has_only_ndarrays({'a': jnp.zeros(101), 'b': [1, 2]})
+
+    # Check `None`.
+    tree_with_none = (np.array([2]), None)
+    asserts.assert_tree_has_only_ndarrays(tree_with_none, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_has_only_ndarrays(tree_with_none)
+
+  def test_assert_tree_is_on_host(self):
+    # Check Numpy arrays.
+    for flag in (False, True):
+      asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': np.ones(3)},
+                                     allow_cpu_device=flag)
+      asserts.assert_tree_is_on_host(np.zeros(4), allow_cpu_device=flag)
+      asserts.assert_tree_is_on_host(
+          jax.device_get(jax.device_put(np.ones(3))), allow_cpu_device=flag)
+      asserts.assert_tree_is_on_host((), allow_cpu_device=flag)
+
+    # Check DeviceArray (for platforms other than CPU).
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' resides on')):
+      asserts.assert_tree_is_on_host({'a': jnp.zeros(1)},
+                                     allow_cpu_device=False)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' resides on')):
+      asserts.assert_tree_is_on_host({'a': jax.device_put(np.zeros(1))},
+                                     allow_cpu_device=False)
+
+    # Check Jax arrays on CPU.
+    cpu_arr = jax.device_put(np.ones(5), jax.devices('cpu')[0])
+    asserts.assert_tree_is_on_host({'a': cpu_arr})
+    asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': cpu_arr})
+
+    # Disallow JAX arrays on CPU.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' resides on.*CPU')):
+      asserts.assert_tree_is_on_host({'a': cpu_arr},
+                                     allow_cpu_device=False)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' resides on.*CPU')):
+      asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': cpu_arr},
+                                     allow_cpu_device=False)
+
+    # Check incorrect inputs.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' is not an ndarray')):
+      asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': 1})
+
+    # Check `None`.
+    tree_with_none = (np.array([2]), None)
+    asserts.assert_tree_is_on_host(tree_with_none, ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_is_on_host(tree_with_none)
+
+  def test_assert_tree_is_on_device(self):
+    # Check CPU platform.
+    cpu = jax.devices('cpu')[0]
+    to_cpu = lambda x: jax.device_put(x, cpu)
+
+    cpu_tree = {'a': to_cpu(np.zeros(1)), 'b': to_cpu(np.ones(3))}
+    asserts.assert_tree_is_on_device(cpu_tree, device=cpu)
+    asserts.assert_tree_is_on_device(cpu_tree, platform='cpu')
+    asserts.assert_tree_is_on_device(cpu_tree, platform=['cpu'])
+    asserts.assert_tree_is_on_device(cpu_tree, device=cpu, platform='')
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' resides on \'cpu\'')):
+      asserts.assert_tree_is_on_device(cpu_tree, platform='tpu')
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' resides on \'cpu\'')):
+      asserts.assert_tree_is_on_device(cpu_tree, platform=('tpu', 'gpu'))
+
+    # Check TPU platform (if available).
+    if _num_devices_available('tpu') > 1:
+      tpu_1, tpu_2 = jax.devices('tpu')[:2]
+      to_tpu_1 = lambda x: jax.device_put(x, tpu_1)
+      to_tpu_2 = lambda x: jax.device_put(x, tpu_2)
+
+      tpu_1_tree = {'a': to_tpu_1(np.zeros(1)), 'b': to_tpu_1(np.ones(3))}
+      tpu_2_tree = {'a': to_tpu_2(np.zeros(1)), 'b': to_tpu_2(np.ones(3))}
+      tpu_1_2_tree = {'a': to_tpu_1(np.zeros(1)), 'b': to_tpu_2(np.ones(3))}
+
+      # Device asserts.
+      asserts.assert_tree_is_on_device(tpu_1_tree, device=tpu_1)
+      asserts.assert_tree_is_on_device(tpu_2_tree, device=tpu_2)
+
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'a\' resides on TPU_0')):
+        asserts.assert_tree_is_on_device(tpu_1_tree, device=tpu_2)
+
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'a\' resides on TPU_1')):
+        asserts.assert_tree_is_on_device(tpu_2_tree, device=tpu_1)
+
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'a\' resides on .*CPU')):
+        asserts.assert_tree_is_on_device(cpu_tree, device=tpu_2)
+
+      # Platform asserts.
+      asserts.assert_tree_is_on_device(tpu_1_tree, platform='tpu')
+      asserts.assert_tree_is_on_device(tpu_2_tree, platform='tpu')
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'a\' resides on \'tpu\'')):
+        asserts.assert_tree_is_on_device(tpu_1_tree, platform='cpu')
+
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'a\' resides on \'tpu\'')):
+        asserts.assert_tree_is_on_device(tpu_2_tree, platform='gpu')
+
+      # Mixed cases.
+      asserts.assert_tree_is_on_device(tpu_1_2_tree, platform='tpu')
+      asserts.assert_tree_is_on_device((tpu_1_2_tree, cpu_tree),
+                                       platform=('cpu', 'tpu'))
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'1/a\' resides on \'cpu\'')):
+        asserts.assert_tree_is_on_device((tpu_1_2_tree, cpu_tree),
+                                         platform=('tpu'))
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('\'0/a\' resides on \'tpu\'')):
+        asserts.assert_tree_is_on_device((tpu_1_2_tree, cpu_tree),
+                                         platform=('cpu', 'gpu'))
+
+    # Check incorrect inputs.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' is not an ndarray')):
+      asserts.assert_tree_is_on_device({'a': np.zeros(1), 'b': 1})
+
+    # Check `None`.
+    asserts.assert_tree_is_on_device((None,), ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_is_on_device((None,))
+
   def test_assert_tree_no_nones(self):
     tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
     asserts.assert_tree_no_nones(tree_ok)
@@ -896,15 +1045,14 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
-            r'Tree leaf \'z\'.*different from expected: \(1, 1\) != \(2, 1\)'
-        )):
+            r'Tree leaf \'z\'.*different from expected: \(1, 1\) != \(2, 1\)')):
       asserts.assert_tree_shape_suffix(tree, (2, 1))
 
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(
-            r'Tree leaf \'x/y\'.*different from expected: \(2, 1\) != \(1, 1\)'
-        )):
+            r'Tree leaf \'x/y\'.*different from expected: \(2, 1\) != \(1, 1\)')
+    ):
       asserts.assert_tree_shape_suffix(tree, (1, 1))
 
   def test_assert_tree_shape_suffix_long_suffix(self):

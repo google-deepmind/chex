@@ -29,6 +29,9 @@ Assertions
     assert_shape
     assert_tpu_available
     assert_tree_all_finite
+    assert_tree_has_only_ndarrays
+    assert_tree_is_on_device
+    assert_tree_is_on_host
     assert_tree_no_nones
     assert_tree_shape_prefix
     assert_tree_shape_suffix
@@ -58,6 +61,9 @@ Tree Assertions
 ~~~~~~~~~~~~~~~
 
 .. autofunction:: assert_tree_all_finite
+.. autofunction:: assert_tree_has_only_ndarrays
+.. autofunction:: assert_tree_is_on_device
+.. autofunction:: assert_tree_is_on_host
 .. autofunction:: assert_tree_no_nones
 .. autofunction:: assert_tree_shape_prefix
 .. autofunction:: assert_tree_shape_suffix
@@ -153,8 +159,6 @@ Pytypes
 
 .. autosummary::
 
-    Array
-    ArrayBatched
     Array
     ArrayBatched
     ArrayDevice
