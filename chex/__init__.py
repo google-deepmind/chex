@@ -45,6 +45,7 @@ from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_tree_has_only_ndarrays
 from chex._src.asserts import assert_tree_is_on_device
 from chex._src.asserts import assert_tree_is_on_host
+from chex._src.asserts import assert_tree_is_sharded
 from chex._src.asserts import assert_tree_no_nones
 from chex._src.asserts import assert_tree_shape_prefix
 from chex._src.asserts import assert_tree_shape_suffix
@@ -130,6 +131,7 @@ __all__ = (
     "assert_tree_has_only_ndarrays",
     "assert_tree_is_on_device",
     "assert_tree_is_on_host",
+    "assert_tree_is_sharded",
     "assert_tree_no_nones",
     "assert_tree_shape_prefix",
     "assert_tree_shape_suffix",

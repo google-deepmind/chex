@@ -737,7 +737,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
     ignore_nones: Whether to ignore `None` in the tree.
 
   Raises:
-    AssertionError: If the tree contains an object which is not a ndarray.
+    AssertionError: If the tree contains an object which is not an ndarray.
   """
   if not ignore_nones:
     assert_tree_no_nones(tree)
@@ -771,7 +771,7 @@ def assert_tree_is_on_host(tree: ArrayTree,
     ignore_nones: Whether to ignore `None` in the tree.
 
   Raises:
-    AssertionError: If the tree contains a leaf that is not a ndarray or does
+    AssertionError: If the tree contains a leaf that is not an ndarray or does
       not reside on host.
   """
   assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
@@ -808,7 +808,7 @@ def assert_tree_is_on_device(tree: ArrayTree,
     ignore_nones: Whether to ignore `None` in the tree.
 
   Raises:
-    AssertionError: If the tree contains a leaf that is not a ndarray or does
+    AssertionError: If the tree contains a leaf that is not an ndarray or does
       not reside on the specified device or platform.
   """
   assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
@@ -825,10 +825,10 @@ def assert_tree_is_on_device(tree: ArrayTree,
     if leaf is not None:
       nonlocal errors
 
-      # Check that the leaf is a JAX tensor.
-      if not isinstance(leaf, jnp.ndarray):
+      # Check that the leaf is a DeviceArray.
+      if not isinstance(leaf, jax.xla.DeviceArray):
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
-                       "JAX ndarray (type={type(leaf)})."))
+                       f"DeviceArray (type={type(leaf)})."))
       else:
         # Check the platform.
         if leaf.device().platform not in platform:
@@ -840,6 +840,47 @@ def assert_tree_is_on_device(tree: ArrayTree,
         if device is not None and leaf.device() != device:
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
                          f"{leaf.device()}, expected {device}."))
+
+  dm_tree.map_structure_with_path(_assert_fn, tree)
+  if errors:
+    raise AssertionError("\n".join(errors))
+
+
+@_ai.chex_assertion
+def assert_tree_is_sharded(tree: ArrayTree,
+                           *,
+                           devices: Sequence[pytypes.Device],
+                           ignore_nones: bool = False) -> None:
+  """Checks that all leaves are ndarrays sharded across the specified devices.
+
+  Args:
+    tree: A tree to assert.
+    devices: A list of devices which the tree's leaves are expected to be
+      sharded across. This list is order-sensitive.
+    ignore_nones: Whether to ignore `None` in the tree.
+
+  Raises:
+    AssertionError: If the tree contains a leaf that is not a device array
+      sharded across the specified devices.
+  """
+  assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
+
+  errors = []
+  devices = tuple(devices)
+
+  def _assert_fn(path, leaf):
+    if leaf is not None:
+      nonlocal errors
+
+      # Check that the leaf is a ShardedArray.
+      if not isinstance(leaf, jax.pxla.ShardedDeviceArray):
+        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
+                       f"ShardedDeviceArray (type={type(leaf)})."))
+      else:
+        shards = tuple(buf.device() for buf in leaf.device_buffers)
+        if shards != devices:
+          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
+                         f"across {shards} devices, expected {devices}."))
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
   if errors:

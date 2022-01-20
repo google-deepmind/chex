@@ -15,6 +15,7 @@
 """Tests for `asserts.py`."""
 
 import functools
+import re
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -623,7 +624,7 @@ class TypeAssertTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('unsupported dtype')):
       asserts.assert_type([a_float, an_int, a_np_float, a_jax_int],
-                          [np.complex, np.complex, float, int])
+                          [complex, complex, float, int])
 
 
 class AxisDimensionAssertionsTest(parameterized.TestCase):
@@ -944,11 +945,123 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('\'b\' is not an ndarray')):
       asserts.assert_tree_is_on_device({'a': np.zeros(1), 'b': 1})
 
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'b\' is not a DeviceArray')):
+      asserts.assert_tree_is_on_device({'a': jnp.zeros(1), 'b': np.ones(3)})
+
     # Check `None`.
     asserts.assert_tree_is_on_device((None,), ignore_nones=True)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_is_on_device((None,))
+
+  def test_assert_tree_is_sharded(self):
+    np_tree = {'a': np.zeros(1), 'b': np.ones(3)}
+
+    def _format(*devs):
+      return re.escape(f'{devs}')
+
+    # Check single-device case.
+    cpu = jax.devices('cpu')[0]
+    cpu_tree = jax.device_put_replicated(np_tree, (cpu,))
+
+    asserts.assert_tree_is_sharded(cpu_tree, devices=(cpu,))
+    asserts.assert_tree_is_sharded((), devices=(cpu,))
+
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex(r'\'a\' is sharded.*expected \(\)')):
+      asserts.assert_tree_is_sharded(cpu_tree, devices=())
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(f'\'a\' is sharded across {_format(cpu)}.*'
+                       f'expected {_format(cpu, cpu)}')):
+      asserts.assert_tree_is_sharded(cpu_tree, devices=(cpu, cpu))
+
+    # Check multiple-devices case (if available).
+    if _num_devices_available('tpu') > 1:
+      tpu_1, tpu_2 = jax.devices('tpu')[:2]
+
+      tpu_1_tree = jax.device_put_replicated(np_tree, (tpu_1,))
+      tpu_2_tree = jax.device_put_replicated(np_tree, (tpu_2,))
+      tpu_1_2_tree = jax.device_put_replicated(np_tree, (tpu_1, tpu_2))
+      tpu_2_1_tree = jax.device_put_replicated(np_tree, (tpu_2, tpu_1))
+
+      asserts.assert_tree_is_sharded(tpu_1_2_tree, devices=(tpu_1, tpu_2))
+      asserts.assert_tree_is_sharded(tpu_2_1_tree, devices=(tpu_2, tpu_1))
+
+      # Wrong device.
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'a\' is sharded across {_format(tpu_1)}.*'
+                         f'expected {_format(tpu_2)}')):
+        asserts.assert_tree_is_sharded(tpu_1_tree, devices=(tpu_2,))
+
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'a\' is sharded across {_format(cpu)}.*'
+                         f'expected {_format(tpu_2)}')):
+        asserts.assert_tree_is_sharded(cpu_tree, devices=(tpu_2,))
+
+      # Too many devices.
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'a\' is sharded across {_format(tpu_1)}.*'
+                         f'expected {_format(tpu_1, tpu_2)}')):
+        asserts.assert_tree_is_sharded(tpu_1_tree, devices=(tpu_1, tpu_2))
+
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'a\' is sharded across {_format(tpu_1, tpu_2)}.*'
+                         f'expected {_format(tpu_1, tpu_2, cpu)}')):
+        asserts.assert_tree_is_sharded(
+            tpu_1_2_tree, devices=(tpu_1, tpu_2, cpu))
+
+      # Wrong order.
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'a\' is sharded across {_format(tpu_2, tpu_1)}.*'
+                         f'expected {_format(tpu_1, tpu_2)}')):
+        asserts.assert_tree_is_sharded(tpu_2_1_tree, devices=(tpu_1, tpu_2))
+
+      # Mixed cases.
+      mixed_tree = (tpu_1_tree, tpu_2_tree)
+
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'0/a\' is sharded across {_format(tpu_1)}.*'
+                         f'expected {_format(tpu_2)}')):
+        asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_2,))
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'1/a\' is sharded across {_format(tpu_2)}.*'
+                         f'expected {_format(tpu_1)}')):
+        asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_1,))
+
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(f'\'0/a\' is sharded across {_format(tpu_1)}.*'
+                         f'expected {_format(tpu_1, tpu_2)}')):
+        asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_1, tpu_2))
+
+    # Check incorrect inputs.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'1\' is not an ndarray')):
+      asserts.assert_tree_is_sharded((cpu_tree, 1123), devices=(cpu,))
+
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('\'a\' is not a ShardedDeviceArray')):
+      asserts.assert_tree_is_sharded({'a': jnp.zeros(1)}, devices=(cpu,))
+
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('\'a\' is not a ShardedDeviceArray')):
+      asserts.assert_tree_is_sharded({'a': np.zeros(1)}, devices=(cpu,))
+
+    # Check `None`.
+    asserts.assert_tree_is_sharded((None,), devices=(cpu,), ignore_nones=True)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_is_sharded((None,), devices=(cpu,))
 
   def test_assert_tree_no_nones(self):
     tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
