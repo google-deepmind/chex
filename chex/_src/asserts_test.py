@@ -824,6 +824,8 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_has_only_ndarrays(tree_with_none)
 
   def test_assert_tree_is_on_host(self):
+    cpu = jax.devices('cpu')[0]
+
     # Check Numpy arrays.
     for flag in (False, True):
       asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': np.ones(3)},
@@ -844,7 +846,7 @@ class TreeAssertionsTest(parameterized.TestCase):
                                      allow_cpu_device=False)
 
     # Check Jax arrays on CPU.
-    cpu_arr = jax.device_put(np.ones(5), jax.devices('cpu')[0])
+    cpu_arr = jax.device_put(np.ones(5), cpu)
     asserts.assert_tree_is_on_host({'a': cpu_arr})
     asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': cpu_arr})
 
@@ -863,6 +865,13 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('\'b\' is not an ndarray')):
       asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': 1})
+
+    # ShardedArrays are disallowed.
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' has unexpected type')):
+      asserts.assert_tree_is_on_host(
+          {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
+          allow_cpu_device=False)
 
     # Check `None`.
     tree_with_none = (np.array([2]), None)
@@ -946,8 +955,14 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_is_on_device({'a': np.zeros(1), 'b': 1})
 
     with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('\'b\' is not a DeviceArray')):
+                                _get_err_regex('\'b\' has unexpected type')):
       asserts.assert_tree_is_on_device({'a': jnp.zeros(1), 'b': np.ones(3)})
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('\'a\' is a ShardedDeviceArra')):
+      # ShardedArrays are disallowed.
+      asserts.assert_tree_is_on_device(
+          {'a': jax.device_put_replicated(np.zeros(1), (cpu,))}, device=cpu)
 
     # Check `None`.
     asserts.assert_tree_is_on_device((None,), ignore_nones=True)
@@ -971,6 +986,12 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex(r'\'a\' is sharded.*expected \(\)')):
       asserts.assert_tree_is_sharded(cpu_tree, devices=())
+
+    # DeviceArrays are disallowed.
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('\'a\' is not a ShardedDeviceArray')):
+      asserts.assert_tree_is_sharded({'a': jax.device_put(np.zeros(1), cpu)},
+                                     devices=(cpu,))
 
     with self.assertRaisesRegex(
         AssertionError,

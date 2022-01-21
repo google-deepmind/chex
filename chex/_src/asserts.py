@@ -780,10 +780,20 @@ def assert_tree_is_on_host(tree: ArrayTree,
   def _assert_fn(path, leaf):
     if leaf is not None:
       if not isinstance(leaf, np.ndarray):
-        if not (allow_cpu_device and leaf.device().platform == "cpu"):
-          nonlocal errors
-          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
-                         f"{leaf.device()}."))
+        nonlocal errors
+
+        if (isinstance(leaf, jax.xla.DeviceArray) and
+            not isinstance(leaf, jax.pxla.ShardedDeviceArray)):
+          if allow_cpu_device:
+            if leaf.device().platform != "cpu":
+              errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides"
+                             f" on {leaf.device()}."))
+          else:
+            errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides "
+                           f"on {leaf.device()} (CPU devices are disallowed)."))
+        else:  # not a DeviceArray
+          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
+                         f"unexpected type: {type(leaf)}."))
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
   if errors:
@@ -798,6 +808,8 @@ def assert_tree_is_on_device(tree: ArrayTree,
                              device: Optional[pytypes.Device] = None,
                              ignore_nones: bool = False) -> None:
   """Checks that all leaves are ndarrays residing in device memory (in HBM).
+
+  Sharded DeviceArrays are disallowed.
 
   Args:
     tree: A tree to assert.
@@ -826,20 +838,26 @@ def assert_tree_is_on_device(tree: ArrayTree,
       nonlocal errors
 
       # Check that the leaf is a DeviceArray.
-      if not isinstance(leaf, jax.xla.DeviceArray):
-        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
-                       f"DeviceArray (type={type(leaf)})."))
-      else:
-        # Check the platform.
-        if leaf.device().platform not in platform:
-          errors.append(
-              (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
-               f"'{leaf.device().platform}', expected '{platform}'."))
+      if isinstance(leaf, jax.xla.DeviceArray):
+        if isinstance(leaf, jax.pxla.ShardedDeviceArray):
+          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is a "
+                         f"ShardedDeviceArray which are disallowed. "
+                         f" (type={type(leaf)})."))
+        else:  # DeviceArray and not ShardedDeviceArray
+          # Check the platform.
+          if leaf.device().platform not in platform:
+            errors.append(
+                (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                 f"'{leaf.device().platform}', expected '{platform}'."))
 
-        # Check the device.
-        if device is not None and leaf.device() != device:
-          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
-                         f"{leaf.device()}, expected {device}."))
+          # Check the device.
+          if device is not None and leaf.device() != device:
+            errors.append(
+                (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                 f"{leaf.device()}, expected {device}."))
+      else:
+        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
+                       f"unexpected type: {type(leaf)}."))
 
   dm_tree.map_structure_with_path(_assert_fn, tree)
   if errors:
