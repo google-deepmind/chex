@@ -78,6 +78,7 @@ from chex._src.pytypes import Device
 from chex._src.pytypes import GpuDevice
 from chex._src.pytypes import Numeric
 from chex._src.pytypes import PRNGKey
+from chex._src.pytypes import PyTreeDef
 from chex._src.pytypes import Scalar
 from chex._src.pytypes import Shape
 from chex._src.pytypes import TpuDevice
@@ -158,6 +159,7 @@ __all__ = (
     "Numeric",
     "params_product",
     "PRNGKey",
+    "PyTreeDef",
     "restrict_backends",
     "Scalar",
     "set_n_cpu_devices",

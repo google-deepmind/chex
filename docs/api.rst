@@ -174,6 +174,7 @@ Pytypes
     TpuDevice
     Numeric
     PRNGKey
+    PyTreeDef
     Scalar
     Shape
 

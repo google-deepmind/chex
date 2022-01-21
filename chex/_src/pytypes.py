@@ -34,6 +34,7 @@ else:
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
 PRNGKey = Array
+PyTreeDef = type(jax.tree_structure(None))
 Shape = Tuple[int, ...]
 
 CpuDevice = jax.lib.xla_extension.CpuDevice
