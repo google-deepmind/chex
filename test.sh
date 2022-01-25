@@ -50,11 +50,18 @@ pytype `find chex/_src/ -name "*py" | xargs` -k
 pip install -r requirements/requirements-test.txt
 mkdir _testing && cd _testing
 
+
+# Unit tests.
+# Disable JAX optimizations to reduce testing time.
+export JAX_DISABLE_MOST_OPTIMIZATIONS=True
+
 # Main tests.
 pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n_cpu_devices_test"
 
 # Isolate tests that use `chex.set_n_cpu_device()`.
 pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu_devices_test"
+
+unset JAX_DISABLE_MOST_OPTIMIZATIONS
 cd ..
 
 # Build Sphinx docs.
