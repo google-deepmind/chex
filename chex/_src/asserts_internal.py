@@ -39,14 +39,25 @@ TLeaf = Any
 TLeavesEqCmpFn = Callable[[TLeaf, TLeaf], bool]
 TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 
+# TODO(iukemaev): define a typing protocol for TChexAssertion.
+# Chex assertion signature:
+# (*args,
+#  custom_message: Optional[str] = None,
+#  custom_message_format_vars: Sequence[Any] = (),
+#  include_default_message: bool = True,
+#  exception_type: Type[Exception] = AssertionError,
+#  **kwargs)
+TChexAssertion = Callable[..., None]
+TAssertFn = Callable[..., None]
+
 # Matchers.
 TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
 TShapeMatcher = Sequence[TDimMatcher]
 
 # Chex namespace variables.
-ERR_PREFIX = "[Chex] "
-TRACE_COUNTER = collections.Counter()
-DISABLE_ASSERTIONS = False
+ERR_PREFIX: str = "[Chex] "
+TRACE_COUNTER: collections.Counter = collections.Counter()
+DISABLE_ASSERTIONS: bool = False
 
 
 def assert_collection_of_arrays(inputs: Sequence[pytypes.Array]):
@@ -92,31 +103,25 @@ def get_err_regex(message: str) -> str:
   return f"{re.escape(ERR_PREFIX)}[\\s\\S]*{message}"
 
 
-def chex_assertion(assert_fn: Callable[..., None]) -> Callable[..., None]:
-  """Wraps Chex assert functions to control their common behaviour.
+def make_static_assertion(assert_fn: TAssertFn) -> TChexAssertion:
+  """Constructs a static assertion from an assert function.
 
-  Extends the assertion to support the following optional auxiliary kwargs:
-    custom_message: A string to include into the emitted exception messages.
-    include_default_message: Whether to include the default Chex message into
-      the emitted exception messages.
-    exception_type: An exception type to use. `AssertionError` by default.
+  This wrapper should be used for assertions that do not check values or are
+  not used in jitted code.
 
   Args:
-    assert_fn: An assertion function.
+    assert_fn: a function implementing the check.
 
   Returns:
-   A wrapped assertion function with the auxiliary kwargs.
+    A chex assertion.
   """
 
-  @functools.wraps(assert_fn)
-  def _chex_assertion(*args,
-                      custom_message: Optional[str] = None,
-                      include_default_message: bool = True,
-                      exception_type: Type[Exception] = AssertionError,
-                      **kwargs) -> None:
-    if DISABLE_ASSERTIONS:
-      return
-
+  def _static_assert(*args,
+                     custom_message: Optional[str] = None,
+                     custom_message_format_vars: Sequence[Any] = (),
+                     include_default_message: bool = True,
+                     exception_type: Type[Exception] = AssertionError,
+                     **kwargs) -> None:
     # Format error's stack trace to remove Chex' internal frames.
     assertion_exc = None
     value_exc = None
@@ -145,11 +150,59 @@ def chex_assertion(assert_fn: Callable[..., None]) -> Callable[..., None]:
 
         # Whether to include a custom error message.
         if custom_message:
+          if custom_message_format_vars:
+            custom_message = custom_message.format(*custom_message_format_vars)
           error_msg = f"{error_msg} [{custom_message}]"
 
         raise exception_type(error_msg)
 
-  return _chex_assertion
+  return _static_assert
+
+
+def chex_assertion(assert_fn: TAssertFn,
+                   value_assertion: bool) -> TChexAssertion:
+  """Wraps Chex assert functions to control their common behaviour.
+
+  Extends the assertion to support the following optional auxiliary kwargs:
+    custom_message: A string to include into the emitted exception messages.
+    custom_message_format_vars: A list of variables to pass as arguments to
+      `custom_message.format()`.
+    include_default_message: Whether to include the default Chex message into
+      the emitted exception messages.
+    exception_type: An exception type to use. `AssertionError` by default.
+
+  Args:
+    assert_fn: A function implementing the check.
+    value_assertion: A bool indicating whether the assertion depends on actual
+      tensors' values.
+
+  Returns:
+    A Chex assertion (with auxiliary kwargs).
+  """
+  host_assertion = make_static_assertion(assert_fn)
+
+  @functools.wraps(assert_fn)
+  def _chex_assert_fn(*args, **kwargs) -> None:
+    if DISABLE_ASSERTIONS:
+      return
+
+    if value_assertion and has_tracers((args, kwargs)):
+      cte_url = ("https://jax.readthedocs.io/en/latest/errors.html"
+                 "#jax.errors.ConcretizationTypeError")
+      raise RuntimeError(
+          f"Assertions that use tensors' values cannot be called from a "
+          f"jax-traced code. See {cte_url}.")
+    else:
+      try:
+        host_assertion(*args, **kwargs)
+      except jax.errors.ConcretizationTypeError as exc:
+        msg = ("Chex assertion detected `ConcretizationTypeError`: it is very "
+               "likely that it tried to access tensors' values during tracing. "
+               "Make sure that you defined a jittable version of this Chex "
+               "assertion.")
+        raise exc from RuntimeError(msg)
+
+  return _chex_assert_fn
 
 
 def format_tree_path(path: Sequence[Any]) -> str:
@@ -182,7 +235,7 @@ def has_tracers(tree: pytypes.ArrayTree) -> bool:
   return any(isinstance(x, jax.core.Tracer) for x in jax.tree_leaves(tree))
 
 
-def is_traceable(fn):
+def is_traceable(fn) -> bool:
   """Checks if function is traceable.
 
   JAX traces a function when it is wrapped with @jit, @pmap, or @vmap.

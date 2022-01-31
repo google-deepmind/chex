@@ -21,6 +21,7 @@ from absl.testing import parameterized
 from chex._src import asserts_internal as ai
 from chex._src import variants
 import jax
+import jax.numpy as jnp
 
 
 class IsTraceableTest(variants.TestCase):
@@ -68,12 +69,12 @@ class ExceptionMessageFormatTest(variants.TestCase):
 
     exc_msg = lambda x: f'{x} is non-positive.'
 
-    @ai.chex_assertion
+    @functools.partial(ai.chex_assertion, value_assertion=False)
     def assert_positive(x):
       if x <= 0:
         raise AssertionError(exc_msg(x))
 
-    @ai.chex_assertion
+    @functools.partial(ai.chex_assertion, value_assertion=False)
     def assert_each_positive(*args):
       for x in args:
         assert_positive(x)
@@ -109,6 +110,48 @@ class ExceptionMessageFormatTest(variants.TestCase):
             custom_message=custom_msg,
             include_default_message=include_default_msg,
             exception_type=exc_type)
+
+
+class JitCompatibleTest(variants.TestCase):
+
+  def test_api(self):
+
+    def assert_fn(x):
+      if x.shape != (2,):
+        raise AssertionError(f'shape != (2,) {x.shape}!')
+
+    for transform_fn in (jax.jit, jax.grad, jax.vmap):
+      x_ok = jnp.ones((2,))
+      x_wrong = jnp.ones((3,))
+      is_vmap = transform_fn is jax.vmap
+      if is_vmap:
+        x_ok, x_wrong = (jnp.expand_dims(x, 0) for x in (x_ok, x_wrong))
+
+      # Jax-compatible.
+      assert_compat_fn = ai.chex_assertion(assert_fn, value_assertion=False)
+
+      def compat_fn(x, assertion=assert_compat_fn):
+        assertion(x)
+        return x.sum()
+
+      if not is_vmap:
+        compat_fn(x_ok)
+      transform_fn(compat_fn)(x_ok)
+      with self.assertRaisesRegex(AssertionError, 'shape !='):
+        transform_fn(compat_fn)(x_wrong)
+
+      # JAX-incompatible.
+      assert_incompat_fn = ai.chex_assertion(assert_fn, value_assertion=True)
+
+      def incompat_fn(x, assertion=assert_incompat_fn):
+        assertion(x)
+        return x.sum()
+
+      if not is_vmap:
+        incompat_fn(x_ok)
+      with self.assertRaisesRegex(RuntimeError,
+                                  'cannot be called from a jax-traced code'):
+        transform_fn(incompat_fn)(x_wrong)
 
 
 if __name__ == '__main__':
