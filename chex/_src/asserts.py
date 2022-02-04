@@ -18,10 +18,12 @@ import collections
 import collections.abc
 import functools
 import inspect
+import re
 import traceback
 from typing import Any, Callable, List, Optional, Sequence, Set, Type, Union, cast
 import unittest
 from unittest import mock
+import warnings
 
 from chex._src import asserts_internal as _ai
 from chex._src import pytypes
@@ -391,11 +393,36 @@ def _shape_matches(actual_shape: Sequence[int],
   return True
 
 
-@_static_assertion
+def _assert_einsum_shapes(
+    arrays: Sequence[Array], einshapes: str, **sizes: int):
+  """Assert shapes with einsum-style named axes."""
+  if not re.match(r"^[a-zA-Z]*(?:,[a-zA-Z]*)*$", einshapes):
+    raise ValueError(f"Malformed einsum string: '{einshapes}'")
+  msg = f"inferred from einsum string: '{einshapes}'"
+  einshapes = einshapes.split(",")
+  # The custom_message kwarg is provided through the chex_assertion decorator.
+  assert_rank(  # pylint: disable=unexpected-keyword-arg
+      arrays, [len(s) for s in einshapes], custom_message=msg)
+  expected_shapes = []
+  for arr, einshape in zip(arrays, einshapes):
+    expected_shape = []
+    observed_shape = getattr(arr, "shape", ())
+    for char, size in zip(einshape, observed_shape):
+      if char not in sizes:
+        expected_shape.append(None)
+        sizes[char] = size
+      else:
+        expected_shape.append(sizes[char])
+    expected_shapes.append(tuple(expected_shape))
+  assert_shape(  # pylint: disable=unexpected-keyword-arg
+      arrays, expected_shapes, custom_message=msg)
+
+
+@_ai.chex_assertion
 def assert_shape(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-    expected_shapes: Union[_ai.TShapeMatcher,
-                           Sequence[_ai.TShapeMatcher]]) -> None:
+    expected_shapes: Union[_ai.TShapeMatcher, Sequence[_ai.TShapeMatcher], str],
+    **named_axis_sizes: int) -> None:
   """Checks that the shape of all inputs matches specified ``expected_shapes``.
 
   Valid usages include:
@@ -407,8 +434,12 @@ def assert_shape(
     assert_shape(x, (2, {1, 3}))         # x has shape (2, 1) or (2, 3)
     assert_shape(x, (2, None))           # x has rank 2 and `x.shape[0] == 2`
     assert_shape(x, (2, ...))            # x has rank >= 1 and `x.shape[0] == 2`
+    assert_shape(x, 'abc')               # x has rank 3
+    assert_shape(x, 'abc', c=5)          # x has rank 3 and `x.shape[2] == 5`
     assert_shape([x, y], ())             # x and y are scalar
     assert_shape([x, y], [(), (2,3)])    # x is scalar and y has shape (2, 3)
+    assert_shape([x, y], 'ab,abc')       # x and y have equal-sized leading dims
+    assert_shape([x, y], 'ab,abc', b=3)  # ... `x.shape[1] == y.shape[1] == 5`
 
   Args:
     inputs: An array or a sequence of arrays.
@@ -416,6 +447,10 @@ def assert_shape(
       where the expected shape is a sequence of integer and `None` dimensions;
       if all inputs have same shape, a single shape may be passed as
       ``expected_shapes``.
+    **named_axis_sizes: If using einsum-style shape asserts, these impose strict
+      sizes to provided axes, e.g. ``assert_shape([x, y], 'ab,abc', b=3, c=5)``
+      assert specific sizes ``[(None, 3), (size_a, 3, 5)]``, where ``size_a`` is
+      inferred from the first occurrence of axis ``'a'``.
 
   Raises:
     AssertionError: If the lengths of ``inputs`` and ``expected_shapes`` do not
@@ -429,6 +464,16 @@ def assert_shape(
   # Ensure inputs and expected shapes are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
     inputs = [inputs]
+
+  # Einsum-style shape asserts.
+  if isinstance(expected_shapes, str):
+    _assert_einsum_shapes(inputs, expected_shapes, **named_axis_sizes)
+    return
+  elif named_axis_sizes:
+    warnings.warn(
+        "named-axis sizes are ignored when not using einsum-style shape "
+        "asserts; found named-axis sizes:"
+        ",".join(f"{k}={v}" for k, v in named_axis_sizes.items()))
 
   # Shapes are always lists or tuples, not scalars.
   if (not expected_shapes or not isinstance(expected_shapes[0], (list, tuple))):

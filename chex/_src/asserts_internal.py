@@ -160,7 +160,7 @@ def make_static_assertion(assert_fn: TAssertFn) -> TChexAssertion:
 
 
 def chex_assertion(assert_fn: TAssertFn,
-                   value_assertion: bool) -> TChexAssertion:
+                   value_assertion: bool = False) -> TChexAssertion:
   """Wraps Chex assert functions to control their common behaviour.
 
   Extends the assertion to support the following optional auxiliary kwargs:

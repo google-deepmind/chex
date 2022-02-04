@@ -429,6 +429,60 @@ class ShapeAssertTest(parameterized.TestCase):
         '`expected_shape` may not contain more than one ellipsis, but got .+'):
       asserts.assert_shape(array, expected_shape)
 
+  @parameterized.named_parameters(
+      ('single_scalar', array_from_shape(), '', {}),
+      ('single_vector', array_from_shape(3), 'a', {}),
+      ('single_vector_a', array_from_shape(3), 'a', {'a': 3}),
+      ('single_matrix', array_from_shape(3, 5), 'ab', {'a': 3}),
+      ('single_matrix_a', array_from_shape(3, 5), 'ab', {'a': 3}),
+      ('single_matrix_b', array_from_shape(3, 5), 'ab', {'b': 5}),
+      ('single_matrix_ab', array_from_shape(3, 5), 'ab', {'a': 3, 'b': 5}),
+      ('single_tensor', array_from_shape(3, 5, 7), 'abc', {}),
+      ('single_tensor_bc', array_from_shape(3, 5, 7), 'abc', {'b': 5, 'c': 7}),
+      ('scalar_vector', [array_from_shape(), array_from_shape(3)], ',a', {}),
+      ('vector_scalar', [array_from_shape(3), array_from_shape()], 'a,', {}),
+      ('vector_vector_same', [array_from_shape(3), array_from_shape(3)],
+       'a,a', {}),
+      ('vector_vector_same_a', [array_from_shape(3), array_from_shape(3)],
+       'a,a', {'a': 3}),
+      ('vector_vector_diff', [array_from_shape(3), array_from_shape(5)],
+       'a,b', {}),
+      ('vector_vector_diff_ab', [array_from_shape(3), array_from_shape(5)],
+       'a,b', {'a': 3, 'b': 5}),
+      ('attention', [array_from_shape(3, 5, 7, 11),
+                     array_from_shape(3, 5, 13, 11),
+                     array_from_shape(3, 5, 13, 17)],
+       'bhtk,bhTk,bhTv', {}),
+      ('attention_htT', [array_from_shape(3, 5, 7, 11),
+                         array_from_shape(3, 5, 13, 11),
+                         array_from_shape(3, 5, 13, 17)],
+       'bhtk,bhTk,bhTv', {'h': 5, 't': 7, 'T': 13}),
+  )
+  def test_einsum_shape_should_pass(
+      self, array, expected_shape, named_axis_sizes):
+    asserts.assert_shape(array, expected_shape, **named_axis_sizes)
+
+  @parameterized.named_parameters(
+      ('scalar_vs_vector', array_from_shape(), 'a', {}),
+      ('vector_vs_scalar', array_from_shape(3), '', {}),
+      ('vector_vs_matrix', array_from_shape(3), 'ab', {}),
+      ('matrix_vs_vector', array_from_shape(3, 5), 'a', {}),
+      ('attention_implicit', [array_from_shape(3, 5, 7, 11),
+                              array_from_shape(3, 19, 13, 11),
+                              array_from_shape(3, 19, 13, 17)],
+       'bhtk,bhTk,bhTv', {}),
+      ('attention_explicit', [array_from_shape(3, 5, 7, 11),
+                              array_from_shape(3, 5, 13, 11),
+                              array_from_shape(3, 5, 13, 17)],
+       'bhtk,bhTk,bhTv', {'v': 19}),  # Error because size('v') == 17.
+  )
+  def test_einsum_shape_should_fail(
+      self, array, expected_shape, named_axis_sizes):
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'\[inferred from einsum string: \'' + expected_shape + r'\'\]'):
+      asserts.assert_shape(array, expected_shape, **named_axis_sizes)
+
 
 def rank_array(n):
   return np.zeros(shape=[2] * n)
