@@ -69,12 +69,12 @@ class ExceptionMessageFormatTest(variants.TestCase):
 
     exc_msg = lambda x: f'{x} is non-positive.'
 
-    @functools.partial(ai.chex_assertion, value_assertion=False)
+    @ai.non_jittable_chex_assertion
     def assert_positive(x):
       if x <= 0:
         raise AssertionError(exc_msg(x))
 
-    @functools.partial(ai.chex_assertion, value_assertion=False)
+    @ai.non_jittable_chex_assertion
     def assert_each_positive(*args):
       for x in args:
         assert_positive(x)
@@ -127,10 +127,10 @@ class JitCompatibleTest(variants.TestCase):
       if is_vmap:
         x_ok, x_wrong = (jnp.expand_dims(x, 0) for x in (x_ok, x_wrong))
 
-      # Jax-compatible.
-      assert_compat_fn = ai.chex_assertion(assert_fn, value_assertion=False)
+      # Jit-compatible.
+      static_assert_fn = ai.static_chex_assertion(assert_fn)
 
-      def compat_fn(x, assertion=assert_compat_fn):
+      def compat_fn(x, assertion=static_assert_fn):
         assertion(x)
         return x.sum()
 
@@ -140,20 +140,73 @@ class JitCompatibleTest(variants.TestCase):
       with self.assertRaisesRegex(AssertionError, 'shape !='):
         transform_fn(compat_fn)(x_wrong)
 
-      # JAX-incompatible.
-      assert_incompat_fn = ai.chex_assertion(assert_fn, value_assertion=True)
+      # Non-jittable.
+      non_jittable_assert_fn = ai.non_jittable_chex_assertion(assert_fn)
 
-      def incompat_fn(x, assertion=assert_incompat_fn):
+      def incompat_fn(x, assertion=non_jittable_assert_fn):
         assertion(x)
         return x.sum()
 
       if not is_vmap:
         incompat_fn(x_ok)
-      with self.assertRaisesRegex(RuntimeError,
-                                  'cannot be called from a jax-traced code'):
-        transform_fn(incompat_fn)(x_wrong)
+      if transform_fn is jax.jit:
+        with self.assertRaisesRegex(
+            RuntimeError,
+            'Attempted to run a non-jittable assertion from jitted code'):
+          transform_fn(incompat_fn)(x_ok)
+      else:
+        transform_fn(incompat_fn)(x_ok)
+
+
+class TracerUtilsTest(parameterized.TestCase):
+
+  def test_tracer_catchers(self):
+    sq_norm_fn = lambda tree: sum((x * x).sum() for x in jax.tree_leaves(tree))
+
+    def _fn_false_false(tree):
+      self.assertFalse(ai.has_tracers(tree))
+      self.assertFalse(ai.has_dynamic_tracers(tree))
+      return sq_norm_fn(tree)
+
+    def _fn_true_false(tree):
+      self.assertTrue(ai.has_tracers(tree))
+      self.assertFalse(ai.has_dynamic_tracers(tree))
+      return sq_norm_fn(tree)
+
+    def _fn_true_true(tree):
+      self.assertTrue(ai.has_tracers(tree))
+      self.assertTrue(ai.has_dynamic_tracers(tree))
+      return sq_norm_fn(tree)
+
+    x = {'a': jnp.ones(3), 'b': jnp.zeros((3, 2))}
+    x_rep = jax.device_put_replicated(x, jax.devices())
+
+    # Pure.
+    _fn_false_false(x)
+
+    # One-level transforms.
+    jax.jit(_fn_true_true)(x)
+    jax.pmap(_fn_true_true, 'i')(x_rep)
+    jax.vmap(_fn_true_false)(x)
+    jax.grad(_fn_true_false)(x)
+
+    # Two-level transforms.
+    jax.vmap(jax.grad(_fn_true_false))(x)
+    jax.jit(jax.grad(_fn_true_true))(x)
+    jax.grad(jax.jit(_fn_true_true))(x)
+    jax.vmap(jax.jit(_fn_true_true))(x)
+
+    # Three-level tranforms.
+    jax.jit(jax.vmap(jax.grad(_fn_true_true)))(x)
+    jax.pmap(jax.vmap(jax.grad(_fn_true_true)), 'i')(x_rep)
+    jax.vmap(jax.grad(jax.jit(_fn_true_true)))(x)
+
+    # Check tests work.
+    with self.assertRaisesRegex(AssertionError, 'True is not false'):
+      jax.jit(jax.vmap(jax.grad(_fn_true_false)))(x)
 
 
 if __name__ == '__main__':
   jax.config.update('jax_numpy_rank_promotion', 'raise')
+  jax.config.update('jax_disable_most_optimizations', True)
   absltest.main()
