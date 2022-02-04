@@ -186,13 +186,13 @@ def fake_jit(enable_patching: bool = True) -> FakeContext:
   .. code-block:: python
 
     fake_jit_context = chex.fake_jit()
-    fake_jit.context.start()
+    fake_jit_context.start()
 
     @jax.jit
       def foo(x):
             ...
 
-    fake_jit.context.stop()
+    fake_jit_context.stop()
 
   Args:
     enable_patching: Whether to patch `jax.jit`.
@@ -247,11 +247,11 @@ def fake_pmap(enable_patching: bool = True,
   .. code-block:: python
 
     fake_pmap_context = chex.fake_pmap()
-    fake_pmap.context.start()
+    fake_pmap_context.start()
     @jax.pmap
       def foo(x):
         ...
-    fake_pmap.context.stop()
+    fake_pmap_context.stop()
 
   Args:
     enable_patching: Whether to patch `jax.pmap`.
