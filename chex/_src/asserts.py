@@ -943,9 +943,9 @@ def assert_tree_shape_prefix(tree: ArrayTree,
     if len(shape_prefix) > len(leaf.shape):
       errors.append(
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape "
-           f"of length {len(leaf.shape)} (shape={leaf.shape}) which is smaller "
+           f"of length {leaf.ndim} (shape={leaf.shape}) which is smaller "
            f"than the expected prefix of length {len(shape_prefix)} "
-           "(prefix={shape_prefix})."))
+           f"(prefix={shape_prefix})."))
       return
 
     suffix = leaf.shape[:len(shape_prefix)]
