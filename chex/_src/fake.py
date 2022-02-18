@@ -29,7 +29,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 from unittest import mock
 from absl import flags
 import jax
-import jax.numpy as jnp
+
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chex_n_cpu_devices', 1,
@@ -92,6 +92,36 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
   return fn
 
 
+def _ignore_axis_index_groups(fn):
+  @functools.wraps(fn)
+  def _fake(*args, axis_index_groups=None, **kwargs):
+    del axis_index_groups
+    return fn(*args, axis_index_groups=None, **kwargs)
+  return _fake
+
+
+_fake_all_gather = _ignore_axis_index_groups(jax.lax.all_gather)
+_fake_all_to_all = _ignore_axis_index_groups(jax.lax.all_to_all)
+_fake_psum = _ignore_axis_index_groups(jax.lax.psum)
+_fake_pmean = _ignore_axis_index_groups(jax.lax.pmean)
+_fake_pmax = _ignore_axis_index_groups(jax.lax.pmax)
+_fake_pmin = _ignore_axis_index_groups(jax.lax.pmin)
+_fake_pswapaxes = _ignore_axis_index_groups(jax.lax.pswapaxes)
+
+
+def _identity(x, *unused_args, **unused_kwargs):
+  return x
+
+
+_noop_all_gather = functools.wraps(jax.lax.psum)(_identity)
+_noop_all_to_all = functools.wraps(jax.lax.all_to_all)(_identity)
+_noop_psum = functools.wraps(jax.lax.psum)(_identity)
+_noop_pmean = functools.wraps(jax.lax.pmean)(_identity)
+_noop_pmax = functools.wraps(jax.lax.pmax)(_identity)
+_noop_pmin = functools.wraps(jax.lax.pmin)(_identity)
+_noop_pswapaxes = functools.wraps(jax.lax.pswapaxes)(_identity)
+
+
 @functools.wraps(jax.pmap)
 def _fake_pmap(fn,
                axis_name: Optional[Any] = None,
@@ -139,22 +169,6 @@ def _fake_pmap(fn,
     return output
 
   return wrapped_fn
-
-
-def _identity(x, *unused_args, **unused_kwargs):
-  return x
-
-
-_fake_psum = functools.wraps(jax.lax.psum)(_identity)
-_fake_pmean = functools.wraps(jax.lax.pmean)(_identity)
-_fake_pmax = functools.wraps(jax.lax.pmax)(_identity)
-_fake_pmin = functools.wraps(jax.lax.pmin)(_identity)
-
-
-@functools.wraps(jax.lax.all_gather)
-def _fake_all_gather(x, *unused_args, **unused_kwargs):
-  add_leading_dim = lambda t: t[jnp.newaxis]
-  return jax.tree_map(add_leading_dim, x)
 
 
 class FakeContext(contextlib.ExitStack):
@@ -223,15 +237,14 @@ def fake_jit(enable_patching: bool = True) -> FakeContext:
   return stack
 
 
-def fake_pmap(enable_patching: bool = True,
-              jit_result: bool = False) -> FakeContext:
+def fake_pmap(
+    enable_patching: bool = True,
+    jit_result: bool = False,
+    parallel_no_ops: bool = False) -> FakeContext:
   """Context manager for patching `jax.pmap` with `jax.vmap`.
 
   This is intended to be used as a debugging tool to programmatically replace
-  pmap transformations with a non-parallel vmap transformation. Beware that the
-  output is *not* guaranteed to be identical with `jax.pmap`! In particular, all
-  `jax.lax.p*` operations are replaced with identity maps when `fake_pmap` is
-  used.
+  pmap transformations with a non-parallel vmap transformation.
 
   Can be used either as a context managed scope:
 
@@ -257,6 +270,8 @@ def fake_pmap(enable_patching: bool = True,
     enable_patching: Whether to patch `jax.pmap`.
     jit_result: Whether the transformed function should be jitted despite not
       being pmapped.
+    parallel_no_ops: Replace JAX parallel operations with the identity function.
+      This is a compatibility options for previous fake_pmap behaviour.
 
   Returns:
     Context where `jax.pmap` is patched with `jax.vmap`.
@@ -267,11 +282,24 @@ def fake_pmap(enable_patching: bool = True,
     stack.enter_context(
         mock.patch('jax.pmap',
                    functools.partial(_fake_pmap, jit_result=jit_result)))
-    stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
-    stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
-    stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))
-    stack.enter_context(mock.patch('jax.lax.pmin', _fake_pmin))
-    stack.enter_context(mock.patch('jax.lax.all_gather', _fake_all_gather))
+
+    if parallel_no_ops:
+      stack.enter_context(mock.patch('jax.lax.all_gather', _noop_all_gather))
+      stack.enter_context(mock.patch('jax.lax.all_to_all', _noop_all_to_all))
+      stack.enter_context(mock.patch('jax.lax.psum', _noop_psum))
+      stack.enter_context(mock.patch('jax.lax.pmean', _noop_pmean))
+      stack.enter_context(mock.patch('jax.lax.pmax', _noop_pmax))
+      stack.enter_context(mock.patch('jax.lax.pmin', _noop_pmin))
+      stack.enter_context(mock.patch('jax.lax.pswapaxes', _noop_pswapaxes))
+    else:
+      stack.enter_context(mock.patch('jax.lax.all_gather', _fake_all_gather))
+      stack.enter_context(mock.patch('jax.lax.all_to_all', _fake_all_to_all))
+      stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
+      stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
+      stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))
+      stack.enter_context(mock.patch('jax.lax.pmin', _fake_pmin))
+      stack.enter_context(mock.patch('jax.lax.pswapaxes', _fake_pswapaxes))
+
   return stack
 
 

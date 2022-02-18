@@ -312,6 +312,39 @@ class PmapFakeTest(parameterized.TestCase):
       asserts.assert_trees_all_close(
           overidden_foo(x=inputs, y=inputs), expected)
 
+  def test_parallel_ops_equivalence(self):
+    """Test equivalence between parallel operations using pmap and vmap."""
+    num_devices = len(jax.devices())
+    inputs = jax.random.uniform(shape=(num_devices, num_devices, 2),
+                                key=jax.random.PRNGKey(1))
+
+    def test_equivalence(fn):
+      with fake.fake_pmap(enable_patching=False):
+        outputs1 = jax.pmap(fn, axis_name='i', axis_size=num_devices)(inputs)
+      with fake.fake_pmap(enable_patching=True):
+        outputs2 = jax.pmap(fn, axis_name='i', axis_size=num_devices)(inputs)
+      with fake.fake_pmap(enable_patching=True, jit_result=True):
+        outputs3 = jax.pmap(fn, axis_name='i', axis_size=num_devices)(inputs)
+      asserts.assert_trees_all_close(outputs1, outputs2, outputs3)
+
+    perm = [(x, (x + 1) % num_devices) for x in range(num_devices)]
+    parallel_ops = [
+        (jax.lax.psum, {}),
+        (jax.lax.pmax, {}),
+        (jax.lax.pmin, {}),
+        (jax.lax.pmean, {}),
+        (jax.lax.all_gather, {}),
+        (jax.lax.all_to_all, {'split_axis': 0, 'concat_axis': 1}),
+        (jax.lax.ppermute, {'perm': perm}),
+    ]
+
+    def fn(op, kwargs, x, y=2.0):
+      return op(x * y, axis_name='i', **kwargs)
+
+    for op, kwargs in parallel_ops:
+      test_equivalence(functools.partial(fn, op, kwargs))
+      test_equivalence(functools.partial(fn, op, kwargs, y=3.0))
+
 
 class _Counter():
   """Counts how often an instance is called."""
