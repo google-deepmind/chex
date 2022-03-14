@@ -634,6 +634,37 @@ def assert_type(
 
 
 @_static_assertion
+def assert_axis_dimension_comparator(tensor: Array, axis: int,
+                                     pass_fn: Callable[[int], bool],
+                                     error_string: str):
+  """Asserts that `pass_fn(tensor.shape[axis])` passes.
+
+  Used to implement ==, >, >=, <, <= checks.
+
+  Args:
+    tensor: A JAX array.
+    axis: An integer specifying which axis to assert.
+    pass_fn: A callable which takes the size of the give dimension and returns
+      false when the assertion should fail.
+    error_string: string which is inserted in assertion failure messages -
+      'expected tensor to have dimension {error_string} on axis ...'.
+
+  Raises:
+    AssertionError: if `pass_fn(tensor.shape[axis], val)` does not return true.
+  """
+  tensor = jnp.asarray(tensor)
+  if axis >= len(tensor.shape) or axis < -len(tensor.shape):
+    raise AssertionError(
+        f"Expected tensor to have dim {error_string} on axis "
+        f"'{axis}' but axis '{axis}' not available: tensor rank is "
+        f"'{len(tensor.shape)}'.")
+  if not pass_fn(tensor.shape[axis]):
+    raise AssertionError(
+        f"Expected tensor to have dimension {error_string} on axis"
+        f" '{axis}' but got '{tensor.shape[axis]}' instead.")
+
+
+@_static_assertion
 def assert_axis_dimension(tensor: Array, axis: int, expected: int) -> None:
   """Checks that ``tensor.shape[axis] == expected``.
 
@@ -646,20 +677,15 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int) -> None:
     AssertionError:
       The dimension of the specified axis does not match the prescribed value.
   """
-  tensor = jnp.asarray(tensor)
-  if axis >= len(tensor.shape) or axis < -len(tensor.shape):
-    raise AssertionError(
-        f"Expected tensor to have dim '{expected}' along axis '{axis}' but"
-        f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
-  if tensor.shape[axis] != expected:
-    raise AssertionError(
-        f"Expected tensor to have dimension {expected} along the axis {axis} "
-        f"but got {tensor.shape[axis]} instead.")
+  return assert_axis_dimension_comparator(
+      tensor, axis,
+      pass_fn=lambda tensor_dim: tensor_dim == expected,
+      error_string=f"equal to '{expected}'")
 
 
 @_static_assertion
 def assert_axis_dimension_gt(tensor: Array, axis: int, val: int) -> None:
-  """Checks that ``tensor.shape[axis] >= vals``.
+  """Checks that ``tensor.shape[axis] > val``.
 
   Args:
     tensor: A JAX array.
@@ -667,17 +693,66 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int) -> None:
     val: A value ``tensor.shape[axis]`` must be greater than.
 
   Raises:
-    AssertionError: The dimension of ``axis`` is not greater than ``val``.
+    AssertionError: if the dimension of ``axis`` is <= ``val``.
   """
-  tensor = jnp.asarray(tensor)
-  if axis >= len(tensor.shape) or axis < -len(tensor.shape):
-    raise AssertionError(
-        f"Expected tensor to have dim greater than '{val}' on axis '{axis}' but"
-        f" axis '{axis}' not available: tensor rank is '{len(tensor.shape)}'.")
-  if tensor.shape[axis] <= val:
-    raise AssertionError(
-        f"Expected tensor to have dimension greater than '{val}' on axis"
-        f" '{axis}' but got '{tensor.shape[axis]}' instead.")
+  return assert_axis_dimension_comparator(
+      tensor, axis,
+      pass_fn=lambda tensor_dim: tensor_dim > val,
+      error_string=f"greater than '{val}'")
+
+
+@_static_assertion
+def assert_axis_dimension_gteq(tensor: Array, axis: int, val: int) -> None:
+  """Checks that ``tensor.shape[axis] >= val``.
+
+  Args:
+    tensor: A JAX array.
+    axis: An integer specifying which axis to assert.
+    val: A value ``tensor.shape[axis]`` must be greater than or equal to.
+
+  Raises:
+    AssertionError: if the dimension of ``axis`` is < ``val``.
+  """
+  return assert_axis_dimension_comparator(
+      tensor, axis,
+      pass_fn=lambda tensor_dim: tensor_dim >= val,
+      error_string=f"greater than or equal to '{val}'")
+
+
+@_static_assertion
+def assert_axis_dimension_lt(tensor: Array, axis: int, val: int) -> None:
+  """Checks that ``tensor.shape[axis] < val``.
+
+  Args:
+    tensor: A JAX Array.
+    axis: An integer specifiying with axis to assert.
+    val: A value ``tensor.shape[axis]`` must be less than.
+
+  Raises:
+    AssertionError: if the dimension of ``axis`` is >= ``val``.
+  """
+  return assert_axis_dimension_comparator(
+      tensor, axis,
+      pass_fn=lambda tensor_dim: tensor_dim < val,
+      error_string=f"less than '{val}'")
+
+
+@_static_assertion
+def assert_axis_dimension_lteq(tensor: Array, axis: int, val: int) -> None:
+  """Checks that ``tensor.shape[axis] <= val``.
+
+  Args:
+    tensor: A JAX array.
+    axis: An integer specifying which axis to assert.
+    val: A value ``tensor.shape[axis]`` must be less than or equal to.
+
+  Raises:
+    AssertionError: if the dimension of ``axis`` is > ``val``.
+  """
+  return assert_axis_dimension_comparator(
+      tensor, axis,
+      pass_fn=lambda tensor_dim: tensor_dim <= val,
+      error_string=f"less than or equal to '{val}'")
 
 
 @_value_assertion

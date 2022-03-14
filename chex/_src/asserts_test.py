@@ -672,6 +672,72 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
                                   _get_err_regex('not available')):
         asserts.assert_axis_dimension_gt(tensor, axis=i, val=0)
 
+  def test_assert_axis_dimension_gteq_pass(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      asserts.assert_axis_dimension_gteq(tensor, axis=i, val=s)
+
+  def test_assert_axis_dimension_gteq_fail(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('Expected tensor to have dimension greater than or')):
+        asserts.assert_axis_dimension_gteq(tensor, axis=i, val=s + 1)
+
+  def test_assert_axis_dimension_gteq_axis_invalid(self):
+    tensor = jnp.ones((3, 2))
+    for i in (2, -3):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('not available')):
+        asserts.assert_axis_dimension_gteq(tensor, axis=i, val=0)
+
+  def test_assert_axis_dimension_lt_pass(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      asserts.assert_axis_dimension_lt(tensor, axis=i, val=s + 1)
+
+  def test_assert_axis_dimension_lt_fail(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('Expected tensor to have dimension less than')):
+        asserts.assert_axis_dimension_lt(tensor, axis=i, val=s)
+
+  def test_assert_axis_dimension_lt_axis_invalid(self):
+    tensor = jnp.ones((3, 2))
+    for i in (2, -3):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('not available')):
+        asserts.assert_axis_dimension_lt(tensor, axis=i, val=0)
+
+  def test_assert_axis_dimension_lteq_pass(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      asserts.assert_axis_dimension_lteq(tensor, axis=i, val=s)
+
+  def test_assert_axis_dimension_lteq_fail(self):
+    tensor = jnp.ones((3, 2, 7, 2))
+    for i in range(-tensor.ndim, tensor.ndim):
+      s = tensor.shape[i]
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('Expected tensor to have dimension less than or')):
+        asserts.assert_axis_dimension_lteq(tensor, axis=i, val=s - 1)
+
+  def test_assert_axis_dimension_lteq_axis_invalid(self):
+    tensor = jnp.ones((3, 2))
+    for i in (2, -3):
+      with self.assertRaisesRegex(AssertionError,
+                                  _get_err_regex('not available')):
+        asserts.assert_axis_dimension_lteq(tensor, axis=i, val=0)
+
 
 class TreeAssertionsTest(parameterized.TestCase):
 

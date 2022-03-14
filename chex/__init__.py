@@ -15,7 +15,11 @@
 """Chex: Testing made fun, in JAX!"""
 
 from chex._src.asserts import assert_axis_dimension
+from chex._src.asserts import assert_axis_dimension_comparator
 from chex._src.asserts import assert_axis_dimension_gt
+from chex._src.asserts import assert_axis_dimension_gteq
+from chex._src.asserts import assert_axis_dimension_lt
+from chex._src.asserts import assert_axis_dimension_lteq
 from chex._src.asserts import assert_devices_available
 from chex._src.asserts import assert_equal
 from chex._src.asserts import assert_equal_rank
@@ -102,7 +106,11 @@ __all__ = (
     "ArraySharded",
     "ArrayTree",
     "assert_axis_dimension",
+    "assert_axis_dimension_comparator",
     "assert_axis_dimension_gt",
+    "assert_axis_dimension_gteq",
+    "assert_axis_dimension_lt",
+    "assert_axis_dimension_lteq",
     "assert_devices_available",
     "assert_equal",
     "assert_equal_rank",

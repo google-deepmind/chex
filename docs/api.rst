@@ -6,7 +6,11 @@ Assertions
 .. autosummary::
 
     assert_axis_dimension
+    assert_axis_dimension_comparator
     assert_axis_dimension_gt
+    assert_axis_dimension_gteq
+    assert_axis_dimension_lt
+    assert_axis_dimension_lteq
     assert_devices_available
     assert_equal
     assert_equal_rank
@@ -81,7 +85,12 @@ Generic Assertions
 ~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: assert_axis_dimension
+.. autofunction:: assert_axis_dimension_comparator
 .. autofunction:: assert_axis_dimension_gt
+
+.. autofunction:: assert_axis_dimension_gteq
+.. autofunction:: assert_axis_dimension_lt
+.. autofunction:: assert_axis_dimension_lteq
 .. autofunction:: assert_equal
 .. autofunction:: assert_equal_rank
 .. autofunction:: assert_equal_shape
