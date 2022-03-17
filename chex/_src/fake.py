@@ -31,6 +31,7 @@ from absl import flags
 import jax
 import jax.numpy as jnp
 
+
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chex_n_cpu_devices', 1,
                      'Number of CPU threads to use as devices in tests.')
@@ -92,6 +93,36 @@ def _fake_jit(fn, *unused_args, **unused_kwargs):
   return fn
 
 
+def _ignore_axis_index_groups(fn):
+  """Wrapper that forces axis_index_groups to be None.
+
+  This is to avoid problems within fake_pmap where parallel operations are
+  performed with vmap, rather than pmap. Parallel operations where
+  `axis_index_groups` is not `None` are not currently supported under vmap.
+
+  Args:
+    fn: the function to wrap
+
+  Returns:
+    a wrapped function that forces any keyword argument named
+      `axis_index_groups` to be None
+  """
+  @functools.wraps(fn)
+  def _fake(*args, axis_index_groups=None, **kwargs):
+    del axis_index_groups
+    return fn(*args, axis_index_groups=None, **kwargs)
+  return _fake
+
+
+_fake_all_gather = _ignore_axis_index_groups(jax.lax.all_gather)
+_fake_all_to_all = _ignore_axis_index_groups(jax.lax.all_to_all)
+_fake_psum = _ignore_axis_index_groups(jax.lax.psum)
+_fake_pmean = _ignore_axis_index_groups(jax.lax.pmean)
+_fake_pmax = _ignore_axis_index_groups(jax.lax.pmax)
+_fake_pmin = _ignore_axis_index_groups(jax.lax.pmin)
+_fake_pswapaxes = _ignore_axis_index_groups(jax.lax.pswapaxes)
+
+
 @functools.wraps(jax.pmap)
 def _fake_pmap(fn,
                axis_name: Optional[Any] = None,
@@ -99,6 +130,7 @@ def _fake_pmap(fn,
                in_axes=0,
                static_broadcasted_argnums: Union[int, Iterable[int]] = (),
                jit_result: bool = False,
+               fake_parallel_axis: bool = False,
                **unused_kwargs):
   """Fake implementation of pmap using vmap."""
 
@@ -135,26 +167,17 @@ def _fake_pmap(fn,
     if jit_result:
       vmapped_fn = jax.jit(vmapped_fn)
 
+    if fake_parallel_axis:
+      call_args = jax.tree_map(lambda x: jnp.expand_dims(x, axis=0), call_args)
+
     output = vmapped_fn(*call_args)
+
+    if fake_parallel_axis:
+      output = jax.tree_map(lambda x: jnp.squeeze(x, axis=0), output)
+
     return output
 
   return wrapped_fn
-
-
-def _identity(x, *unused_args, **unused_kwargs):
-  return x
-
-
-_fake_psum = functools.wraps(jax.lax.psum)(_identity)
-_fake_pmean = functools.wraps(jax.lax.pmean)(_identity)
-_fake_pmax = functools.wraps(jax.lax.pmax)(_identity)
-_fake_pmin = functools.wraps(jax.lax.pmin)(_identity)
-
-
-@functools.wraps(jax.lax.all_gather)
-def _fake_all_gather(x, *unused_args, **unused_kwargs):
-  add_leading_dim = lambda t: t[jnp.newaxis]
-  return jax.tree_map(add_leading_dim, x)
 
 
 class FakeContext(contextlib.ExitStack):
@@ -223,15 +246,16 @@ def fake_jit(enable_patching: bool = True) -> FakeContext:
   return stack
 
 
-def fake_pmap(enable_patching: bool = True,
-              jit_result: bool = False) -> FakeContext:
+def fake_pmap(
+    enable_patching: bool = True,
+    jit_result: bool = False,
+    ignore_axis_index_groups: bool = False,
+    fake_parallel_axis: bool = False,
+) -> FakeContext:
   """Context manager for patching `jax.pmap` with `jax.vmap`.
 
   This is intended to be used as a debugging tool to programmatically replace
-  pmap transformations with a non-parallel vmap transformation. Beware that the
-  output is *not* guaranteed to be identical with `jax.pmap`! In particular, all
-  `jax.lax.p*` operations are replaced with identity maps when `fake_pmap` is
-  used.
+  pmap transformations with a non-parallel vmap transformation.
 
   Can be used either as a context managed scope:
 
@@ -257,21 +281,38 @@ def fake_pmap(enable_patching: bool = True,
     enable_patching: Whether to patch `jax.pmap`.
     jit_result: Whether the transformed function should be jitted despite not
       being pmapped.
+    ignore_axis_index_groups: Whether to force any parallel operation within the
+      context to set `axis_index_groups` to be None. This is a compatibility
+      option to allow users of the axis_index_groups parameter to run under the
+      fake_pmap context. This feature is not currently supported in vmap, and
+      will fail, so we force the parameter to be `None`.
+      *Warning*: This will produce different results to running under `jax.pmap`
+    fake_parallel_axis: Fake a parallel axis
 
   Returns:
     Context where `jax.pmap` is patched with `jax.vmap`.
   """
-  # Improve implementation to automatically track JAX collectives development.
   stack = FakeContext()
   if enable_patching:
-    stack.enter_context(
-        mock.patch('jax.pmap',
-                   functools.partial(_fake_pmap, jit_result=jit_result)))
-    stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
-    stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
-    stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))
-    stack.enter_context(mock.patch('jax.lax.pmin', _fake_pmin))
-    stack.enter_context(mock.patch('jax.lax.all_gather', _fake_all_gather))
+    patched_pmap = functools.partial(
+        _fake_pmap,
+        jit_result=jit_result,
+        fake_parallel_axis=fake_parallel_axis)
+
+    stack.enter_context(mock.patch('jax.pmap', patched_pmap))
+
+    if ignore_axis_index_groups:
+      stack.enter_context(mock.patch('jax.lax.all_gather', _fake_all_gather))
+      stack.enter_context(mock.patch('jax.lax.all_to_all', _fake_all_to_all))
+      stack.enter_context(mock.patch('jax.lax.psum', _fake_psum))
+      stack.enter_context(mock.patch('jax.lax.pmean', _fake_pmean))
+      stack.enter_context(mock.patch('jax.lax.pmax', _fake_pmax))
+      stack.enter_context(mock.patch('jax.lax.pmin', _fake_pmin))
+      stack.enter_context(mock.patch('jax.lax.pswapaxes', _fake_pswapaxes))
+    else:
+      # Use default implementations
+      pass
+
   return stack
 
 
