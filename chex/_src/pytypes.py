@@ -46,4 +46,4 @@ Device = Union[CpuDevice, GpuDevice, TpuDevice]
 # pytype: disable=not-supported-yet
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 
-ArrayDType = jax.numpy.lax_numpy._ScalarMeta  # pylint: disable=protected-access
+ArrayDType = jax._src.numpy.lax_numpy._ScalarMeta  # pylint: disable=protected-access
