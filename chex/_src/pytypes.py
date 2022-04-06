@@ -16,6 +16,7 @@
 
 from typing import Any, Iterable, Mapping, Tuple, Union
 import jax
+from jax import core
 import jax.numpy as jnp
 import numpy as np
 
@@ -33,17 +34,15 @@ else:
 
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
-PRNGKey = Array
+PRNGKey = jax.random.KeyArray
 PyTreeDef = type(jax.tree_structure(None))
-Shape = Tuple[int, ...]
+Shape = Tuple[core.AxisSize, ...]
 
 CpuDevice = jax.lib.xla_extension.CpuDevice
 GpuDevice = jax.lib.xla_extension.GpuDevice
 TpuDevice = jax.lib.xla_extension.TpuDevice
 Device = Union[CpuDevice, GpuDevice, TpuDevice]
 
-# As of 06/2020 pytype doesn't support recursive types (see b/109648354)
-# pytype: disable=not-supported-yet
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 
 ArrayDType = jax._src.numpy.lax_numpy._ScalarMeta  # pylint: disable=protected-access
