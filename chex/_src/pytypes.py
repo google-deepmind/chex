@@ -37,10 +37,7 @@ PRNGKey = jax.random.KeyArray
 PyTreeDef = type(jax.tree_structure(None))
 Shape = jax.core.Shape
 
-CpuDevice = jax.lib.xla_extension.CpuDevice
-GpuDevice = jax.lib.xla_extension.GpuDevice
-TpuDevice = jax.lib.xla_extension.TpuDevice
-Device = Union[CpuDevice, GpuDevice, TpuDevice]
+Device = jax.lib.xla_extension.Device
 
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 

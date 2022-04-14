@@ -79,9 +79,8 @@ class CoverageCheck(builders.Builder):
     # Exclude pytypes.
     pytypes_exceptions = ('Array', 'ArrayBatched', 'Array', 'ArrayBatched',
                           'ArrayDevice', 'ArrayDType', 'ArrayNumpy',
-                          'ArraySharded', 'ArrayTree', 'Device', 'CpuDevice',
-                          'GpuDevice', 'TpuDevice', 'Numeric', 'PRNGKey',
-                          'PyTreeDef', 'Scalar', 'Shape')
+                          'ArraySharded', 'ArrayTree', 'Device', 'Numeric',
+                          'PRNGKey', 'PyTreeDef', 'Scalar', 'Shape')
     undocumented_objects -= {'chex.' + s for s in pytypes_exceptions}
 
     if undocumented_objects:

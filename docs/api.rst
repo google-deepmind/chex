@@ -178,9 +178,6 @@ Pytypes
     ArraySharded
     ArrayTree
     Device
-    CpuDevice
-    GpuDevice
-    TpuDevice
     Numeric
     PRNGKey
     PyTreeDef
