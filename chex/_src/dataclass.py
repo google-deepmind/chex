@@ -201,7 +201,7 @@ class _Dataclass():
     # Patch __setstate__ to register the object on deserialization.
     def _setstate(self, state):
       if not class_self.registered:
-        _register_dataclass_type(dcls)
+        register_dataclass_type_with_jax_tree_util(dcls)
         class_self.registered = True
       self.__dict__.update(state)
 
@@ -212,7 +212,7 @@ class _Dataclass():
     @functools.wraps(orig_init)
     def _init(self, *args, **kwargs):
       if not class_self.registered:
-        _register_dataclass_type(dcls)
+        register_dataclass_type_with_jax_tree_util(dcls)
         class_self.registered = True
       return orig_init(self, *args, **kwargs)
 
@@ -226,8 +226,19 @@ class _Dataclass():
     return dcls
 
 
-def _register_dataclass_type(data_class):
-  """Register dataclass so JAX knows how to handle it."""
+def register_dataclass_type_with_jax_tree_util(data_class):
+  """Register an existing dataclass so JAX knows how to handle it.
+
+  This means that functions in jax.tree_util operate over the fields of the
+  dataclass. See
+  https://jax.readthedocs.io/en/latest/pytrees.html#extending-pytrees
+  for further information.
+
+  Args:
+    data_class: A class created using dataclasses.dataclass. It must be
+      constructable from keyword arguments corresponding to the members exposed
+      in instance.__dict__.
+  """
   flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
   unflatten = lambda keys, values: data_class(**dict(zip(keys, values)))
   try:

@@ -135,6 +135,7 @@ Dataclasses
 
 .. autofunction:: dataclass
 .. autofunction:: mappable_dataclass
+.. autofunction:: register_dataclass_type_with_jax_tree_util
 
 
 Fakes

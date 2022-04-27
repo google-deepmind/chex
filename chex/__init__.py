@@ -66,6 +66,7 @@ from chex._src.asserts import enable_asserts
 from chex._src.asserts import if_args_not_none
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
+from chex._src.dataclass import register_dataclass_type_with_jax_tree_util
 from chex._src.fake import fake_jit
 from chex._src.fake import fake_pmap
 from chex._src.fake import fake_pmap_and_jit
@@ -163,6 +164,7 @@ __all__ = (
     "params_product",
     "PRNGKey",
     "PyTreeDef",
+    "register_dataclass_type_with_jax_tree_util",
     "restrict_backends",
     "Scalar",
     "set_n_cpu_devices",
