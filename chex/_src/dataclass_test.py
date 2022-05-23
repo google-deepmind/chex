@@ -92,12 +92,13 @@ def _get_mappable_dataclasses(test_type):
         default_factory=lambda: dict(x='x', y='y'))
     k_default: str = 'default_str'
     k_non_init: int = dataclasses.field(default=1, init=False)
+    k_init_only: dataclasses.InitVar[int] = 10
 
     def some_method(self, *args):
       raise RuntimeError('NestedClassWithMap.some_method() was called.')
 
-    def __post_init__(self):
-      self.k_non_init = self.k_int * 10
+    def __post_init__(self, k_init_only):
+      self.k_non_init = self.k_int * k_init_only
 
   if test_type == 'chex':
     cls = chex_dataclass(Class, mappable_dataclass=True)
