@@ -21,7 +21,7 @@ import numpy as np
 
 
 def compute_cube(side):
-  return (lambda x: (x*side).sum())(jnp.ones((side, side)))
+  return jnp.sum(jnp.ones((side, side)) * side)
 
 
 class RestrictBackendsTest(absltest.TestCase):

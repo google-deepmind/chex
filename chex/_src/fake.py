@@ -180,6 +180,7 @@ def _fake_pmap(fn,
   return wrapped_fn
 
 
+# pylint:disable=unnecessary-dunder-call
 class FakeContext(contextlib.ExitStack):
 
   def start(self):
@@ -187,6 +188,9 @@ class FakeContext(contextlib.ExitStack):
 
   def stop(self):
     self.__exit__(None, None, None)
+
+
+# pylint:enable=unnecessary-dunder-call
 
 
 def fake_jit(enable_patching: bool = True) -> FakeContext:
