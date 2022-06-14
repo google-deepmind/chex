@@ -35,10 +35,8 @@ Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
 
-_value_assertion = functools.partial(
-    _ai.chex_assertion, value_assertion=True)
-_static_assertion = functools.partial(
-    _ai.chex_assertion, value_assertion=False)
+_value_assertion = functools.partial(_ai.chex_assertion, value_assertion=True)
+_static_assertion = functools.partial(_ai.chex_assertion, value_assertion=False)
 
 
 def disable_asserts() -> None:
@@ -678,8 +676,9 @@ def assert_axis_dimension(tensor: Array, axis: int, expected: int) -> None:
     AssertionError:
       The dimension of the specified axis does not match the prescribed value.
   """
-  return assert_axis_dimension_comparator(
-      tensor, axis,
+  assert_axis_dimension_comparator(
+      tensor,
+      axis,
       pass_fn=lambda tensor_dim: tensor_dim == expected,
       error_string=f"equal to '{expected}'")
 
@@ -696,8 +695,9 @@ def assert_axis_dimension_gt(tensor: Array, axis: int, val: int) -> None:
   Raises:
     AssertionError: if the dimension of ``axis`` is <= ``val``.
   """
-  return assert_axis_dimension_comparator(
-      tensor, axis,
+  assert_axis_dimension_comparator(
+      tensor,
+      axis,
       pass_fn=lambda tensor_dim: tensor_dim > val,
       error_string=f"greater than '{val}'")
 
@@ -714,8 +714,9 @@ def assert_axis_dimension_gteq(tensor: Array, axis: int, val: int) -> None:
   Raises:
     AssertionError: if the dimension of ``axis`` is < ``val``.
   """
-  return assert_axis_dimension_comparator(
-      tensor, axis,
+  assert_axis_dimension_comparator(
+      tensor,
+      axis,
       pass_fn=lambda tensor_dim: tensor_dim >= val,
       error_string=f"greater than or equal to '{val}'")
 
@@ -732,8 +733,9 @@ def assert_axis_dimension_lt(tensor: Array, axis: int, val: int) -> None:
   Raises:
     AssertionError: if the dimension of ``axis`` is >= ``val``.
   """
-  return assert_axis_dimension_comparator(
-      tensor, axis,
+  assert_axis_dimension_comparator(
+      tensor,
+      axis,
       pass_fn=lambda tensor_dim: tensor_dim < val,
       error_string=f"less than '{val}'")
 
@@ -750,8 +752,9 @@ def assert_axis_dimension_lteq(tensor: Array, axis: int, val: int) -> None:
   Raises:
     AssertionError: if the dimension of ``axis`` is > ``val``.
   """
-  return assert_axis_dimension_comparator(
-      tensor, axis,
+  assert_axis_dimension_comparator(
+      tensor,
+      axis,
       pass_fn=lambda tensor_dim: tensor_dim <= val,
       error_string=f"less than or equal to '{val}'")
 
