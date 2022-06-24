@@ -55,9 +55,9 @@ TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
 TShapeMatcher = Sequence[TDimMatcher]
 
 # Chex namespace variables.
-ERR_PREFIX: str = "[Chex] "
-TRACE_COUNTER: collections.Counter = collections.Counter()
-DISABLE_ASSERTIONS: bool = False
+ERR_PREFIX = "[Chex] "
+TRACE_COUNTER = collections.Counter()
+DISABLE_ASSERTIONS = False
 
 
 def assert_collection_of_arrays(inputs: Sequence[pytypes.Array]):

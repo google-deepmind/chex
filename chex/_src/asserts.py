@@ -158,6 +158,125 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
 
 
 @_static_assertion
+def assert_devices_available(n: int,
+                             devtype: str,
+                             backend: Optional[str] = None,
+                             not_less_than: bool = False) -> None:
+  """Checks that `n` devices of a given type are available.
+
+  Args:
+    n: A required number of devices of the given type.
+    devtype: A type of devices, one of ``{'cpu', 'gpu', 'tpu'}``.
+    backend: A type of backend to use (uses Jax default if not provided).
+    not_less_than: Whether to check if the number of devices is not less than
+      `n`, instead of precise comparison.
+
+  Raises:
+    AssertionError: If number of available device of a given type is not equal
+                    or less than `n`.
+  """
+  n_available = _ai.num_devices_available(devtype, backend=backend)
+  devs = jax.devices(backend)
+  if not_less_than and n_available < n:
+    raise AssertionError(
+        f"Only {n_available} < {n} {devtype.upper()}s available in {devs}.")
+  elif not not_less_than and n_available != n:
+    raise AssertionError(f"No {n} {devtype.upper()}s available in {devs}.")
+
+
+@_static_assertion
+def assert_tpu_available(backend: Optional[str] = None) -> None:
+  """Checks that at least one TPU device is available.
+
+  Args:
+    backend: A type of backend to use (uses JAX default if not provided).
+
+  Raises:
+    AssertionError: If no TPU device available.
+  """
+  if not _ai.num_devices_available("tpu", backend=backend):
+    raise AssertionError(f"No TPU devices available in {jax.devices(backend)}.")
+
+
+@_static_assertion
+def assert_gpu_available(backend: Optional[str] = None) -> None:
+  """Checks that at least one GPU device is available.
+
+  Args:
+    backend: A type of backend to use (uses JAX default if not provided).
+
+  Raises:
+    AssertionError: If no GPU device available.
+  """
+  if not _ai.num_devices_available("gpu", backend=backend):
+    raise AssertionError(f"No GPU devices available in {jax.devices(backend)}.")
+
+
+@_static_assertion
+def assert_equal(first: Any, second: Any) -> None:
+  """Checks that the two objects are equal as determined by the `==` operator.
+
+  Arrays with more than one element cannot be compared.
+  Use ``assert_trees_all_close`` to compare arrays.
+
+  Args:
+    first: A first object.
+    second: A second object.
+
+  Raises:
+    AssertionError: If not ``(first == second)``.
+  """
+  unittest.TestCase().assertEqual(first, second)
+
+
+@_static_assertion
+def assert_not_both_none(first: Any, second: Any) -> None:
+  """Checks that at least one of the arguments is not `None`.
+
+  Args:
+    first: A first object.
+    second: A second object.
+
+  Raises:
+    AssertionError: If ``(first is None) and (second is None)``.
+  """
+  if first is None and second is None:
+    raise AssertionError(
+        "At least one of the arguments must be different from `None`.")
+
+
+@_static_assertion
+def assert_exactly_one_is_none(first: Any, second: Any) -> None:
+  """Checks that one and only one of the arguments is `None`.
+
+  Args:
+    first: A first object.
+    second: A second object.
+
+  Raises:
+    AssertionError: If ``(first is None) xor (second is None)`` is `False`.
+  """
+  if (first is None) == (second is None):
+    raise AssertionError(f"One and exactly one of inputs should be `None`, "
+                         f"got {first} and {second}.")
+
+
+@_static_assertion
+def assert_is_divisible(numerator: int, denominator: int) -> None:
+  """Checks that ``numerator`` is divisible by ``denominator``.
+
+  Args:
+    numerator: A numerator.
+    denominator: A denominator.
+
+  Raises:
+    AssertionError: If ``numerator`` is not divisible by ``denominator``.
+  """
+  if numerator % denominator != 0:
+    raise AssertionError(f"{numerator} is not divisible by {denominator}.")
+
+
+@_static_assertion
 def assert_scalar(x: Scalar) -> None:
   """Checks that ``x`` is a scalar, as defined in `pytypes.py` (int or float).
 
@@ -171,7 +290,7 @@ def assert_scalar(x: Scalar) -> None:
     raise AssertionError(f"The argument {x} must be a scalar, got {type(x)}.")
 
 
-@_value_assertion
+@_static_assertion
 def assert_scalar_in(x: Any,
                      min_: Scalar,
                      max_: Scalar,
@@ -199,7 +318,7 @@ def assert_scalar_in(x: Any,
           f"The argument must be in ({min_}, {max_}), got {x}.")
 
 
-@_value_assertion
+@_static_assertion
 def assert_scalar_positive(x: Scalar) -> None:
   """Checks that a scalar is positive.
 
@@ -214,7 +333,7 @@ def assert_scalar_positive(x: Scalar) -> None:
     raise AssertionError(f"The argument must be positive, got {x}.")
 
 
-@_value_assertion
+@_static_assertion
 def assert_scalar_non_negative(x: Scalar) -> None:
   """Checks that a scalar is non-negative.
 
@@ -229,7 +348,7 @@ def assert_scalar_non_negative(x: Scalar) -> None:
     raise AssertionError(f"The argument must be non-negative, was {x}.")
 
 
-@_value_assertion
+@_static_assertion
 def assert_scalar_negative(x: Scalar) -> None:
   """Checks that a scalar is negative.
 
@@ -759,7 +878,7 @@ def assert_axis_dimension_lteq(tensor: Array, axis: int, val: int) -> None:
       error_string=f"less than or equal to '{val}'")
 
 
-@_value_assertion
+@_static_assertion
 def assert_numerical_grads(f: Callable[..., Array],
                            f_args: Sequence[Array],
                            order: int,
@@ -841,7 +960,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
     raise AssertionError("\n".join(errors))
 
 
-@_value_assertion
+@_static_assertion
 def assert_tree_is_on_host(tree: ArrayTree,
                            *,
                            allow_cpu_device: bool = True,
@@ -885,7 +1004,7 @@ def assert_tree_is_on_host(tree: ArrayTree,
     raise AssertionError("\n".join(errors))
 
 
-@_value_assertion
+@_static_assertion
 def assert_tree_is_on_device(tree: ArrayTree,
                              *,
                              platform: Union[Sequence[str],
@@ -949,7 +1068,7 @@ def assert_tree_is_on_device(tree: ArrayTree,
     raise AssertionError("\n".join(errors))
 
 
-@_value_assertion
+@_static_assertion
 def assert_tree_is_sharded(tree: ArrayTree,
                            *,
                            devices: Sequence[pytypes.Device],
@@ -1210,7 +1329,95 @@ def assert_trees_all_equal_dtypes(*trees: Sequence[ArrayTree],
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-@_value_assertion
+@_static_assertion
+def assert_trees_all_equal_shapes(*trees: Sequence[ArrayTree],
+                                  ignore_nones: bool = False) -> None:
+  """Checks that trees have the same structure and leaves' shapes.
+
+  Args:
+    *trees: A sequence of (at least 2) trees with array leaves.
+    ignore_nones: Whether to ignore `None` in the trees.
+
+  Raises:
+    AssertionError: If trees' structures or leaves' shapes are different;
+      if the trees contain `None` (with ``ignore_nones=False``).
+  """
+  cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
+  err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
+    assert_trees_all_equal_shapes,
+    old_name="assert_tree_all_equal_shapes",
+    new_name="assert_trees_all_equal_shapes")
+
+############# Value assertions. #############
+
+
+@_static_assertion
+def assert_tree_all_finite(tree_like: ArrayTree) -> None:
+  """Checks that all leaves in a tree are finite.
+
+  Args:
+    tree_like: A pytree with array leaves.
+
+  Raises:
+    AssertionError: If any leaf in ``tree_like`` is non-finite.
+  """
+  all_finite = jax.tree_util.tree_all(
+      jax.tree_map(lambda x: jnp.all(jnp.isfinite(x)), tree_like))
+  if not all_finite:
+    is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
+    error_msg = jax.tree_map(is_finite, tree_like)
+    raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
+
+
+@_static_assertion
+def assert_trees_all_equal(*trees: Sequence[ArrayTree],
+                           ignore_nones: bool = False) -> None:
+  """Checks that all trees have leaves with *exactly* equal values.
+
+  If you are comparing floating point numbers, an exact equality check may not
+  be appropriate; consider using ``assert_trees_all_close``.
+
+  Args:
+    *trees: A sequence of (at least 2) trees with array leaves.
+    ignore_nones: Whether to ignore `None` in the trees.
+
+  Raises:
+    AssertionError: If the leaf values actual and desired are not exactly equal,
+      or the trees contain `None` (with ``ignore_nones=False``).
+  """
+
+  def assert_fn(arr_1, arr_2):
+    np.testing.assert_array_equal(
+        _ai.jnp_to_np_array(arr_1),
+        _ai.jnp_to_np_array(arr_2),
+        err_msg="Error in value equality check: Values not exactly equal")
+
+  def cmp_fn(arr_1, arr_2) -> bool:
+    try:
+      # Raises an AssertionError if values are not equal.
+      assert_fn(arr_1, arr_2)
+    except AssertionError:
+      return False
+    return True
+
+  def err_msg_fn(arr_1, arr_2) -> str:
+    try:
+      assert_fn(arr_1, arr_2)
+    except AssertionError as e:
+      return (f"{str(e)} \nOriginal dtypes: "
+              f"{np.asarray(arr_1).dtype}, {np.asarray(arr_2).dtype}")
+    return ""
+
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+@_static_assertion
 def assert_trees_all_close(*trees: Sequence[ArrayTree],
                            rtol: float = 1e-06,
                            atol: float = .0,
@@ -1264,208 +1471,3 @@ assert_tree_all_close = _ai.deprecation_wrapper(
     assert_trees_all_close,
     old_name="assert_tree_all_close",
     new_name="assert_trees_all_close")
-
-
-@_value_assertion
-def assert_trees_all_equal(*trees: Sequence[ArrayTree],
-                           ignore_nones: bool = False) -> None:
-  """Checks that all trees have leaves with *exactly* equal values.
-
-  If you are comparing floating point numbers, an exact equality check may not
-  be appropriate; consider using ``assert_trees_all_close``.
-
-  Args:
-    *trees: A sequence of (at least 2) trees with array leaves.
-    ignore_nones: Whether to ignore `None` in the trees.
-
-  Raises:
-    AssertionError: If the leaf values actual and desired are not exactly equal,
-      or the trees contain `None` (with ``ignore_nones=False``).
-  """
-
-  def assert_fn(arr_1, arr_2):
-    np.testing.assert_array_equal(
-        _ai.jnp_to_np_array(arr_1),
-        _ai.jnp_to_np_array(arr_2),
-        err_msg="Error in value equality check: Values not exactly equal")
-
-  def cmp_fn(arr_1, arr_2) -> bool:
-    try:
-      # Raises an AssertionError if values are not equal.
-      assert_fn(arr_1, arr_2)
-    except AssertionError:
-      return False
-    return True
-
-  def err_msg_fn(arr_1, arr_2) -> str:
-    try:
-      assert_fn(arr_1, arr_2)
-    except AssertionError as e:
-      return (f"{str(e)} \nOriginal dtypes: "
-              f"{np.asarray(arr_1).dtype}, {np.asarray(arr_2).dtype}")
-    return ""
-
-  assert_trees_all_equal_comparator(
-      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
-
-
-@_static_assertion
-def assert_trees_all_equal_shapes(*trees: Sequence[ArrayTree],
-                                  ignore_nones: bool = False) -> None:
-  """Checks that trees have the same structure and leaves' shapes.
-
-  Args:
-    *trees: A sequence of (at least 2) trees with array leaves.
-    ignore_nones: Whether to ignore `None` in the trees.
-
-  Raises:
-    AssertionError: If trees' structures or leaves' shapes are different;
-      if the trees contain `None` (with ``ignore_nones=False``).
-  """
-  cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
-  err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
-  assert_trees_all_equal_comparator(
-      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
-
-
-assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
-    assert_trees_all_equal_shapes,
-    old_name="assert_tree_all_equal_shapes",
-    new_name="assert_trees_all_equal_shapes")
-
-
-@_value_assertion
-def assert_tree_all_finite(tree_like: ArrayTree) -> None:
-  """Checks that all leaves in a tree are finite.
-
-  Args:
-    tree_like: A pytree with array leaves.
-
-  Raises:
-    AssertionError: If any leaf in ``tree_like`` is non-finite.
-  """
-  all_finite = jax.tree_util.tree_all(
-      jax.tree_map(lambda x: jnp.all(jnp.isfinite(x)), tree_like))
-  if not all_finite:
-    is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
-    error_msg = jax.tree_map(is_finite, tree_like)
-    raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
-
-
-@_value_assertion
-def assert_devices_available(n: int,
-                             devtype: str,
-                             backend: Optional[str] = None,
-                             not_less_than: bool = False) -> None:
-  """Checks that `n` devices of a given type are available.
-
-  Args:
-    n: A required number of devices of the given type.
-    devtype: A type of devices, one of ``{'cpu', 'gpu', 'tpu'}``.
-    backend: A type of backend to use (uses Jax default if not provided).
-    not_less_than: Whether to check if the number of devices is not less than
-      `n`, instead of precise comparison.
-
-  Raises:
-    AssertionError: If number of available device of a given type is not equal
-                    or less than `n`.
-  """
-  n_available = _ai.num_devices_available(devtype, backend=backend)
-  devs = jax.devices(backend)
-  if not_less_than and n_available < n:
-    raise AssertionError(
-        f"Only {n_available} < {n} {devtype.upper()}s available in {devs}.")
-  elif not not_less_than and n_available != n:
-    raise AssertionError(f"No {n} {devtype.upper()}s available in {devs}.")
-
-
-@_value_assertion
-def assert_tpu_available(backend: Optional[str] = None) -> None:
-  """Checks that at least one TPU device is available.
-
-  Args:
-    backend: A type of backend to use (uses JAX default if not provided).
-
-  Raises:
-    AssertionError: If no TPU device available.
-  """
-  if not _ai.num_devices_available("tpu", backend=backend):
-    raise AssertionError(f"No TPU devices available in {jax.devices(backend)}.")
-
-
-@_value_assertion
-def assert_gpu_available(backend: Optional[str] = None) -> None:
-  """Checks that at least one GPU device is available.
-
-  Args:
-    backend: A type of backend to use (uses JAX default if not provided).
-
-  Raises:
-    AssertionError: If no GPU device available.
-  """
-  if not _ai.num_devices_available("gpu", backend=backend):
-    raise AssertionError(f"No GPU devices available in {jax.devices(backend)}.")
-
-
-@_value_assertion
-def assert_equal(first: Any, second: Any) -> None:
-  """Checks that the two objects are equal as determined by the `==` operator.
-
-  Arrays with more than one element cannot be compared.
-  Use ``assert_trees_all_close`` to compare arrays.
-
-  Args:
-    first: A first object.
-    second: A second object.
-
-  Raises:
-    AssertionError: If not ``(first == second)``.
-  """
-  unittest.TestCase().assertEqual(first, second)
-
-
-@_static_assertion
-def assert_not_both_none(first: Any, second: Any) -> None:
-  """Checks that at least one of the arguments is not `None`.
-
-  Args:
-    first: A first object.
-    second: A second object.
-
-  Raises:
-    AssertionError: If ``(first is None) and (second is None)``.
-  """
-  if first is None and second is None:
-    raise AssertionError(
-        "At least one of the arguments must be different from `None`.")
-
-
-@_static_assertion
-def assert_exactly_one_is_none(first: Any, second: Any) -> None:
-  """Checks that one and only one of the arguments is `None`.
-
-  Args:
-    first: A first object.
-    second: A second object.
-
-  Raises:
-    AssertionError: If ``(first is None) xor (second is None)`` is `False`.
-  """
-  if (first is None) == (second is None):
-    raise AssertionError(f"One and exactly one of inputs should be `None`, "
-                         f"got {first} and {second}.")
-
-
-@_value_assertion
-def assert_is_divisible(numerator: int, denominator: int) -> None:
-  """Checks that ``numerator`` is divisible by ``denominator``.
-
-  Args:
-    numerator: A numerator.
-    denominator: A denominator.
-
-  Raises:
-    AssertionError: If ``numerator`` is not divisible by ``denominator``.
-  """
-  if numerator % denominator != 0:
-    raise AssertionError(f"{numerator} is not divisible by {denominator}.")
