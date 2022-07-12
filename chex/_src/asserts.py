@@ -902,7 +902,7 @@ def assert_numerical_grads(f: Callable[..., Array],
   atol *= f_args[0].size
 
   # Mock `jax.lax.stop_gradient` because finite diff. method does not honour it.
-  mock_sg = lambda t: jax.tree_map(jnp.ones_like, t)
+  mock_sg = lambda t: jax.tree_util.tree_map(jnp.ones_like, t)
   with mock.patch("jax.lax.stop_gradient", mock_sg):
     jax_test.check_grads(f, f_args, order=order, atol=atol, **check_kwargs)
 
@@ -1223,8 +1223,8 @@ def assert_trees_all_equal_structs(*trees: Sequence[ArrayTree]) -> None:
         "Maybe you wrote `assert_trees_all_equal_structs([a, b])` instead of "
         "`assert_trees_all_equal_structs(a, b)` ?")
 
-  first_treedef = jax.tree_structure(trees[0])
-  other_treedefs = (jax.tree_structure(t) for t in trees[1:])
+  first_treedef = jax.tree_util.tree_structure(trees[0])
+  other_treedefs = (jax.tree_util.tree_structure(t) for t in trees[1:])
   for i, treedef in enumerate(other_treedefs, start=1):
     if first_treedef != treedef:
       raise AssertionError(
@@ -1367,10 +1367,10 @@ def assert_tree_all_finite(tree_like: ArrayTree) -> None:
     AssertionError: If any leaf in ``tree_like`` is non-finite.
   """
   all_finite = jax.tree_util.tree_all(
-      jax.tree_map(lambda x: jnp.all(jnp.isfinite(x)), tree_like))
+      jax.tree_util.tree_map(lambda x: jnp.all(jnp.isfinite(x)), tree_like))
   if not all_finite:
     is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
-    error_msg = jax.tree_map(is_finite, tree_like)
+    error_msg = jax.tree_util.tree_map(is_finite, tree_like)
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 

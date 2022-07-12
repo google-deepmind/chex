@@ -543,7 +543,8 @@ def _with_pmap(fn,
       for is_pmappable_arg, arg in zip(is_pmappable_arg, args):
         if not is_pmappable_arg:
           continue
-        if not all(x.shape[0] == n_devices_ for x in jax.tree_leaves(arg)):
+        if not all(
+            x.shape[0] == n_devices_ for x in jax.tree_util.tree_leaves(arg)):
           shapes = tree_map(jnp.shape, arg)
           raise ValueError(
               f"Pmappable arg axes size must be equal to number of devices, "

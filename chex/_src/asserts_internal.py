@@ -227,12 +227,14 @@ def num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
 def get_tracers(tree: pytypes.ArrayTree) -> Tuple[jax.core.Tracer]:
   """Returns a tuple with tracers from a tree."""
   return tuple(
-      x for x in jax.tree_leaves(tree) if isinstance(x, jax.core.Tracer))
+      x for x in jax.tree_util.tree_leaves(tree)
+      if isinstance(x, jax.core.Tracer))
 
 
 def has_tracers(tree: pytypes.ArrayTree) -> bool:
   """Checks whether a tree contains any tracers."""
-  return any(isinstance(x, jax.core.Tracer) for x in jax.tree_leaves(tree))
+  return any(
+      isinstance(x, jax.core.Tracer) for x in jax.tree_util.tree_leaves(tree))
 
 
 def is_traceable(fn) -> bool:

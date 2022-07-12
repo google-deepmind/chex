@@ -112,8 +112,8 @@ def dataclass(
       generated and the class will include :py:class:`collections.abc.Mapping`
       in its base classes.
       `True` is the default, because being an instance of `Mapping` makes
-      `chex.dataclass` compatible with e.g. `jax.tree_*` methods, the `tree`
-      library, or methods related to tensorflow/python/utils/nest.py.
+      `chex.dataclass` compatible with e.g. `jax.tree_util.tree_*` methods, the
+      `tree` library, or methods related to tensorflow/python/utils/nest.py.
       As a side-effect, e.g. `np.testing.assert_array_equal` will only check
       the field names are equal and not the content. Use `chex.assert_tree_*`
       instead.
@@ -229,8 +229,8 @@ class _Dataclass():
 def register_dataclass_type_with_jax_tree_util(data_class):
   """Register an existing dataclass so JAX knows how to handle it.
 
-  This means that functions in jax.tree_util operate over the fields of the
-  dataclass. See
+  This means that functions in jax.tree_util operate over the fields
+  of the dataclass. See
   https://jax.readthedocs.io/en/latest/pytrees.html#extending-pytrees
   for further information.
 

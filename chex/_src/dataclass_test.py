@@ -483,13 +483,13 @@ class DataclassesTest(parameterized.TestCase):
       self.assertNotIsInstance(value, int)
       return isinstance(value, (_InnerDcls, str))
 
-    leaves = jax.tree_flatten(dcls, is_leaf=_is_leaf)[0]
+    leaves = jax.tree_util.tree_flatten(dcls, is_leaf=_is_leaf)[0]
     self.assertCountEqual(
         (dcls.str_val, dcls.inner_dcls, dcls.dct['md1'], dcls.dct['md2']),
         leaves)
 
     asserts.assert_tree_all_equal_structs(
-        jax.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
+        jax.tree_util.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
 
   @parameterized.named_parameters(
       ('mappable', True),

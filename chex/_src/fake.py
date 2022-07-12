@@ -154,12 +154,13 @@ def _fake_pmap(fn,
 
     if static_broadcasted_argnums:
       if isinstance(in_axes, int):
-        vmap_in_axes = jax.tree_map(lambda _: in_axes, call_args)
+        vmap_in_axes = jax.tree_util.tree_map(lambda _: in_axes, call_args)
       else:
         vmap_in_axes = in_axes
       vmap_in_axes = list(vmap_in_axes)
       for argnum in static_broadcasted_argnums:
-        vmap_in_axes[argnum] = jax.tree_map(lambda _: None, call_args[argnum])
+        vmap_in_axes[argnum] = jax.tree_util.tree_map(
+            lambda _: None, call_args[argnum])
     else:
       vmap_in_axes = in_axes
 
@@ -168,12 +169,13 @@ def _fake_pmap(fn,
       vmapped_fn = jax.jit(vmapped_fn)
 
     if fake_parallel_axis:
-      call_args = jax.tree_map(lambda x: jnp.expand_dims(x, axis=0), call_args)
+      call_args = jax.tree_util.tree_map(
+          lambda x: jnp.expand_dims(x, axis=0), call_args)
 
     output = vmapped_fn(*call_args)
 
     if fake_parallel_axis:
-      output = jax.tree_map(lambda x: jnp.squeeze(x, axis=0), output)
+      output = jax.tree_util.tree_map(lambda x: jnp.squeeze(x, axis=0), output)
 
     return output
 

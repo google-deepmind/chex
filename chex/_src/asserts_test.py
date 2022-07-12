@@ -1406,8 +1406,9 @@ class NumericalGradsAssertTest(parameterized.TestCase):
     rng_key = jax.random.PRNGKey(seed)
     for _ in range(n):
       rng_key, *tree_keys = jax.random.split(rng_key, len(init_args) + 1)
-      x = jax.tree_multimap(lambda k, x: jax.random.uniform(k, shape=x.shape),
-                            list(tree_keys), list(init_args))
+      x = jax.tree_util.tree_multimap(
+          lambda k, x: jax.random.uniform(k, shape=x.shape),
+          list(tree_keys), list(init_args))
       asserts.assert_numerical_grads(fn, x, order=1)
 
   @parameterized.parameters(([1], 24), ([5], 6), ([3, 5], 20))
