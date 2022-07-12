@@ -489,7 +489,7 @@ class DataclassesTest(parameterized.TestCase):
         leaves)
 
     asserts.assert_tree_all_equal_structs(
-        jax.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
+        jax.tree_util.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
 
   @parameterized.named_parameters(
       ('mappable', True),

@@ -57,7 +57,7 @@ parameters = Parameters(
 )
 
 # Dataclasses can be treated as JAX pytrees
-jax.tree_map(lambda x: 2.0 * x, parameters)
+jax.tree_util.tree_map(lambda x: 2.0 * x, parameters)
 
 # and as mappings by dm-tree
 tree.flatten(parameters)
