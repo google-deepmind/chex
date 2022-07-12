@@ -34,7 +34,7 @@ else:
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
 PRNGKey = jax.random.KeyArray
-PyTreeDef = type(jax.tree_structure(None))
+PyTreeDef = type(jax.tree_util.tree_structure(None))
 Shape = jax.core.Shape
 
 Device = jax.lib.xla_extension.Device
