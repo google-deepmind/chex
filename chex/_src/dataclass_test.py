@@ -467,8 +467,10 @@ class DataclassesTest(parameterized.TestCase):
     @chex_dataclass(mappable_dataclass=is_mappable)
     class _Dcls:
       str_val: str
+      # pytype: disable=invalid-annotation  # enable-bare-annotations
       inner_dcls: _InnerDcls
       dct: Mapping[str, _InnerDcls]
+      # pytype: enable=invalid-annotation  # enable-bare-annotations
 
     dcls = _Dcls(
         str_val='test',
@@ -506,7 +508,7 @@ class DataclassesTest(parameterized.TestCase):
 
     @chex_dataclass(mappable_dataclass=mappable)
     class GenericDataclass(Generic[T]):
-      a: T
+      a: T  # pytype: disable=invalid-annotation  # enable-bare-annotations
 
     obj = GenericDataclass(a=np.array([1.0, 1.0]))
     asserts.assert_tree_all_close(obj.a, 1.0)
