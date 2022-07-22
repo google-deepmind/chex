@@ -14,13 +14,17 @@ This includes utils to help:
 
 ## Installation
 
-Chex can be installed with pip directly from github, with the following command:
+You can install the latest released version of Chex from PyPI via:
 
-`pip install git+git://github.com/deepmind/chex.git`
+```sh
+pip install chex
+```
 
-or from PyPI:
+or you can install the latest development version from GitHub:
 
-`pip install chex`
+```sh
+pip install git+https://github.com/deepmind/chex.git
+```
 
 ## Modules Overview
 
