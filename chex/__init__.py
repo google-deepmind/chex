@@ -67,6 +67,7 @@ from chex._src.asserts import if_args_not_none
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
 from chex._src.dataclass import register_dataclass_type_with_jax_tree_util
+from chex._src.dimensions import Dimensions
 from chex._src.fake import fake_jit
 from chex._src.fake import fake_pmap
 from chex._src.fake import fake_pmap_and_jit
@@ -153,6 +154,7 @@ __all__ = (
     "clear_trace_counter",
     "dataclass",
     "Device",
+    "Dimensions",
     "disable_asserts",
     "enable_asserts",
     "fake_jit",

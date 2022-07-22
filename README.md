@@ -348,6 +348,37 @@ access to `N` devices.
 
 More examples can be found in [variants_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants_test.py), [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) and [fake_set_n_cpu_devices_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_set_n_cpu_devices_test.py).
 
+### Using named dimension sizes.
+
+Chex comes with a small utility that allows you to package a collection of
+dimension sizes into a single object. The basic idea is:
+
+```python
+dims = chex.Dimensions(B=batch_size, T=sequence_len, E=embedding_dim)
+...
+chex.assert_shape(arr, dims['BTE'])
+```
+
+String lookups are translated integer tuples. For instance, let's say
+`batch_size == 3`, `sequence_len = 5` and `embedding_dim = 7`, then
+
+```python
+dims['BTE'] == (3, 5, 7)
+dims['B'] == (3,)
+dims['TTBEE'] == (5, 5, 3, 7, 7)
+...
+```
+
+You can also assign dimension sizes dynamically as follows:
+
+```python
+dims['XY'] = some_matrix.shape
+dims.Z = 13
+```
+
+For more examples, see [chex.Dimensions](https://chex.readthedocs.io/en/latest/api.html#chex.Dimensions)
+documentation.
+
 ## Citing Chex
 
 This repository is part of the [DeepMind JAX Ecosystem], to cite Chex please use

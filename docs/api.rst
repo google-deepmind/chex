@@ -47,6 +47,7 @@ Assertions
     assert_trees_all_equal_shapes
     assert_trees_all_equal_structs
     assert_type
+    Dimensions
     disable_asserts
     enable_asserts
     clear_trace_counter
@@ -87,7 +88,6 @@ Generic Assertions
 .. autofunction:: assert_axis_dimension
 .. autofunction:: assert_axis_dimension_comparator
 .. autofunction:: assert_axis_dimension_gt
-
 .. autofunction:: assert_axis_dimension_gteq
 .. autofunction:: assert_axis_dimension_lt
 .. autofunction:: assert_axis_dimension_lteq
@@ -109,6 +109,12 @@ Generic Assertions
 .. autofunction:: assert_scalar_positive
 .. autofunction:: assert_shape
 .. autofunction:: assert_type
+
+
+Shapes and Named Dimensions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: Dimensions
 
 
 Utils
