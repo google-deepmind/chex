@@ -26,11 +26,13 @@ import collections
 import collections.abc
 import functools
 import re
+import threading
 from typing import Any, Sequence, Union, Callable, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
 import jax
+from jax.experimental import checkify
 import jax.numpy as jnp
 import numpy as np
 
@@ -49,6 +51,7 @@ TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 #  **kwargs)
 TChexAssertion = Callable[..., None]
 TAssertFn = Callable[..., None]
+TJittableAssertFn = Callable[..., bool]  # a predicate function
 
 # Matchers.
 TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
@@ -58,6 +61,11 @@ TShapeMatcher = Sequence[TDimMatcher]
 ERR_PREFIX = "[Chex] "
 TRACE_COUNTER = collections.Counter()
 DISABLE_ASSERTIONS = False
+
+# This variable is used for _chexify_ transformations, see `asserts_chexify.py`.
+CHEXIFY_STORAGE = threading.local()
+CHEXIFY_STORAGE.wait_fns = []
+CHEXIFY_STORAGE.level = 0
 
 
 def assert_collection_of_arrays(inputs: Sequence[pytypes.Array]):
@@ -103,25 +111,34 @@ def get_err_regex(message: str) -> str:
   return f"{re.escape(ERR_PREFIX)}[\\s\\S]*{message}"
 
 
-def make_static_assertion(assert_fn: TAssertFn) -> TChexAssertion:
-  """Constructs a static assertion from an assert function.
+def get_chexify_err_message(custom_msg: Optional[str] = None) -> str:
+  """Constructs a regexp for the chexify exception message."""
+  custom_msg = f" [{custom_msg}]" if custom_msg else ""
+  return f"chexify assertion failed{custom_msg}"
 
-  This wrapper should be used for assertions that do not check values or are
-  not used in jitted code.
+
+def _make_host_assertion(assert_fn: TAssertFn) -> TChexAssertion:
+  """Constructs a host assertion given `assert_fn`.
+
+  This wrapper should only be applied to the assertions that are either
+    a) never used in jitted code, or
+    b) when used in jitted code they do not check/access tensor values (i.e.
+       they do not introduce value-dependent python control flow, see
+       https://jax.readthedocs.io/en/latest/errors.html#jax.errors.ConcretizationTypeError).
 
   Args:
-    assert_fn: a function implementing the check.
+    assert_fn: A function implementing the check.
 
   Returns:
     A chex assertion.
   """
 
-  def _static_assert(*args,
-                     custom_message: Optional[str] = None,
-                     custom_message_format_vars: Sequence[Any] = (),
-                     include_default_message: bool = True,
-                     exception_type: Type[Exception] = AssertionError,
-                     **kwargs) -> None:
+  def _assert_on_host(*args,
+                      custom_message: Optional[str] = None,
+                      custom_message_format_vars: Sequence[Any] = (),
+                      include_default_message: bool = True,
+                      exception_type: Type[Exception] = AssertionError,
+                      **kwargs) -> None:
     # Format error's stack trace to remove Chex' internal frames.
     assertion_exc = None
     value_exc = None
@@ -156,11 +173,12 @@ def make_static_assertion(assert_fn: TAssertFn) -> TChexAssertion:
 
         raise exception_type(error_msg)
 
-  return _static_assert
+  return _assert_on_host
 
 
-def chex_assertion(assert_fn: TAssertFn,
-                   value_assertion: bool) -> TChexAssertion:
+def chex_assertion(
+    assert_fn: TAssertFn,
+    jittable_assert_fn: Optional[TJittableAssertFn]) -> TChexAssertion:
   """Wraps Chex assert functions to control their common behaviour.
 
   Extends the assertion to support the following optional auxiliary kwargs:
@@ -173,33 +191,33 @@ def chex_assertion(assert_fn: TAssertFn,
 
   Args:
     assert_fn: A function implementing the check.
-    value_assertion: A bool indicating whether the assertion depends on actual
-      tensors' values.
+    jittable_assert_fn: An optional jittable version of `assert_fn` implementing
+      a predicate. Required for value assertions.
 
   Returns:
     A Chex assertion (with auxiliary kwargs).
   """
-  host_assertion = make_static_assertion(assert_fn)
+  host_assertion_fn = _make_host_assertion(assert_fn)
 
   @functools.wraps(assert_fn)
   def _chex_assert_fn(*args, **kwargs) -> None:
     if DISABLE_ASSERTIONS:
       return
-
-    if value_assertion and has_tracers((args, kwargs)):
-      cte_url = ("https://jax.readthedocs.io/en/latest/errors.html"
-                 "#jax.errors.ConcretizationTypeError")
-      raise RuntimeError(
-          f"Assertions that use tensors' values cannot be called from a "
-          f"jax-traced code. See {cte_url}.")
+    if jittable_assert_fn is not None and has_tracers((args, kwargs)):
+      if not CHEXIFY_STORAGE.level:
+        raise RuntimeError(
+            "Value assertions can only be called from functions wrapped "
+            "with `@chex.chexify`. See the docs.")
+      msg = get_chexify_err_message(kwargs.pop("custom_message", None))
+      checkify.check(pred=jittable_assert_fn(*args, **kwargs), msg=msg)
     else:
       try:
-        host_assertion(*args, **kwargs)
+        host_assertion_fn(*args, **kwargs)
       except jax.errors.ConcretizationTypeError as exc:
         msg = ("Chex assertion detected `ConcretizationTypeError`: it is very "
                "likely that it tried to access tensors' values during tracing. "
-               "Make sure that you defined a jittable version of this Chex "
-               "assertion.")
+               "Make sure that you defined a jittable version of this chex "
+               "assertion; if that does not help, please file a bug.")
         raise exc from RuntimeError(msg)
 
   return _chex_assert_fn

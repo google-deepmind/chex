@@ -69,12 +69,12 @@ class ExceptionMessageFormatTest(variants.TestCase):
 
     exc_msg = lambda x: f'{x} is non-positive.'
 
-    @functools.partial(ai.chex_assertion, value_assertion=False)
+    @functools.partial(ai.chex_assertion, jittable_assert_fn=None)
     def assert_positive(x):
       if x <= 0:
         raise AssertionError(exc_msg(x))
 
-    @functools.partial(ai.chex_assertion, value_assertion=False)
+    @functools.partial(ai.chex_assertion, jittable_assert_fn=None)
     def assert_each_positive(*args):
       for x in args:
         assert_positive(x)
@@ -128,7 +128,7 @@ class JitCompatibleTest(variants.TestCase):
         x_ok, x_wrong = (jnp.expand_dims(x, 0) for x in (x_ok, x_wrong))
 
       # Jax-compatible.
-      assert_compat_fn = ai.chex_assertion(assert_fn, value_assertion=False)
+      assert_compat_fn = ai.chex_assertion(assert_fn, jittable_assert_fn=None)
 
       def compat_fn(x, assertion=assert_compat_fn):
         assertion(x)
@@ -141,7 +141,8 @@ class JitCompatibleTest(variants.TestCase):
         transform_fn(compat_fn)(x_wrong)
 
       # JAX-incompatible.
-      assert_incompat_fn = ai.chex_assertion(assert_fn, value_assertion=True)
+      assert_incompat_fn = ai.chex_assertion(
+          assert_fn, jittable_assert_fn=assert_fn)
 
       def incompat_fn(x, assertion=assert_incompat_fn):
         assertion(x)
@@ -150,7 +151,7 @@ class JitCompatibleTest(variants.TestCase):
       if not is_vmap:
         incompat_fn(x_ok)
       with self.assertRaisesRegex(RuntimeError,
-                                  'cannot be called from a jax-traced code'):
+                                  'Value assertions can only be called from'):
         transform_fn(incompat_fn)(x_wrong)
 
 

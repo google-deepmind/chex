@@ -35,8 +35,9 @@ Scalar = pytypes.Scalar
 Array = pytypes.Array
 ArrayTree = pytypes.ArrayTree
 
-_value_assertion = functools.partial(_ai.chex_assertion, value_assertion=True)
-_static_assertion = functools.partial(_ai.chex_assertion, value_assertion=False)
+_value_assertion = _ai.chex_assertion
+_static_assertion = functools.partial(
+    _ai.chex_assertion, jittable_assert_fn=None)
 
 
 def disable_asserts() -> None:
