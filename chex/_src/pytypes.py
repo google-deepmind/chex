@@ -41,4 +41,4 @@ Device = jax.lib.xla_extension.Device
 
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 
-ArrayDType = jax._src.numpy.lax_numpy._ScalarMeta  # pylint: disable=protected-access
+ArrayDType = Any
