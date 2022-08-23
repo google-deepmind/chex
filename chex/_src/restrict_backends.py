@@ -31,7 +31,7 @@ import contextlib
 import functools
 from typing import Optional, Sequence
 
-import jax
+import jax._src.dispatch as jax_dispatch
 
 
 class RestrictedBackendError(RuntimeError):
@@ -73,13 +73,7 @@ def restrict_backends(
     return ((backend_platform in allowed) if allowed is not None else
             (backend_platform not in forbidden))
 
-  # pylint: disable=protected-access
-  # backend_compile was moved to jax._src.dispatch for jaxlib>0.1.74
-  backend_compile_module = jax._src.dispatch if hasattr(jax._src,
-                                                        'dispatch') else jax.xla
-  # pylint: enable=protected-access
-
-  inner_backend_compile = backend_compile_module.backend_compile
+  inner_backend_compile = jax_dispatch.backend_compile
 
   @functools.wraps(inner_backend_compile)
   def wrapper(backend, *args, **kwargs):
@@ -90,9 +84,9 @@ def restrict_backends(
     return inner_backend_compile(backend, *args, **kwargs)
 
   try:
-    backend_compile_module.backend_compile = wrapper
+    jax_dispatch.backend_compile = wrapper
     yield
   finally:
-    backend_compile = backend_compile_module.backend_compile
+    backend_compile = jax_dispatch.backend_compile
     assert backend_compile is wrapper, backend_compile
-    backend_compile_module.backend_compile = inner_backend_compile
+    jax_dispatch.backend_compile = inner_backend_compile
