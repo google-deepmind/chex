@@ -17,9 +17,11 @@
 import collections
 import dataclasses
 import functools
+import typing
 
 from absl import logging
 import jax
+import typing_extensions
 
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
@@ -82,6 +84,14 @@ def mappable_dataclass(cls):
   return cls
 
 
+_T = typing.TypeVar("_T")
+
+
+@typing_extensions.dataclass_transform(
+  eq_default=True,
+  order_default=False,
+  field_specifiers=(dataclasses.Field, dataclasses.field),
+)
 def dataclass(
     cls=None,
     *,
@@ -92,7 +102,7 @@ def dataclass(
     unsafe_hash=False,
     frozen=False,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
-):
+) -> typing.Callable[[typing.Type[_T]], typing.Type[_T]]:
   """JAX-friendly wrapper for :py:func:`dataclasses.dataclass`.
 
   This wrapper class registers new dataclasses with JAX so that tree utils
