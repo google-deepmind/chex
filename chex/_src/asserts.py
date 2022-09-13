@@ -1240,7 +1240,6 @@ assert_tree_all_equal_structs = _ai.deprecation_wrapper(
     new_name="assert_trees_all_equal_structs")
 
 
-# Jit-compatible by default, but it is a user's responsibility to ensure it.
 @_static_assertion
 def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
                                       error_msg_fn: _ai.TLeavesEqCmpErrorFn,
@@ -1357,8 +1356,7 @@ assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
 ############# Value assertions. #############
 
 
-@_static_assertion
-def assert_tree_all_finite(tree_like: ArrayTree) -> None:
+def _assert_tree_all_finite_static(tree_like: ArrayTree) -> None:
   """Checks that all leaves in a tree are finite.
 
   Args:
@@ -1368,16 +1366,28 @@ def assert_tree_all_finite(tree_like: ArrayTree) -> None:
     AssertionError: If any leaf in ``tree_like`` is non-finite.
   """
   all_finite = jax.tree_util.tree_all(
-      jax.tree_util.tree_map(lambda x: jnp.all(jnp.isfinite(x)), tree_like))
+      jax.tree_util.tree_map(lambda x: np.all(np.isfinite(x)), tree_like))
   if not all_finite:
-    is_finite = lambda x: "Finite" if jnp.all(jnp.isfinite(x)) else "Nonfinite"
-    error_msg = jax.tree_util.tree_map(is_finite, tree_like)
+    is_finite = lambda x: "Finite" if np.all(np.isfinite(x)) else "Nonfinite"
+    error_msg = jax.tree_map(is_finite, tree_like)
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 
+def _assert_tree_all_finite_jittable(tree_like: ArrayTree) -> Array:
+  """A jittable version of `_assert_tree_all_finite_static`."""
+  return jnp.all(
+      jnp.asarray([
+          jnp.isfinite(x).all() for x in jax.tree_util.tree_leaves(tree_like)
+      ]))
+
+
+assert_tree_all_finite = _value_assertion(_assert_tree_all_finite_static,
+                                          _assert_tree_all_finite_jittable)
+
+
 @_static_assertion
-def assert_trees_all_equal(*trees: Sequence[ArrayTree],
-                           ignore_nones: bool = False) -> None:
+def _assert_trees_all_equal_static(*trees: Sequence[ArrayTree],
+                                   ignore_nones: bool = False) -> None:
   """Checks that all trees have leaves with *exactly* equal values.
 
   If you are comparing floating point numbers, an exact equality check may not
@@ -1418,11 +1428,24 @@ def assert_trees_all_equal(*trees: Sequence[ArrayTree],
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-@_static_assertion
-def assert_trees_all_close(*trees: Sequence[ArrayTree],
-                           rtol: float = 1e-06,
-                           atol: float = .0,
-                           ignore_nones: bool = False) -> None:
+def _assert_trees_all_equal_jittable(*trees: Sequence[ArrayTree],
+                                     ignore_nones: bool = False) -> Array:
+  """A jittable version of `_assert_trees_all_equal_static`."""
+  if not ignore_nones:
+    assert_tree_no_nones(trees)
+
+  cmp_fn = lambda x, y: jnp.array_equal(x, y, equal_nan=True)
+  return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
+
+
+assert_trees_all_equal = _value_assertion(_assert_trees_all_equal_static,
+                                          _assert_trees_all_equal_jittable)
+
+
+def _assert_trees_all_close_static(*trees: Sequence[ArrayTree],
+                                   rtol: float = 1e-06,
+                                   atol: float = .0,
+                                   ignore_nones: bool = False) -> None:
   """Checks that all trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired up to
@@ -1467,6 +1490,21 @@ def assert_trees_all_close(*trees: Sequence[ArrayTree],
   assert_trees_all_equal_comparator(
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
+
+def _assert_trees_all_close_jittable(*trees: Sequence[ArrayTree],
+                                     rtol: float = 1e-06,
+                                     atol: float = .0,
+                                     ignore_nones: bool = False) -> Array:
+  """A jittable version of `_assert_trees_all_close_static`."""
+  if not ignore_nones:
+    assert_tree_no_nones(trees)
+
+  cmp_fn = lambda x, y: jnp.isclose(x, y, rtol=rtol, atol=atol).all()
+  return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
+
+
+assert_trees_all_close = _value_assertion(_assert_trees_all_close_static,
+                                          _assert_trees_all_close_jittable)
 
 assert_tree_all_close = _ai.deprecation_wrapper(
     assert_trees_all_close,

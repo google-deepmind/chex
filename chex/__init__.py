@@ -64,6 +64,9 @@ from chex._src.asserts import clear_trace_counter
 from chex._src.asserts import disable_asserts
 from chex._src.asserts import enable_asserts
 from chex._src.asserts import if_args_not_none
+from chex._src.asserts_chexify import block_until_chexify_assertions_complete
+from chex._src.asserts_chexify import chexify
+from chex._src.asserts_chexify import with_jittable_assertions
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
 from chex._src.dataclass import register_dataclass_type_with_jax_tree_util
@@ -150,6 +153,8 @@ __all__ = (
     "assert_trees_all_equal_shapes",
     "assert_trees_all_equal_structs",
     "assert_type",
+    "block_until_chexify_assertions_complete",
+    "chexify",
     "ChexVariantType",
     "clear_trace_counter",
     "dataclass",
@@ -173,6 +178,7 @@ __all__ = (
     "Shape",
     "TestCase",
     "variants",
+    "with_jittable_assertions",
 )
 
 

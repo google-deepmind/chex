@@ -179,6 +179,22 @@ class AssertsChexifyTest(variants.TestCase):
     with self.assertRaisesRegex(AssertionError, 'err_label'):
       asserts_chexify.atexit._run_exitfuncs()
 
+  def test_docstring_example(self):
+
+    @chexify_async
+    @jax.jit
+    def logp1_abs_safe(x):
+      asserts.assert_tree_all_finite(x)
+      return jnp.log(jnp.abs(x) + 1)
+
+    logp1_abs_safe(jnp.ones(2))  # OK
+    asserts_chexify.block_until_chexify_assertions_complete()
+
+    err_regex = re.escape(_ai.get_chexify_err_message())
+    with self.assertRaisesRegex(AssertionError, f'{err_regex}.*chexify_test'):
+      logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS
+      logp1_abs_safe.wait_checks()
+
 
 class AssertsChexifyTestSuite(variants.TestCase):
   """Test suite for chexify assertions."""

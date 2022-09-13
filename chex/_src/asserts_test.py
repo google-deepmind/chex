@@ -786,6 +786,7 @@ class TreeAssertionsTest(parameterized.TestCase):
   def test_tree_all_finite_passes_finite(self):
     finite_tree = {'a': jnp.ones((3,)), 'b': jnp.array([0.0, 0.0])}
     asserts.assert_tree_all_finite(finite_tree)
+    self.assertTrue(asserts._assert_tree_all_finite_jittable(finite_tree))
 
   def test_tree_all_finite_should_fail_inf(self):
     inf_tree = {
@@ -796,17 +797,21 @@ class TreeAssertionsTest(parameterized.TestCase):
         AssertionError, _get_err_regex('Tree contains non-finite value')):
       asserts.assert_tree_all_finite(inf_tree)
 
+    self.assertFalse(asserts._assert_tree_all_finite_jittable(inf_tree))
+
   def test_assert_trees_all_equal_passes_same_tree(self):
-    tree1 = {
+    tree = {
         'a': [jnp.zeros((1,))],
         'b': ([0], (0,), 0),
     }
-    asserts.assert_trees_all_equal(tree1, tree1)
+    asserts.assert_trees_all_equal(tree, tree)
+    self.assertTrue(asserts._assert_trees_all_equal_jittable(tree, tree))
 
   def test_assert_trees_all_equal_passes_values_equal(self):
     tree1 = (jnp.array([0.0, 0.0]),)
     tree2 = (jnp.array([0.0, 0.0]),)
     asserts.assert_trees_all_equal(tree1, tree2)
+    self.assertTrue(asserts._assert_trees_all_equal_jittable(tree1, tree2))
 
   def test_assert_trees_all_equal_fail_values_close_but_not_equal(self):
     tree1 = (jnp.array([1.0, 1.0]),)
@@ -814,6 +819,7 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('Values not exactly equal')):
       asserts.assert_trees_all_equal(tree1, tree2)
+    self.assertFalse(asserts._assert_trees_all_equal_jittable(tree1, tree2))
 
   def test_assert_trees_all_equal_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
@@ -822,22 +828,30 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('`None` detected')):
       asserts.assert_trees_all_equal(tree, tree, ignore_nones=False)
 
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts._assert_trees_all_equal_jittable(tree, tree, ignore_nones=False)
+
   def test_assert_trees_all_close_passes_same_tree(self):
-    tree1 = {
+    tree = {
         'a': [jnp.zeros((1,))],
         'b': ([0], (0,), 0),
     }
-    asserts.assert_trees_all_close(tree1, tree1)
+    asserts.assert_trees_all_close(tree, tree)
+    self.assertTrue(asserts._assert_trees_all_close_jittable(tree, tree))
 
   def test_assert_trees_all_close_passes_values_equal(self):
     tree1 = (jnp.array([0.0, 0.0]),)
     tree2 = (jnp.array([0.0, 0.0]),)
     asserts.assert_trees_all_close(tree1, tree2)
+    self.assertTrue(asserts._assert_trees_all_close_jittable(tree1, tree2))
 
   def test_assert_trees_all_close_passes_values_close_but_not_equal(self):
     tree1 = (jnp.array([1.0, 1.0]),)
     tree2 = (jnp.array([1.0, 1.0 + 5e-7]),)
     asserts.assert_trees_all_close(tree1, tree2, rtol=1e-6)
+    self.assertTrue(
+        asserts._assert_trees_all_close_jittable(tree1, tree2, rtol=1e-6))
 
   def test_assert_trees_all_close_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
@@ -845,6 +859,10 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
       asserts.assert_trees_all_close(tree, tree, ignore_nones=False)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts._assert_trees_all_close_jittable(tree, tree, ignore_nones=False)
 
   def test_assert_trees_all_close_bfloat16(self):
     tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
@@ -854,12 +872,17 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree3 = {'a': jnp.asarray([0.8, 1.7], dtype=jnp.bfloat16)}
     asserts.assert_trees_all_close(tree1, tree1)
     asserts.assert_trees_all_close(tree1, tree2)
+    self.assertTrue(asserts._assert_trees_all_close_jittable(tree1, tree2))
+
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_trees_all_close(tree1, tree3)
+    self.assertFalse(asserts._assert_trees_all_close_jittable(tree1, tree3))
+
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_trees_all_close(tree2, tree3)
+    self.assertFalse(asserts._assert_trees_all_close_jittable(tree2, tree3))
 
   def test_assert_trees_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}

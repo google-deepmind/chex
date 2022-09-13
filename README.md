@@ -121,6 +121,16 @@ assert_tpu_available()                 # at least 1 TPU available
 assert_numerical_grads(f, (x, y), j)   # f^{(j)}(x, y) matches numerical grads
 ```
 
+See `asserts.py`
+[documentation](https://chex.readthedocs.io/en/latest/api.html#assertions) to
+find all supported assertions.
+
+If you cannot find a specific assertion, please consider making a pull request
+or openning an issue on
+[the bug tracker](https://github.com/deepmind/chex/issues).
+
+#### Optional Arguments
+
 All chex assertions support the following optional kwargs for manipulating the
 emitted exception messages:
 
@@ -144,6 +154,44 @@ for i in range(num_steps):
 will raise a `ValueError` that includes a step number when `params` get polluted
 with `NaNs` or `None`s.
 
+#### Static and Value (aka *Runtime*) Assertions
+
+Chex divides all assertions into 2 classes: ***static*** and ***value***
+assertions.
+
+1.  ***static*** assertions use anything except concrete values of tensors.
+    Examples: `assert_shape`, `assert_trees_all_equal_dtypes`,
+    `assert_max_traces`.
+
+2.  ***value*** assertions require access to tensor values, which are not
+    available during JAX tracing (see
+    [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)),
+    thus such assertion need special treatment in a *jitted* code.
+
+To enable value assertions in a jitted function, it can be decorated with
+`chex.chexify()` wrapper. Example:
+
+```python
+  @chex.chexify
+  @jax.jit
+  def logp1_abs_safe(x: chex.Array) -> chex.Array:
+    chex.assert_tree_all_finite(x)
+    return jnp.log(jnp.abs(x) + 1)
+
+  logp1_abs_safe(jnp.ones(2))  # OK
+  logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS (in async mode)
+
+  # The error will be raised either at the next line OR at the next
+  # `logp1_abs_safe` call. See the docs for more detain on async mode.
+  logp1_abs_safe.wait_checks()  # Wait for the (async) computation to complete.
+```
+
+See
+[this docstring](https://chex.readthedocs.io/en/latest/api.html#chex.chexify)
+for more detail on `chex.chexify()`.
+
+#### JAX Tracing Assertions
+
 JAX re-traces JIT'ted function every time the structure of passed arguments
 changes. Often this behavior is inadvertent and leads to a significant
 performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
@@ -156,7 +204,7 @@ on `@chex.assert_max_traces`.
 
 Examples:
 
-```
+```python
   @jax.jit
   @chex.assert_max_traces(n=1)
   def fn_sum_jitted(x, y):
@@ -168,16 +216,16 @@ Examples:
 
 Can be used with `jax.pmap()` as well:
 
-```
+```python
   def fn_sub(x, y):
     return x - y
 
   fn_sub_pmapped = jax.pmap(chex.assert_max_traces(fn_sub, n=10))
 ```
 
-[More about tracing](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
-
-See documentation of [asserts.py](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py) for details on all supported assertions.
+See
+[HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
+section for more information about tracing.
 
 ### Test variants ([variants.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants.py))
 

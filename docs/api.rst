@@ -47,6 +47,9 @@ Assertions
     assert_trees_all_equal_shapes
     assert_trees_all_equal_structs
     assert_type
+    chexify
+    with_jittable_assertions
+    block_until_chexify_assertions_complete
     Dimensions
     disable_asserts
     enable_asserts
@@ -61,6 +64,14 @@ Jax Assertions
 .. autofunction:: assert_devices_available
 .. autofunction:: assert_gpu_available
 .. autofunction:: assert_tpu_available
+
+
+Value (Runtime) Assertions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: chexify
+.. autofunction:: with_jittable_assertions
+.. autofunction:: block_until_chexify_assertions_complete
 
 
 Tree Assertions

@@ -27,11 +27,17 @@ from jax.experimental import checkify
 
 
 def _check_error(err: checkify.Error) -> None:
+  """Checks the error and converts it to chex format."""
   try:
     checkify.check_error(err)
   except ValueError as exc:
-    if str(exc).find(_ai.get_chexify_err_message()) != -1:
-      raise AssertionError(str(exc))  # pylint:disable=raise-missing-from
+    msg = str(exc)
+    if msg.find(_ai.get_chexify_err_message()) != -1:
+      # Remove internal code pointers.
+      internal_info_pos = msg.rfind('(check failed at')
+      if internal_info_pos != -1:
+        msg = msg[:internal_info_pos]
+      raise AssertionError(msg)  # pylint:disable=raise-missing-from
     else:
       raise
 
@@ -58,7 +64,60 @@ def _check_if_hanging_assertions():
 
 def chexify(fn: Callable[..., Any],
             async_check: bool = True) -> Callable[..., Any]:
-  """Wraps a transformed function `fn` to enable chex value assertions.
+  """Wraps a transformed function `fn` to enable Chex value assertions.
+
+  Chex value/runtime assertions access concrete values of tensors (e.g.
+  `assert_tree_all_finite`) which are not available during JAX tracing, see
+  https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html
+  and
+  https://jax.readthedocs.io/en/latest/_modules/jax/_src/errors.html#ConcretizationTypeError.
+
+  This wrapper enables them in jitted/pmapped functions by performing a
+  specifically designed JAX transformation
+  https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html#the-checkify-transformation
+  and calling functionalised checks
+  https://jax.readthedocs.io/en/latest/_autosummary/jax.experimental.checkify.check.html
+
+  Example:
+
+  .. code::
+
+    @chex.chexify
+    @jax.jit
+    def logp1_abs_safe(x: chex.Array) -> chex.Array:
+      chex.assert_tree_all_finite(x)
+      return jnp.log(jnp.abs(x) + 1)
+
+    logp1_abs_safe(jnp.ones(2))  # OK
+    logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS
+    logp1_abs_safe.wait_checks()
+
+  Note 1: This wrapper allows identifying the first failed assertion in a jitted
+  code by printing a pointer to the line where the failed assertion was invoked.
+  For getting verbose messages (including concrete tensor values), an unjitted
+  version of the code will need to be executed with the same input values. Chex
+  does not currently provide tools to help with this.
+
+  Note 2: This wrapper fully supports asynchronous executions
+  (see https://jax.readthedocs.io/en/latest/async_dispatch.html).
+  To block program execution until asynchronous checks for a _chexified_
+  function `fn` complete, call `fn.wait_checks()`. Similarly,
+  `chex.block_until_chexify_assertions_complete()` will block program execution
+  until _all_ asyncronous checks complete.
+
+  Note 3: Chex automatically selects the backend for executing its assertions
+  (i.e. CPU or device accelerator) depending on the program context.
+
+  Note 4: Value assertions can have impact on the performance of a function, see
+  https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html#limitations
+
+  Note 5: static assertions, such as `assert_shape` or
+  `assert_trees_all_equal_dtypes`, can be called from a jitted function without
+  `chexify` wrapper (since they do not access concrete values, only
+  shapes and/or dtypes which are available during JAX tracing).
+
+  More examples can be found at
+  https://github.com/deepmind/chex/blob/master/chex/_src/asserts_chexify_test.py
 
   Args:
     fn: A transformed function to wrap.
@@ -132,3 +191,9 @@ def chexify(fn: Callable[..., Any],
         'Chex will not redefine it.', _chexified_fn.__name__)
 
   return _chexified_fn
+
+
+def with_jittable_assertions(fn: Callable[..., Any],
+                             async_check: bool = True) -> Callable[..., Any]:
+  """An alias for `chexify` (see the docs)."""
+  return chexify(fn, async_check)
