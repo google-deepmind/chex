@@ -1381,8 +1381,10 @@ def _assert_tree_all_finite_jittable(tree_like: ArrayTree) -> Array:
       ]))
 
 
-assert_tree_all_finite = _value_assertion(_assert_tree_all_finite_static,
-                                          _assert_tree_all_finite_jittable)
+assert_tree_all_finite = _value_assertion(
+    assert_fn=_assert_tree_all_finite_static,
+    jittable_assert_fn=_assert_tree_all_finite_jittable,
+    name="assert_tree_all_finite")
 
 
 @_static_assertion
@@ -1438,8 +1440,10 @@ def _assert_trees_all_equal_jittable(*trees: Sequence[ArrayTree],
   return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
 
 
-assert_trees_all_equal = _value_assertion(_assert_trees_all_equal_static,
-                                          _assert_trees_all_equal_jittable)
+assert_trees_all_equal = _value_assertion(
+    assert_fn=_assert_trees_all_equal_static,
+    jittable_assert_fn=_assert_trees_all_equal_jittable,
+    name="assert_trees_all_equal")
 
 
 def _assert_trees_all_close_static(*trees: Sequence[ArrayTree],
@@ -1503,8 +1507,10 @@ def _assert_trees_all_close_jittable(*trees: Sequence[ArrayTree],
   return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
 
 
-assert_trees_all_close = _value_assertion(_assert_trees_all_close_static,
-                                          _assert_trees_all_close_jittable)
+assert_trees_all_close = _value_assertion(
+    assert_fn=_assert_trees_all_close_static,
+    jittable_assert_fn=_assert_trees_all_close_jittable,
+    name="assert_trees_all_close")
 
 assert_tree_all_close = _ai.deprecation_wrapper(
     assert_trees_all_close,

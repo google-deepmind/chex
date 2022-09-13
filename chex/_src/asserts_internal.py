@@ -134,7 +134,8 @@ def get_chexify_err_message(custom_msg: Optional[str] = None) -> str:
   return f"{ERR_PREFIX}chexify assertion failed{custom_msg}"
 
 
-def _make_host_assertion(assert_fn: TAssertFn) -> TChexAssertion:
+def _make_host_assertion(assert_fn: TAssertFn,
+                         name: Optional[str] = None) -> TChexAssertion:
   """Constructs a host assertion given `assert_fn`.
 
   This wrapper should only be applied to the assertions that are either
@@ -145,10 +146,13 @@ def _make_host_assertion(assert_fn: TAssertFn) -> TChexAssertion:
 
   Args:
     assert_fn: A function implementing the check.
+    name: A name for assertion.
 
   Returns:
     A chex assertion.
   """
+  if name is None:
+    name = assert_fn.__name__
 
   def _assert_on_host(*args,
                       custom_message: Optional[str] = None,
@@ -178,7 +182,7 @@ def _make_host_assertion(assert_fn: TAssertFn) -> TChexAssertion:
           error_msg = error_msg[error_msg.find("failed:") + len("failed:"):]
 
         # Whether to include the default error message.
-        default_msg = (f"Assertion {assert_fn.__name__} failed: "
+        default_msg = (f"Assertion {name} failed: "
                        if include_default_message else "")
         error_msg = f"{ERR_PREFIX}{default_msg}{error_msg}"
 
@@ -195,7 +199,8 @@ def _make_host_assertion(assert_fn: TAssertFn) -> TChexAssertion:
 
 def chex_assertion(
     assert_fn: TAssertFn,
-    jittable_assert_fn: Optional[TJittableAssertFn]) -> TChexAssertion:
+    jittable_assert_fn: Optional[TJittableAssertFn],
+    name: Optional[str] = None) -> TChexAssertion:
   """Wraps Chex assert functions to control their common behaviour.
 
   Extends the assertion to support the following optional auxiliary kwargs:
@@ -211,11 +216,12 @@ def chex_assertion(
     jittable_assert_fn: An optional jittable version of `assert_fn` implementing
       a predicate (returning `True` only if assertion passes).
       Required for value assertions.
+    name: A name for assertion. If not provided, use `assert_fn.__name__`.
 
   Returns:
     A Chex assertion (with auxiliary kwargs).
   """
-  host_assertion_fn = _make_host_assertion(assert_fn)
+  host_assertion_fn = _make_host_assertion(assert_fn, name)
 
   @functools.wraps(assert_fn)
   def _chex_assert_fn(*args, **kwargs) -> None:
@@ -239,6 +245,9 @@ def chex_assertion(
                "Make sure that you defined a jittable version of this chex "
                "assertion; if that does not help, please file a bug.")
         raise exc from RuntimeError(msg)
+
+  if name is not None:
+    _chex_assert_fn.__name__ = name
 
   return _chex_assert_fn
 
