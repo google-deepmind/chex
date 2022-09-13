@@ -59,11 +59,14 @@ def _jittable_assert_tree_positive(tree):
 
 
 chex_static_assert_positive = _ai.chex_assertion(
-    assert_fn=_assert_tree_positive, jittable_assert_fn=None)
+    assert_fn=_assert_tree_positive,
+    jittable_assert_fn=None,
+    name='assert_tree_positive_test')
 
 chex_value_assert_positive = _ai.chex_assertion(
     assert_fn=_assert_tree_positive,
-    jittable_assert_fn=_jittable_assert_tree_positive)
+    jittable_assert_fn=_jittable_assert_tree_positive,
+    name='assert_tree_positive_test')
 
 
 class AssertsChexifyTest(variants.TestCase):
@@ -190,7 +193,7 @@ class AssertsChexifyTest(variants.TestCase):
     logp1_abs_safe(jnp.ones(2))  # OK
     asserts_chexify.block_until_chexify_assertions_complete()
 
-    err_regex = re.escape(_ai.get_chexify_err_message())
+    err_regex = re.escape(_ai.get_chexify_err_message('assert_tree_all_finite'))
     with self.assertRaisesRegex(AssertionError, f'{err_regex}.*chexify_test'):
       logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS
       logp1_abs_safe.wait_checks()
@@ -256,7 +259,8 @@ class AssertsChexifyTestSuite(variants.TestCase):
           fn_static_assert(*invalid_args)
 
       # Value assertion fails on incorrect inputs (with transformations).
-      err_regex = re.escape(_ai.get_chexify_err_message(label))
+      err_regex = re.escape(
+          _ai.get_chexify_err_message('assert_tree_positive_test', label))
       with self.assertRaisesRegex(AssertionError, err_regex):
         chexified_fn_with_value_asserts(*invalid_args)
 

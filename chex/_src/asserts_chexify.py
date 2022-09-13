@@ -18,12 +18,16 @@ import atexit
 import collections
 from concurrent import futures
 import functools
+import re
 from typing import Any, Callable
 
 from absl import logging
 from chex._src import asserts_internal as _ai
 import jax
 from jax.experimental import checkify
+
+_chexify_error_pattern = re.compile(
+    re.escape(_ai.get_chexify_err_message('NAME')).replace('NAME', '.*'))
 
 
 def _check_error(err: checkify.Error) -> None:
@@ -32,7 +36,7 @@ def _check_error(err: checkify.Error) -> None:
     checkify.check_error(err)
   except ValueError as exc:
     msg = str(exc)
-    if msg.find(_ai.get_chexify_err_message()) != -1:
+    if _chexify_error_pattern.match(msg):
       # Remove internal code pointers.
       internal_info_pos = msg.rfind('(check failed at')
       if internal_info_pos != -1:

@@ -128,10 +128,10 @@ def get_err_regex(message: str) -> str:
   return f"{re.escape(ERR_PREFIX)}[\\s\\S]*{message}"
 
 
-def get_chexify_err_message(custom_msg: Optional[str] = None) -> str:
+def get_chexify_err_message(name: str, custom_msg: Optional[str] = None) -> str:
   """Constructs an error message for the chexify exception."""
   custom_msg = f" [{custom_msg}]" if custom_msg else ""
-  return f"{ERR_PREFIX}chexify assertion failed{custom_msg}"
+  return f"{ERR_PREFIX}chexify assertion '{name}' failed{custom_msg}"
 
 
 def _make_host_assertion(assert_fn: TAssertFn,
@@ -221,6 +221,9 @@ def chex_assertion(
   Returns:
     A Chex assertion (with auxiliary kwargs).
   """
+  if name is None:
+    name = assert_fn.__name__
+
   host_assertion_fn = _make_host_assertion(assert_fn, name)
 
   @functools.wraps(assert_fn)
@@ -232,7 +235,7 @@ def chex_assertion(
         raise RuntimeError(
             "Value assertions can only be called from functions wrapped "
             "with `@chex.chexify`. See the docs.")
-      msg = get_chexify_err_message(kwargs.pop("custom_message", None))
+      msg = get_chexify_err_message(name, kwargs.pop("custom_message", None))
       callsite_frame = get_last_non_chex_frame()
       msg += f" [failed at {callsite_frame.filename}:{callsite_frame.lineno}]"
       checkify.check(pred=jittable_assert_fn(*args, **kwargs), msg=msg)
@@ -246,9 +249,8 @@ def chex_assertion(
                "assertion; if that does not help, please file a bug.")
         raise exc from RuntimeError(msg)
 
-  if name is not None:
-    _chex_assert_fn.__name__ = name
-
+  # Override name.
+  setattr(_chex_assert_fn, "__name__", name)
   return _chex_assert_fn
 
 
