@@ -963,6 +963,16 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
     raise AssertionError("\n".join(errors))
 
 
+# Only look the sharding attribute after jax version >= 0.3.22 i.e. remove this
+# function and use `isinstance(x.sharding, jax.sharding.PmapSharding)` after
+# jax version >= 0.3.22.
+# This is for backwards compatibility.
+def _check_sharding(x):
+  if hasattr(x, "sharding"):
+    return isinstance(x.sharding, jax.sharding.PmapSharding)
+  return isinstance(x, jax.pxla.ShardedDeviceArray)
+
+
 @_static_assertion
 def assert_tree_is_on_host(tree: ArrayTree,
                            *,
@@ -989,8 +999,7 @@ def assert_tree_is_on_host(tree: ArrayTree,
       if not isinstance(leaf, np.ndarray):
         nonlocal errors
 
-        if (isinstance(leaf, jax.xla.DeviceArray) and
-            not isinstance(leaf, jax.pxla.ShardedDeviceArray)):
+        if isinstance(leaf, jax.Array) and not _check_sharding(leaf):
           if allow_cpu_device:
             if leaf.device().platform != "cpu":
               errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides"
@@ -1046,8 +1055,8 @@ def assert_tree_is_on_device(tree: ArrayTree,
       nonlocal errors
 
       # Check that the leaf is a DeviceArray.
-      if isinstance(leaf, jax.xla.DeviceArray):
-        if isinstance(leaf, jax.pxla.ShardedDeviceArray):
+      if isinstance(leaf, jax.Array):
+        if _check_sharding(leaf):
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is a "
                          f"ShardedDeviceArray which are disallowed. "
                          f" (type={type(leaf)})."))
@@ -1100,14 +1109,14 @@ def assert_tree_is_sharded(tree: ArrayTree,
       nonlocal errors
 
       # Check that the leaf is a ShardedArray.
-      if not isinstance(leaf, jax.pxla.ShardedDeviceArray):
-        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
-                       f"ShardedDeviceArray (type={type(leaf)})."))
-      else:
+      if isinstance(leaf, jax.Array) and _check_sharding(leaf):
         shards = tuple(buf.device() for buf in leaf.device_buffers)
         if shards != devices:
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
                          f"across {shards} devices, expected {devices}."))
+      else:
+        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
+                       f"ShardedDeviceArray (type={type(leaf)})."))
 
   for path, leaf in dm_tree.flatten_with_path(tree):
     _assert_fn(path, leaf)
