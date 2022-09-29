@@ -434,7 +434,7 @@ def _without_device(fn, **unused_kwargs):
   def wrapper(*args, **kwargs):
 
     def get(x):
-      if isinstance(x, jnp.DeviceArray):
+      if isinstance(x, jax.Array):
         return jax.device_get(x)
       return x
 
