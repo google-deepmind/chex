@@ -988,7 +988,7 @@ def assert_tree_is_on_host(tree: ArrayTree,
         nonlocal errors
 
         if (isinstance(leaf, jax.xla.DeviceArray) and
-            not isinstance(leaf, jax.pxla.ShardedDeviceArray)):
+            not jax.util.is_sda_like(leaf)):
           if allow_cpu_device:
             if leaf.device().platform != "cpu":
               errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides"
@@ -1044,7 +1044,7 @@ def assert_tree_is_on_device(tree: ArrayTree,
 
       # Check that the leaf is a DeviceArray.
       if isinstance(leaf, jax.xla.DeviceArray):
-        if isinstance(leaf, jax.pxla.ShardedDeviceArray):
+        if jax.util.is_sda_like(leaf):
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is a "
                          f"ShardedDeviceArray which are disallowed. "
                          f" (type={type(leaf)})."))
@@ -1096,7 +1096,7 @@ def assert_tree_is_sharded(tree: ArrayTree,
       nonlocal errors
 
       # Check that the leaf is a ShardedArray.
-      if not isinstance(leaf, jax.pxla.ShardedDeviceArray):
+      if not jax.util.is_sda_like(leaf):
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
                        f"ShardedDeviceArray (type={type(leaf)})."))
       else:
