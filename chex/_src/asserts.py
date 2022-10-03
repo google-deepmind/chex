@@ -926,7 +926,8 @@ def assert_tree_no_nones(tree: ArrayTree) -> None:
       nonlocal errors
       errors.append(f"`None` detected at '{_ai.format_tree_path(path)}'.")
 
-  dm_tree.map_structure_with_path(_assert_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -956,7 +957,8 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not an "
                        f"ndarray (type={type(leaf)})."))
 
-  dm_tree.map_structure_with_path(_assert_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1000,7 +1002,8 @@ def assert_tree_is_on_host(tree: ArrayTree,
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                          f"unexpected type: {type(leaf)}."))
 
-  dm_tree.map_structure_with_path(_assert_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1064,7 +1067,8 @@ def assert_tree_is_on_device(tree: ArrayTree,
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                        f"unexpected type: {type(leaf)}."))
 
-  dm_tree.map_structure_with_path(_assert_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1105,7 +1109,8 @@ def assert_tree_is_sharded(tree: ArrayTree,
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
                          f"across {shards} devices, expected {devices}."))
 
-  dm_tree.map_structure_with_path(_assert_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1134,7 +1139,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
 
   errors = []
 
-  def _assert_prefix_fn(path, leaf):
+  def _assert_fn(path, leaf):
     if leaf is None:
       return
 
@@ -1153,7 +1158,8 @@ def assert_tree_shape_prefix(tree: ArrayTree,
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape prefix "
            f"different from expected: {suffix} != {shape_prefix}."))
 
-  dm_tree.map_structure_with_path(_assert_prefix_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1181,7 +1187,7 @@ def assert_tree_shape_suffix(tree: ArrayTree,
 
   errors = []
 
-  def _assert_suffix_fn(path, leaf):
+  def _assert_fn(path, leaf):
     if leaf is None:
       return
 
@@ -1200,7 +1206,8 @@ def assert_tree_shape_suffix(tree: ArrayTree,
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape suffix "
            f"different from expected: {suffix} != {shape_suffix}."))
 
-  dm_tree.map_structure_with_path(_assert_suffix_fn, tree)
+  for path, leaf in dm_tree.flatten_with_path(tree):
+    _assert_fn(path, leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1288,9 +1295,14 @@ def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
 
     return equality_comparator(leaf_1, leaf_2)
 
-  cmp = functools.partial(_ai.assert_leaves_all_eq_comparator,
-                          wrapped_equality_comparator, tree_error_msg_fn)
-  dm_tree.map_structure_with_path(cmp, *trees)
+  cmp_fn = functools.partial(_ai.assert_leaves_all_eq_comparator,
+                             wrapped_equality_comparator, tree_error_msg_fn)
+
+  # Trees are guaranteed to have the same structure.
+  paths = [path for path, _ in dm_tree.flatten_with_path(trees[0])]
+  trees_leaves = [dm_tree.flatten(tree) for tree in trees]
+  for leaf_i, path in enumerate(paths):
+    cmp_fn(path, *[leaves[leaf_i] for leaves in trees_leaves])
 
 
 assert_tree_all_equal_comparator = _ai.deprecation_wrapper(
