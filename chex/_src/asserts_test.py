@@ -805,7 +805,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         'b': ([0], (0,), 0),
     }
     asserts.assert_trees_all_equal(tree, tree)
-    self.assertTrue(asserts._assert_trees_all_equal_jittable(tree, tree))
+    self.assertTrue(asserts._assert_trees_all_equal_jittable(tree, tree))  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
   def test_assert_trees_all_equal_passes_values_equal(self):
     tree1 = (jnp.array([0.0, 0.0]),)
@@ -830,7 +830,7 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
-      asserts._assert_trees_all_equal_jittable(tree, tree, ignore_nones=False)
+      asserts._assert_trees_all_equal_jittable(tree, tree, ignore_nones=False)  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
   def test_assert_trees_all_close_passes_same_tree(self):
     tree = {
@@ -838,7 +838,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         'b': ([0], (0,), 0),
     }
     asserts.assert_trees_all_close(tree, tree)
-    self.assertTrue(asserts._assert_trees_all_close_jittable(tree, tree))
+    self.assertTrue(asserts._assert_trees_all_close_jittable(tree, tree))  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
   def test_assert_trees_all_close_passes_values_equal(self):
     tree1 = (jnp.array([0.0, 0.0]),)
@@ -862,7 +862,7 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
-      asserts._assert_trees_all_close_jittable(tree, tree, ignore_nones=False)
+      asserts._assert_trees_all_close_jittable(tree, tree, ignore_nones=False)  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
   def test_assert_trees_all_close_bfloat16(self):
     tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
@@ -872,17 +872,17 @@ class TreeAssertionsTest(parameterized.TestCase):
     tree3 = {'a': jnp.asarray([0.8, 1.7], dtype=jnp.bfloat16)}
     asserts.assert_trees_all_close(tree1, tree1)
     asserts.assert_trees_all_close(tree1, tree2)
-    self.assertTrue(asserts._assert_trees_all_close_jittable(tree1, tree2))
+    self.assertTrue(asserts._assert_trees_all_close_jittable(tree1, tree2))  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_trees_all_close(tree1, tree3)
-    self.assertFalse(asserts._assert_trees_all_close_jittable(tree1, tree3))
+    self.assertFalse(asserts._assert_trees_all_close_jittable(tree1, tree3))  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_trees_all_close(tree2, tree3)
-    self.assertFalse(asserts._assert_trees_all_close_jittable(tree2, tree3))
+    self.assertFalse(asserts._assert_trees_all_close_jittable(tree2, tree3))  # pytype: disable=wrong-arg-types  # mapping-is-not-sequence
 
   def test_assert_trees_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
