@@ -1213,7 +1213,7 @@ def assert_tree_shape_suffix(tree: ArrayTree,
 
 
 @_static_assertion
-def assert_trees_all_equal_structs(*trees: Sequence[ArrayTree]) -> None:
+def assert_trees_all_equal_structs(*trees: ArrayTree) -> None:
   """Checks that trees have the same structure.
 
   Note that `None` is treated as a PyTree node.
@@ -1250,7 +1250,7 @@ assert_tree_all_equal_structs = _ai.deprecation_wrapper(
 @_static_assertion
 def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
                                       error_msg_fn: _ai.TLeavesEqCmpErrorFn,
-                                      *trees: Sequence[ArrayTree],
+                                      *trees: ArrayTree,
                                       ignore_nones: bool = False) -> None:
   """Checks that all trees are equal as per the custom comparator for leaves.
 
@@ -1312,7 +1312,7 @@ assert_tree_all_equal_comparator = _ai.deprecation_wrapper(
 
 
 @_static_assertion
-def assert_trees_all_equal_dtypes(*trees: Sequence[ArrayTree],
+def assert_trees_all_equal_dtypes(*trees: ArrayTree,
                                   ignore_nones: bool = False) -> None:
   """Checks that trees' leaves have the same dtype.
 
@@ -1342,7 +1342,7 @@ def assert_trees_all_equal_dtypes(*trees: Sequence[ArrayTree],
 
 
 @_static_assertion
-def assert_trees_all_equal_shapes(*trees: Sequence[ArrayTree],
+def assert_trees_all_equal_shapes(*trees: ArrayTree,
                                   ignore_nones: bool = False) -> None:
   """Checks that trees have the same structure and leaves' shapes.
 
@@ -1400,7 +1400,7 @@ assert_tree_all_finite = _value_assertion(
 
 
 @_static_assertion
-def _assert_trees_all_equal_static(*trees: Sequence[ArrayTree],
+def _assert_trees_all_equal_static(*trees: ArrayTree,
                                    ignore_nones: bool = False) -> None:
   """Checks that all trees have leaves with *exactly* equal values.
 
@@ -1442,7 +1442,7 @@ def _assert_trees_all_equal_static(*trees: Sequence[ArrayTree],
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-def _assert_trees_all_equal_jittable(*trees: Sequence[ArrayTree],
+def _assert_trees_all_equal_jittable(*trees: ArrayTree,
                                      ignore_nones: bool = False) -> Array:
   """A jittable version of `_assert_trees_all_equal_static`."""
   if not ignore_nones:
@@ -1458,7 +1458,7 @@ assert_trees_all_equal = _value_assertion(
     name="assert_trees_all_equal")
 
 
-def _assert_trees_all_close_static(*trees: Sequence[ArrayTree],
+def _assert_trees_all_close_static(*trees: ArrayTree,
                                    rtol: float = 1e-06,
                                    atol: float = .0,
                                    ignore_nones: bool = False) -> None:
@@ -1507,7 +1507,7 @@ def _assert_trees_all_close_static(*trees: Sequence[ArrayTree],
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-def _assert_trees_all_close_jittable(*trees: Sequence[ArrayTree],
+def _assert_trees_all_close_jittable(*trees: ArrayTree,
                                      rtol: float = 1e-06,
                                      atol: float = .0,
                                      ignore_nones: bool = False) -> Array:
