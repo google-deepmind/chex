@@ -49,7 +49,7 @@ def _assert_noop(*args,
 # Define a simple Chex assertion for testing purposes.
 def _assert_tree_positive(tree):
   # Use jnp instead of np for testing purposes.
-  if not all((x > 0).all() for x in jax.tree_leaves(tree)):
+  if not all((x > 0).all() for x in jax.tree_util.tree_leaves(tree)):
     raise AssertionError('Tree contains non-positive elems!')
 
 
