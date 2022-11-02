@@ -227,7 +227,12 @@ def chex_assertion(
   host_assertion_fn = _make_host_assertion(assert_fn, name)
 
   @functools.wraps(assert_fn)
-  def _chex_assert_fn(*args, **kwargs) -> None:
+  def _chex_assert_fn(*args,
+                      custom_message: Optional[str] = None,
+                      custom_message_format_vars: Sequence[Any] = (),
+                      include_default_message: bool = True,
+                      exception_type: Type[Exception] = AssertionError,
+                      **kwargs) -> None:
     if DISABLE_ASSERTIONS:
       return
     if jittable_assert_fn is not None and has_tracers((args, kwargs)):
@@ -235,13 +240,19 @@ def chex_assertion(
         raise RuntimeError(
             "Value assertions can only be called from functions wrapped "
             "with `@chex.chexify`. See the docs.")
-      msg = get_chexify_err_message(name, kwargs.pop("custom_message", None))
+      msg = get_chexify_err_message(name, custom_message)
       callsite_frame = get_last_non_chex_frame()
       msg += f" [failed at {callsite_frame.filename}:{callsite_frame.lineno}]"
       checkify.check(pred=jittable_assert_fn(*args, **kwargs), msg=msg)
     else:
       try:
-        host_assertion_fn(*args, **kwargs)
+        host_assertion_fn(
+            *args,
+            custom_message=custom_message,
+            custom_message_format_vars=custom_message_format_vars,
+            include_default_message=include_default_message,
+            exception_type=exception_type,
+            **kwargs)
       except jax.errors.ConcretizationTypeError as exc:
         msg = ("Chex assertion detected `ConcretizationTypeError`: it is very "
                "likely that it tried to access tensors' values during tracing. "
