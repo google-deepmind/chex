@@ -16,6 +16,7 @@
 
 import functools
 import re
+import sys
 import time
 from typing import Any, Optional, Sequence, Type
 
@@ -179,8 +180,26 @@ class AssertsChexifyTest(variants.TestCase):
     invalid_x = -jnp.ones(3)
     chexify_async(_pos_sum)(invalid_x)  # async error
 
-    with self.assertRaisesRegex(AssertionError, 'err_label'):
-      asserts_chexify.atexit._run_exitfuncs()
+    raised_exception = None
+
+    def unraisablehook(unraisable):
+      nonlocal raised_exception
+      raised_exception = unraisable.exc_value
+
+    if sys.version_info >= (3, 10):
+      # In Python 3.10+, _run_exitfuncs logs the exception using unraisablehook
+      # without raising the last exception.
+      old_unraisablehook = sys.unraisablehook
+      sys.unraisablehook = unraisablehook
+      try:
+        asserts_chexify.atexit._run_exitfuncs()
+      finally:
+        sys.unraisablehook = old_unraisablehook
+      self.assertIsInstance(raised_exception, AssertionError)
+      self.assertIn('err_label', str(raised_exception))
+    else:
+      with self.assertRaisesRegex(AssertionError, 'err_label'):
+        asserts_chexify.atexit._run_exitfuncs()
 
   def test_docstring_example(self):
 
