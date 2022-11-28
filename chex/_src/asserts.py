@@ -143,7 +143,7 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
 
     nonlocal fn_hash
     _ai.TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
-    if _ai.TRACE_COUNTER[fn_hash] > n:
+    if not _ai.DISABLE_ASSERTIONS and _ai.TRACE_COUNTER[fn_hash] > n:
       raise AssertionError(
           f"{_ai.ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!\n"
           "It often happens when a jitted function is defined inside another "
