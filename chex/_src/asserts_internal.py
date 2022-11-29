@@ -58,15 +58,20 @@ TJittableAssertFn = Callable[..., bool]  # a predicate function
 TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
 TShapeMatcher = Sequence[TDimMatcher]
 
+
+class _ChexifyStorage(threading.local):
+  """Thread-safe storage for internal variables used in @chexify."""
+  wait_fns = []
+  level = 0
+
+
 # Chex namespace variables.
 ERR_PREFIX = "[Chex] "
 TRACE_COUNTER = collections.Counter()
 DISABLE_ASSERTIONS = False
 
 # This variable is used for _chexify_ transformations, see `asserts_chexify.py`.
-CHEXIFY_STORAGE = threading.local()
-CHEXIFY_STORAGE.wait_fns = []
-CHEXIFY_STORAGE.level = 0
+CHEXIFY_STORAGE = _ChexifyStorage()
 
 
 def assert_collection_of_arrays(inputs: Sequence[pytypes.Array]):
@@ -235,7 +240,7 @@ def chex_assertion(
                       **kwargs) -> None:
     if DISABLE_ASSERTIONS:
       return
-    if jittable_assert_fn is not None and has_tracers((args, kwargs)):
+    if (jittable_assert_fn is not None and has_tracers((args, kwargs))):
       if not CHEXIFY_STORAGE.level:
         raise RuntimeError(
             "Value assertions can only be called from functions wrapped "

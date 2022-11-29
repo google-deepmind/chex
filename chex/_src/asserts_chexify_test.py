@@ -17,10 +17,12 @@
 import functools
 import re
 import sys
+import threading
 import time
 from typing import Any, Optional, Sequence, Type
 
 from absl.testing import absltest
+from absl.testing import parameterized
 from chex._src import asserts
 from chex._src import asserts_chexify
 from chex._src import asserts_internal as _ai
@@ -56,7 +58,8 @@ def _assert_tree_positive(tree):
 
 def _jittable_assert_tree_positive(tree):
   # Jittable version of `_assert_tree_positive`.
-  return jnp.all(jnp.array([(x > 0).all() for x in jax.tree_leaves(tree)]))
+  return jnp.all(
+      jnp.array([(x > 0).all() for x in jax.tree_util.tree_leaves(tree)]))
 
 
 chex_static_assert_positive = _ai.chex_assertion(
@@ -87,7 +90,7 @@ class AssertsChexifyTest(variants.TestCase):
     # Define a simple function that uses the assertion.
     def _sum_fn(tree):
       jax.tree_map(lambda x: chex_assert_shape(x, shape), tree)
-      return sum(x.sum() for x in jax.tree_leaves(tree))
+      return sum(x.sum() for x in jax.tree_util.tree_leaves(tree))
 
     chexified_sum_fn = chexify_sync(self.variant(_sum_fn))
     # Passes in all contexts.
@@ -289,7 +292,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
         jax_transform(fn_value_assert)(*invalid_args)
 
   def run_test_suite_with_log_abs_fn(self, make_log_fn, jax_transform, devices,
-                                     run_pure):
+                                     run_pure, run_in_thread):
     """Generates valid and invalid inputs for log_abs_fn and runs the tests."""
     x_pos = {
         'a': np.ones((10, 2)),
@@ -318,10 +321,33 @@ class AssertsChexifyTestSuite(variants.TestCase):
         'label_1',
     )
 
-    self.run_test_suite(make_log_fn, all_valid_args, all_invalid_args,
-                        failure_labels, jax_transform, run_pure)
+    run_tests_callback = functools.partial(self.run_test_suite, make_log_fn,
+                                           all_valid_args, all_invalid_args,
+                                           failure_labels, jax_transform,
+                                           run_pure)
+    if run_in_thread:
+      failure = AssertionError('not executed')
 
-  def test_log_abs_fn_jitted(self):
+      def _run_tests_in_thread():
+        nonlocal failure
+        failure = None
+        try:
+          run_tests_callback()
+        except Exception as e:  # pylint:disable=broad-except
+          failure = e
+
+      thr = threading.Thread(target=_run_tests_in_thread, daemon=False)
+      thr.start()
+      thr.join(timeout=30)
+      if thr.is_alive():
+        raise TimeoutError('Thread is alive after 30 seconds.')
+      if failure is not None:
+        raise AssertionError(f'Thread failed with: {failure}.')
+    else:
+      run_tests_callback()
+
+  @parameterized.named_parameters(('main', False), ('thread', True))
+  def test_log_abs_fn_jitted(self, run_in_thread):
     """Tests simple jit transformation."""
 
     def _make_log_fn(assert_input_fn: _ai.TChexAssertion):
@@ -341,9 +367,11 @@ class AssertsChexifyTestSuite(variants.TestCase):
           make_log_fn=_make_log_fn,
           jax_transform=jax.jit,
           devices=jax.local_devices()[:1],
-          run_pure=True)
+          run_pure=True,
+          run_in_thread=run_in_thread)
 
-  def test_log_abs_fn_jitted_nested_wrap(self):
+  @parameterized.named_parameters(('main', False), ('thread', True))
+  def test_log_abs_fn_jitted_nested_wrap(self, run_in_thread):
     """Tests nested jit transforms (wrapping)."""
 
     def _make_log_fn(assert_input_fn: _ai.TChexAssertion):
@@ -368,9 +396,11 @@ class AssertsChexifyTestSuite(variants.TestCase):
           make_log_fn=_make_log_fn,
           jax_transform=jax.jit,
           devices=jax.local_devices()[:1],
-          run_pure=False)  # do not run because internal jit is not checkified
+          run_pure=False,  # do not run because internal jit is not checkified
+          run_in_thread=run_in_thread)
 
-  def test_log_abs_fn_jitted_nested_call(self):
+  @parameterized.named_parameters(('main', False), ('thread', True))
+  def test_log_abs_fn_jitted_nested_call(self, run_in_thread):
     """Tests nested jit transforms (calling)."""
 
     def _make_log_fn(assert_input_fn: _ai.TChexAssertion):
@@ -394,9 +424,11 @@ class AssertsChexifyTestSuite(variants.TestCase):
           make_log_fn=_make_log_fn,
           jax_transform=jax.jit,
           devices=jax.local_devices()[:1],
-          run_pure=False)  # do not run because internal jit is not checkified
+          run_pure=False,  # do not run because internal jit is not checkified
+          run_in_thread=run_in_thread)
 
-  def test_log_abs_fn_pmapped(self):
+  @parameterized.named_parameters(('main', False), ('thread', True))
+  def test_log_abs_fn_pmapped(self, run_in_thread):
     """Tests pmap transform."""
 
     def _make_log_fn(assert_input_fn: _ai.TChexAssertion):
@@ -417,9 +449,11 @@ class AssertsChexifyTestSuite(variants.TestCase):
           make_log_fn=_make_log_fn,
           jax_transform=lambda fn: jax.pmap(fn, axis_name='i'),
           devices=jax.local_devices(),
-          run_pure=False)  # do not run because the f-n contains collective ops
+          run_pure=False,  # do not run because the f-n contains collective ops
+          run_in_thread=run_in_thread)
 
-  def test_log_abs_fn_jitted_vmapped(self):
+  @parameterized.named_parameters(('main', False), ('thread', True))
+  def test_log_abs_fn_jitted_vmapped(self, run_in_thread):
     """Tests vmap transform."""
 
     def _make_log_fn(assert_input_fn: _ai.TChexAssertion):
@@ -439,7 +473,8 @@ class AssertsChexifyTestSuite(variants.TestCase):
           make_log_fn=_make_log_fn,
           jax_transform=lambda fn: jax.jit(jax.vmap(fn)),  # jax + vmap
           devices=jax.local_devices()[:1],
-          run_pure=True)
+          run_pure=True,
+          run_in_thread=run_in_thread)
 
 
 if __name__ == '__main__':
