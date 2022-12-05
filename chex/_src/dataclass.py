@@ -159,16 +159,31 @@ class _Dataclass():
           getattr(base, "__dataclass_params__").frozen and not self.frozen):
         raise TypeError("cannot inherit non-frozen dataclass from a frozen one")
 
+    if not self.init:
+      # Store the custom init. We will pass init=True to dataclass to create a
+      # default initializer, which is necessary for flattening/unflattening.
+      init_fn = cls.__init__
+      # Delete init method otherwise dataclass function will not create a
+      # default init method.
+      if hasattr(cls, "__init__"):
+        delattr(cls, "__init__")
+
     # pytype: disable=wrong-keyword-args
     dcls = dataclasses.dataclass(
         cls,
-        init=self.init,
+        init=True,
         repr=self.repr,
         eq=self.eq,
         order=self.order,
         unsafe_hash=self.unsafe_hash,
         frozen=self.frozen)
     # pytype: enable=wrong-keyword-args
+
+    # Store the default init
+    dcls.__dataclass_init__ = dcls.__init__
+    if not self.init:
+      # Re-bind the custom init
+      dcls.__init__ = init_fn
 
     fields_names = set(f.name for f in dataclasses.fields(dcls))
     invalid_fields = fields_names.intersection(_RESERVED_DCLS_FIELD_NAMES)
@@ -177,6 +192,15 @@ class _Dataclass():
                        f"{invalid_fields} ({dcls}).")
 
     if self.mappable_dataclass:
+      # Mappable dataclasses require a keyword-only init as the class __init__
+      # method
+      if not self.init:
+        raise ValueError(
+            "Mappable dataclasses are incompatible with non-default " +
+            "initializers (i.e. `init=False` and `mappable_dataclass=True` " +
+            "flags are incompatible)."
+        )
+
       dcls = mappable_dataclass(dcls)
       # We remove `collection.abc.Mapping` mixin methods here to allow
       # fields with these names.
@@ -185,7 +209,10 @@ class _Dataclass():
         delattr(dcls, attr)        # delete
 
     def _from_tuple(args):
-      return dcls(zip(dcls.__dataclass_fields__.keys(), args))
+      obj = dcls.__new__(dcls)
+      kwargs = dict(zip(dcls.__dataclass_fields__.keys(), args))
+      dcls.__dataclass_init__(obj, **kwargs)
+      return obj
 
     def _to_tuple(self):
       return tuple(getattr(self, k) for k in self.__dataclass_fields__.keys())
@@ -205,11 +232,10 @@ class _Dataclass():
         class_self.registered = True
       self.__dict__.update(state)
 
-    orig_init = dcls.__init__
-
     # Patch object's __init__ such that the class is registered on creation if
     # it is not registered on deserialization.
-    @functools.wraps(orig_init)
+    orig_init = dcls.__init__
+    @functools.wraps(dcls.__init__)
     def _init(self, *args, **kwargs):
       if not class_self.registered:
         register_dataclass_type_with_jax_tree_util(dcls)
@@ -239,8 +265,14 @@ def register_dataclass_type_with_jax_tree_util(data_class):
       constructable from keyword arguments corresponding to the members exposed
       in instance.__dict__.
   """
-  flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
-  unflatten = lambda keys, values: data_class(**dict(zip(keys, values)))
+  def flatten(x):
+    return jax.util.unzip2(sorted(x.__dict__.items()))[::-1]
+
+  def unflatten(keys, values):
+    obj = data_class.__new__(data_class)
+    data_class.__dataclass_init__(obj, **dict(zip(keys, values)))
+    return obj
+
   try:
     jax.tree_util.register_pytree_node(
         nodetype=data_class, flatten_func=flatten, unflatten_func=unflatten)

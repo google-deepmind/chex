@@ -50,6 +50,16 @@ class FrozenDataclass():
   b: pytypes.ArrayDevice
 
 
+@chex_dataclass(init=False, mappable_dataclass=False)
+class DataclassWithInit:
+  a: pytypes.ArrayDevice
+  b: pytypes.ArrayDevice
+
+  def __init__(self, n):
+    self.a = np.eye(n)
+    self.b = np.zeros((n, n))
+
+
 def dummy_dataclass(factor=1., frozen=False):
   class_ctor = FrozenDataclass if frozen else Dataclass
   return class_ctor(
@@ -300,6 +310,12 @@ class MappableDataclassTest(parameterized.TestCase):
 
 
 class DataclassesTest(parameterized.TestCase):
+
+  def test_custom_initializer(self):
+    obj = DataclassWithInit(2)
+    flattened, treedef = jax.tree_util.tree_flatten(obj)
+    unused_unflattened_obj = jax.tree_util.tree_unflatten(treedef, flattened)
+    # asserts.assert_trees_all_close(obj, unflattened_obj)
 
   @parameterized.parameters([True, False])
   def test_dataclass_tree_leaves(self, frozen):
