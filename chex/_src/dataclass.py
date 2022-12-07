@@ -226,6 +226,13 @@ class _Dataclass():
     return dcls
 
 
+def _dataclass_unflatten(dcls, keys, values):
+  dcls_object = dcls.__new__(dcls)
+  for k, v in zip(keys, values):
+    object.__setattr__(dcls_object, k, v)
+  return dcls_object
+
+
 def register_dataclass_type_with_jax_tree_util(data_class):
   """Register an existing dataclass so JAX knows how to handle it.
 
@@ -240,7 +247,8 @@ def register_dataclass_type_with_jax_tree_util(data_class):
       in instance.__dict__.
   """
   flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
-  unflatten = lambda keys, values: data_class(**dict(zip(keys, values)))
+  unflatten = functools.partial(_dataclass_unflatten, data_class)
+
   try:
     jax.tree_util.register_pytree_node(
         nodetype=data_class, flatten_func=flatten, unflatten_func=unflatten)
