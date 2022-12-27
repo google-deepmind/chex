@@ -365,12 +365,17 @@ class DataclassesTest(parameterized.TestCase):
       b: int = 2
 
     SimpleDataclass(a=1, b=3)
-    with self.assertRaisesRegex(ValueError, 'init.*got unexpected kwargs'):
+    with self.assertRaisesRegex((ValueError, TypeError),
+                                '.*unexpected keyword argument.*'):
       SimpleDataclass(a=1, b=3, c=4)
 
-  def test_tuple_conversion(self):
+  @parameterized.named_parameters(
+      ('non_mappable', False),
+      ('mappable', True),
+  )
+  def test_tuple_conversion(self, mappable):
 
-    @chex_dataclass()
+    @chex_dataclass(mappable_dataclass=mappable)
     class SimpleDataclass:
       b: int
       a: int
