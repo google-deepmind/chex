@@ -20,6 +20,7 @@ import functools
 
 from absl import logging
 import jax
+from typing_extensions import dataclass_transform  # pytype: disable=not-supported-yet
 
 
 FrozenInstanceError = dataclasses.FrozenInstanceError
@@ -82,6 +83,7 @@ def mappable_dataclass(cls):
   return cls
 
 
+@dataclass_transform()
 def dataclass(
     cls=None,
     *,
