@@ -58,6 +58,7 @@ from chex._src.asserts import assert_trees_all_equal
 from chex._src.asserts import assert_trees_all_equal_comparator
 from chex._src.asserts import assert_trees_all_equal_dtypes
 from chex._src.asserts import assert_trees_all_equal_shapes
+from chex._src.asserts import assert_trees_all_equal_shapes_and_dtypes
 from chex._src.asserts import assert_trees_all_equal_structs
 from chex._src.asserts import assert_type
 from chex._src.asserts import clear_trace_counter
@@ -151,6 +152,7 @@ __all__ = (
     "assert_trees_all_equal_comparator",
     "assert_trees_all_equal_dtypes",
     "assert_trees_all_equal_shapes",
+    "assert_trees_all_equal_shapes_and_dtypes",
     "assert_trees_all_equal_structs",
     "assert_type",
     "block_until_chexify_assertions_complete",

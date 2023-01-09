@@ -45,6 +45,7 @@ Assertions
     assert_trees_all_equal_comparator
     assert_trees_all_equal_dtypes
     assert_trees_all_equal_shapes
+    assert_trees_all_equal_shapes_and_dtypes
     assert_trees_all_equal_structs
     assert_type
     chexify
@@ -90,6 +91,7 @@ Tree Assertions
 .. autofunction:: assert_trees_all_equal_comparator
 .. autofunction:: assert_trees_all_equal_dtypes
 .. autofunction:: assert_trees_all_equal_shapes
+.. autofunction:: assert_trees_all_equal_shapes_and_dtypes
 .. autofunction:: assert_trees_all_equal_structs
 
 

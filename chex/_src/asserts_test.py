@@ -1325,6 +1325,29 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('Trees 0 and 1 differ')):
       asserts.assert_trees_all_equal_dtypes(t_5, t_6)
 
+  def test_assert_trees_all_equal_shapes_and_dtypes(self):
+    # Test dtypes
+    t_0 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+    t_1 = {'x': np.zeros(3, dtype=np.uint16), 'y': np.ones(2, dtype=np.float32)}
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 1 differ')):
+      asserts.assert_trees_all_equal_shapes_and_dtypes(t_0, t_1)
+
+    t_2 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+    asserts.assert_trees_all_equal_shapes_and_dtypes(t_0, t_2, t_0)
+
+    # Test shapes
+    t_0 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+    t_1 = {'x': np.zeros(4, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Trees 0 and 1 differ')):
+      asserts.assert_trees_all_equal_shapes_and_dtypes(t_0, t_1)
+
+    t_2 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
+    asserts.assert_trees_all_equal_shapes_and_dtypes(t_0, t_2, t_0)
+
   def test_assert_trees_all_equal_wrong_usage(self):
     # not an array
     with self.assertRaisesRegex(AssertionError,

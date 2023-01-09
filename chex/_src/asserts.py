@@ -1377,6 +1377,25 @@ assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
     old_name="assert_tree_all_equal_shapes",
     new_name="assert_trees_all_equal_shapes")
 
+
+@_static_assertion
+def assert_trees_all_equal_shapes_and_dtypes(
+    *trees: ArrayTree, ignore_nones: bool = False) -> None:
+  """Checks that trees' leaves have the same shape and dtype.
+
+  Note that `None` is treated as a PyTree nodes.
+
+  Args:
+    *trees: A sequence of (at least 2) trees to check.
+    ignore_nones: Whether to ignore `None` in the trees.
+
+  Raises:
+    AssertionError: If leaves' shapes or dtypes for any two trees differ.
+  """
+  assert_trees_all_equal_shapes(*trees, ignore_nones=ignore_nones)
+  assert_trees_all_equal_dtypes(*trees, ignore_nones=ignore_nones)
+
+
 ############# Value assertions. #############
 
 
