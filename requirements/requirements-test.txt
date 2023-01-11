@@ -1,1 +1,1 @@
-# Placeholder
+cloudpickle==2.2.0

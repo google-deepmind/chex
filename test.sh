@@ -27,6 +27,7 @@ python --version
 pip install --upgrade pip setuptools wheel
 pip install flake8 pytest-xdist pytype pylint pylint-exit
 pip install -r requirements/requirements.txt
+pip install -r requirements/requirements-test.txt
 
 # Lint with flake8.
 flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics

@@ -23,6 +23,7 @@ from absl.testing import parameterized
 from chex._src import asserts
 from chex._src import dataclass
 from chex._src import pytypes
+import cloudpickle
 import jax
 import numpy as np
 import tree
@@ -530,6 +531,12 @@ class DataclassesTest(parameterized.TestCase):
     self.assertEqual(obj1, obj2)
     self.assertNotEqual(obj1, obj3)
 
+  def test_roundtrip(self):
+    obj = NestedDataclass(c=1, d=2)
+    obj2 = cloudpickle.loads(cloudpickle.dumps(obj))
+    self.assertLen(jax.tree_util.tree_leaves(obj2), 2)
+    obj3 = jax.tree_util.tree_map(lambda x: x, obj2)
+    self.assertLen(jax.tree_util.tree_leaves(obj3), 2)
 
 if __name__ == '__main__':
   absltest.main()
