@@ -27,14 +27,7 @@ import jax.numpy as jnp
 class IsTraceableTest(variants.TestCase):
 
   @variants.variants(with_jit=True, with_pmap=True)
-  @parameterized.named_parameters(
-      ('CPP_JIT', True),
-      ('PY_JIT', False),
-  )
-  def test_is_traceable(self, cpp_jit):
-    prev_state = jax.config.FLAGS.experimental_cpp_jit
-    jax.config.FLAGS.experimental_cpp_jit = cpp_jit
-
+  def test_is_traceable(self):
     def dummy_wrapper(fn):
 
       @functools.wraps(fn)
@@ -54,8 +47,6 @@ class IsTraceableTest(variants.TestCase):
     self.assertTrue(ai.is_traceable(var_fn))
     self.assertTrue(ai.is_traceable(wrapped_var_f))
     self.assertTrue(ai.is_traceable(var_wrapped_f))
-
-    jax.config.FLAGS.experimental_cpp_jit = prev_state
 
 
 class ExceptionMessageFormatTest(variants.TestCase):
