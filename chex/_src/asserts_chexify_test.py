@@ -271,7 +271,9 @@ class AssertsChexifyTestSuite(variants.TestCase):
       # Reports incorrect usage without `chexify()`.
       with self.assertRaisesRegex(
           RuntimeError, 'can only be called from functions wrapped .*chexify'):
-        jax_transform(fn_value_assert)(*valid_args)
+        # Create a local object to avoid reusing jax internal cache.
+        local_fn_value_assert = make_test_fn(chex_value_assert_positive)
+        jax_transform(local_fn_value_assert)(*valid_args)
 
     # Run tests with invalid arguments.
     for invalid_args, label in zip(all_invalid_args, failure_labels):
@@ -289,7 +291,9 @@ class AssertsChexifyTestSuite(variants.TestCase):
       # Reports incorrect usage without `chexify()`.
       with self.assertRaisesRegex(
           RuntimeError, 'can only be called from functions wrapped .*chexify'):
-        jax_transform(fn_value_assert)(*invalid_args)
+        # Create a local object to avoid reusing jax internal cache.
+        local_fn_value_assert = make_test_fn(chex_value_assert_positive)
+        jax_transform(local_fn_value_assert)(*invalid_args)
 
   def run_test_suite_with_log_abs_fn(self, make_log_fn, jax_transform, devices,
                                      run_pure, run_in_thread):
