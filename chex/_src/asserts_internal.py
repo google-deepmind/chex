@@ -324,11 +324,14 @@ def is_traceable(fn) -> bool:
       "pmap.",  # Python pmap
       "PmapFunction",  # C++ pmap in jaxlib 0.1.72 or newer.
       "vmap.",  # vmap
+      "_python_pjit",
+      "_cpp_pjit",
   )
 
   fn_type_tokens = (
       "CompiledFunction",
       "PmapFunction",
+      "PjitFunction",
   )
 
   # Un-wrap `fn` and check if any internal fn is jitted by pattern matching.
@@ -353,7 +356,8 @@ def is_traceable(fn) -> bool:
         return True
 
       try:
-        if isinstance(fn_, jax.lib.xla_extension.jax_jit.CompiledFunction):
+        if isinstance(fn_, (jax.lib.xla_extension.jax_jit.CompiledFunction,
+                            jax.lib.xla_extension.PjitFunction)):
           return True
       except AttributeError:
         pass
