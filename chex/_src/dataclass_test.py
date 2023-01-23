@@ -15,7 +15,6 @@
 """Tests for `dataclass.py`."""
 import copy
 import dataclasses
-import sys
 from typing import Any, Mapping, TypeVar, Generic
 
 from absl.testing import absltest
@@ -499,12 +498,6 @@ class DataclassesTest(parameterized.TestCase):
       ('not_mappable', False),
   )
   def test_generic_dataclass(self, mappable):
-    # Running under Python 3.6 results in error "TypeError: Cannot inherit from
-    # plain Generic", I'm speculating that this is a bug in cpython since
-    # subsequent versions work
-    if sys.version_info < (3, 7):
-      self.skipTest('Skip test on Python version < 3.7')
-
     T = TypeVar('T')
 
     @chex_dataclass(mappable_dataclass=mappable)
