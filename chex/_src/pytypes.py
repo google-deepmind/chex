@@ -12,33 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Pytypes for arrays and scalars."""
+"""Type definitions to use for type annotations."""
 
 from typing import Any, Iterable, Mapping, Union
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-Array = jnp.ndarray
+# Special types of arrays.
 ArrayBatched = jax.interpreters.batching.BatchTracer
 ArrayNumpy = np.ndarray
 ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
-# Use this type for type annotation. For instance checking,  use
-# `isinstance(x, jax.DeviceArray)`.
-# `jax.interpreters.xla._DeviceArray` appears in jax > 0.2.5
-if hasattr(jax.interpreters.xla, '_DeviceArray'):
+# For instance checking, use `isinstance(x, jax.Array)`.
+if hasattr(jax, 'Array'):
+  ArrayDevice = jax.Array  # jax >= 0.3.20
+elif hasattr(jax.interpreters.xla, '_DeviceArray'):  # 0.2.5 < jax < 0.3.20
   ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint:disable=protected-access
-else:
+else:  # jax <= 0.2.5
   ArrayDevice = jax.interpreters.xla.DeviceArray
 
-Scalar = Union[float, int]
-Numeric = Union[Array, Scalar]
-PRNGKey = jax.random.KeyArray
-PyTreeDef = type(jax.tree_util.tree_structure(None))
-Shape = jax.core.Shape
+# Generic array type.
+Array = Union[ArrayDevice, ArrayNumpy, ArrayBatched, ArraySharded]
 
-Device = jax.lib.xla_extension.Device
-
+# A tree of generic arrays.
 ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 
-ArrayDType = Any
+# Other types.
+Scalar = Union[float, int]
+Numeric = Union[Array, Scalar]
+Shape = jax.core.Shape
+PRNGKey = jax.random.KeyArray
+PyTreeDef = type(jax.tree_util.tree_structure(None))
+Device = jax.lib.xla_extension.Device
+ArrayDType = type(jnp.float32)

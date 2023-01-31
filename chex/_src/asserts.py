@@ -541,9 +541,10 @@ def assert_shape(
       match; if ``expected_shapes`` has wrong type; if shape of ``input`` does
       not match ``expected_shapes``.
   """
-  if isinstance(expected_shapes, (np.ndarray, Array)):
-    raise AssertionError("Error in shape compatibility check: "
-                         "expected shapes should be a list or tuple of ints.")
+  if not isinstance(expected_shapes, (list, tuple)):
+    raise AssertionError(
+        "Error in shape compatibility check: expected shapes should be a list "
+        f"or tuple of ints, got {expected_shapes}.")
 
   # Ensure inputs and expected shapes are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
@@ -645,10 +646,16 @@ def assert_rank(
     ValueError: If ``expected_ranks`` is not an integer and not a sequence of
      integets.
   """
-  if isinstance(expected_ranks, (np.ndarray, Array)):
+  if not isinstance(expected_ranks, (collections.abc.Collection, int)):
     raise ValueError(
-        f"Error in rank compatibility check: expected ranks should "
-        f"be a collection of integers but was an array: {expected_ranks}.")
+        f"Error in rank compatibility check: expected ranks should be a single "
+        f"integer or a collection of integers, got {expected_ranks}.")
+
+  if isinstance(expected_ranks, np.ndarray):  # ndarray is abc.Collection
+    raise ValueError(
+        f"Error in rank compatibility check: expected ranks should be a single "
+        f"integer or a collection of integers, but was an array: "
+        f"{expected_ranks}.")
 
   # Ensure inputs and expected ranks are sequences.
   if not isinstance(inputs, collections.abc.Sequence):

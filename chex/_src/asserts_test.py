@@ -465,7 +465,7 @@ class RankAssertTest(parameterized.TestCase):
   def test_rank_should_fail_array_expectations(self):
     with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
         ValueError,
-        'expected ranks should be a collection of integers but was an array'):
+        'expected ranks should be .* but was an array'):
       asserts.assert_rank(rank_array(2), np.array([2]))
 
   def test_rank_should_fail_wrong_expectation_structure(self):

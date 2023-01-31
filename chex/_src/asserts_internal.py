@@ -52,7 +52,7 @@ TLeavesEqCmpErrorFn = Callable[[TLeaf, TLeaf], str]
 #  **kwargs)
 TChexAssertion = Callable[..., None]
 TAssertFn = Callable[..., None]
-TJittableAssertFn = Callable[..., bool]  # a predicate function
+TJittableAssertFn = Callable[..., pytypes.Array]  # a predicate function
 
 # Matchers.
 TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
@@ -80,16 +80,12 @@ def assert_collection_of_arrays(inputs: Sequence[pytypes.Array]):
     raise ValueError(f"`inputs` is not a collection of arrays: {inputs}.")
 
 
-def jnp_to_np_array(arr: pytypes.Array) -> pytypes.Array:
+def jnp_to_np_array(arr: pytypes.Array) -> np.ndarray:
   """Converts `jnp.ndarray` to `np.ndarray`."""
-  if isinstance(arr, jnp.ndarray):
-    if arr.dtype == jnp.bfloat16:
-      # Numpy does not support `bfloat16`.
-      return np.asarray(arr, np.float32)
-    else:
-      return np.asarray(arr, arr.dtype)
-  else:
-    return arr
+  if getattr(arr, "dtype", None) == jnp.bfloat16:
+    # Numpy does not support `bfloat16`.
+    arr = arr.astype(jnp.float32)
+  return jax.device_get(arr)
 
 
 def deprecation_wrapper(new_fn, old_name, new_name):
