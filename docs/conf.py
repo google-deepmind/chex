@@ -94,7 +94,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.bibtex',
     'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
