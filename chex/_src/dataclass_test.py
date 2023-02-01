@@ -15,7 +15,8 @@
 """Tests for `dataclass.py`."""
 import copy
 import dataclasses
-from typing import Any, Mapping, TypeVar, Generic
+import pickle
+from typing import Any, Generic, Mapping, TypeVar
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -39,6 +40,13 @@ class NestedDataclass():
 
 
 @chex_dataclass
+class ReverseOrderNestedDataclass():
+  # The order of c and d are switched comapred to NestedDataclass.
+  d: pytypes.ArrayDevice
+  c: pytypes.ArrayDevice
+
+
+@chex_dataclass
 class Dataclass():
   a: NestedDataclass
   b: pytypes.ArrayDevice
@@ -57,6 +65,16 @@ def dummy_dataclass(factor=1., frozen=False):
           c=factor * np.ones((3,), dtype=np.float32),
           d=factor * np.ones((4,), dtype=np.float32)),
       b=factor * 2 * np.ones((5,), dtype=np.float32))
+
+
+def _dataclass_instance_fields(dcls_instance):
+  """Serialization-friendly version of dataclasses.fields for instances."""
+  attribute_dict = dcls_instance.__dict__
+  fields = []
+  for field in dcls_instance.__dataclass_fields__.values():
+    if field.name in attribute_dict:  # Filter pseudo-fields.
+      fields.append(field)
+  return fields
 
 
 @orig_dataclass
@@ -524,12 +542,40 @@ class DataclassesTest(parameterized.TestCase):
     self.assertEqual(obj1, obj2)
     self.assertNotEqual(obj1, obj3)
 
-  def test_roundtrip(self):
-    obj = NestedDataclass(c=1, d=2)
-    obj2 = cloudpickle.loads(cloudpickle.dumps(obj))
-    self.assertLen(jax.tree_util.tree_leaves(obj2), 2)
+  @parameterized.parameters([NestedDataclass, ReverseOrderNestedDataclass])
+  def test_dataclass_instance_fields(self, dcls):
+    obj = dcls(c=1, d=2)
+    self.assertSequenceEqual(
+        dataclasses.fields(obj), _dataclass_instance_fields(obj))
+
+  @parameterized.parameters((pickle, NestedDataclass),
+                            (cloudpickle, ReverseOrderNestedDataclass))
+  def test_roundtrip_serialization(self, serialization_lib, dcls):
+    obj = dcls(c=1, d=2)
+    obj_fields = [
+        (f.name, getattr(obj, f.name)) for f in dataclasses.fields(obj)
+    ]
+    self.assertLen(obj_fields, 2)
+    obj2 = serialization_lib.loads(serialization_lib.dumps(obj))
+    obj2_fields = [(f.name, getattr(obj2, f.name))
+                   for f in _dataclass_instance_fields(obj2)]
+    self.assertSequenceEqual(obj_fields, obj2_fields)
+    self.assertSequenceEqual(jax.tree_util.tree_leaves(obj2), [1, 2])
+
     obj3 = jax.tree_util.tree_map(lambda x: x, obj2)
-    self.assertLen(jax.tree_util.tree_leaves(obj3), 2)
+    obj3_fields = [(f.name, getattr(obj3, f.name))
+                   for f in _dataclass_instance_fields(obj3)]
+    self.assertSequenceEqual(obj_fields, obj3_fields)
+    self.assertSequenceEqual(jax.tree_util.tree_leaves(obj3), [1, 2])
+
+  @parameterized.parameters([NestedDataclass, ReverseOrderNestedDataclass])
+  def test_flatten_roundtrip_ordering(self, dcls):
+    obj = dcls(c=1, d=2)
+    leaves, treedef = jax.tree_util.tree_flatten(obj)
+    self.assertSequenceEqual(leaves, [1, 2])
+    obj2 = jax.tree_util.tree_unflatten(treedef, leaves)
+    self.assertSequenceEqual(dataclasses.fields(obj2), dataclasses.fields(obj))
+
 
 if __name__ == '__main__':
   absltest.main()
