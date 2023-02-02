@@ -17,17 +17,33 @@
 import atexit
 import collections
 from concurrent import futures
+import dataclasses
 import functools
 import re
-from typing import Any, Callable
+from typing import Any, Callable, FrozenSet
 
 from absl import logging
 from chex._src import asserts_internal as _ai
 import jax
 from jax.experimental import checkify
 
+
+@dataclasses.dataclass(frozen=True)
+class _ChexifyChecks:
+  """A set of checks imported from checkify."""
+
+  user: FrozenSet[checkify.ErrorCategory] = checkify.user_checks
+  nan: FrozenSet[checkify.ErrorCategory] = checkify.nan_checks
+  index: FrozenSet[checkify.ErrorCategory] = checkify.index_checks
+  div: FrozenSet[checkify.ErrorCategory] = checkify.div_checks
+  float: FrozenSet[checkify.ErrorCategory] = checkify.float_checks
+  automatic: FrozenSet[checkify.ErrorCategory] = checkify.automatic_checks
+  all: FrozenSet[checkify.ErrorCategory] = checkify.all_checks
+
+
 _chexify_error_pattern = re.compile(
-    re.escape(_ai.get_chexify_err_message('NAME')).replace('NAME', '.*'))
+    re.escape(_ai.get_chexify_err_message('NAME')).replace('NAME', '.*')
+)
 
 
 def _check_error(err: checkify.Error) -> None:
@@ -66,8 +82,15 @@ def _check_if_hanging_assertions():
     block_until_chexify_assertions_complete()
 
 
-def chexify(fn: Callable[..., Any],
-            async_check: bool = True) -> Callable[..., Any]:
+# Public API.
+ChexifyChecks = _ChexifyChecks()
+
+
+def chexify(
+    fn: Callable[..., Any],
+    async_check: bool = True,
+    errors: FrozenSet[checkify.ErrorCategory] = ChexifyChecks.user,
+) -> Callable[..., Any]:
   """Wraps a transformed function `fn` to enable Chex value assertions.
 
   Chex value/runtime assertions access concrete values of tensors (e.g.
@@ -127,6 +150,11 @@ def chexify(fn: Callable[..., Any],
     fn: A transformed function to wrap.
     async_check: Whether to check errors in the async dispatch mode. See
       https://jax.readthedocs.io/en/latest/async_dispatch.html.
+    errors: A set of `checkify.ErrorCategory` values which defines the set of
+      enabled checks. By default only explicit ``checks`` are enabled (`user`).
+      You can also for example enable NaN and Div-by-0 errors by passing the
+      `float` set, or for example combine multiple sets through set
+      operations (`float | user`).
 
   Returns:
     A _chexified_ function, i.e. the one with enabled value assertions.
@@ -146,7 +174,7 @@ def chexify(fn: Callable[..., Any],
     async_check_futures = collections.deque()
 
   # Checkification.
-  checkified_fn = checkify.checkify(fn)
+  checkified_fn = checkify.checkify(fn, errors=errors)
 
   @functools.wraps(fn)
   def _chexified_fn(*args, **kwargs):

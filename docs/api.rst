@@ -49,6 +49,7 @@ Assertions
     assert_trees_all_equal_structs
     assert_type
     chexify
+    ChexifyChecks
     with_jittable_assertions
     block_until_chexify_assertions_complete
     Dimensions
@@ -71,6 +72,7 @@ Value (Runtime) Assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: chexify
+.. autosummary::  ChexifyChecks
 .. autofunction:: with_jittable_assertions
 .. autofunction:: block_until_chexify_assertions_complete
 

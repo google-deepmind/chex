@@ -220,6 +220,51 @@ class AssertsChexifyTest(variants.TestCase):
       logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS
       logp1_abs_safe.wait_checks()
 
+  def test_checkify_errors(self):
+    @jax.jit
+    def take_by_index_and_div(x, i, y):
+      return x[i] / y
+
+    # Checks only Div-by-0.
+    take_by_index_and_div_safe_div = asserts_chexify.chexify(
+        take_by_index_and_div,
+        async_check=False,
+        errors=asserts_chexify.ChexifyChecks.div,
+    )
+    take_by_index_and_div_safe_div(jnp.ones(2), 1, 2)  # OK
+    take_by_index_and_div_safe_div(jnp.ones(2), 10, 2)  # OOB undetected
+
+    with self.assertRaisesRegex(
+        asserts_chexify.checkify.JaxRuntimeError, 'division by zero'
+    ):
+      take_by_index_and_div_safe_div(jnp.ones(2), 1, 0)  # Div-by-0
+
+    # Checks both OOB and Div-by-0.
+    take_by_index_and_div_safe = asserts_chexify.chexify(
+        take_by_index_and_div,
+        async_check=False,
+        errors=(
+            asserts_chexify.ChexifyChecks.index
+            | asserts_chexify.ChexifyChecks.div
+        ),
+    )
+    take_by_index_and_div_safe(jnp.ones(2), 1, 2)  # OK
+
+    with self.assertRaisesRegex(
+        asserts_chexify.checkify.JaxRuntimeError, 'out-of-bounds'
+    ):
+      take_by_index_and_div_safe(jnp.ones(2), 10, 2)  # OOB
+
+    with self.assertRaisesRegex(
+        asserts_chexify.checkify.JaxRuntimeError, 'division by zero'
+    ):
+      take_by_index_and_div_safe(jnp.ones(2), 1, 0)  # Div-by-0
+
+    with self.assertRaisesRegex(
+        asserts_chexify.checkify.JaxRuntimeError, 'out-of-bounds'
+    ):
+      take_by_index_and_div_safe(jnp.ones(2), 10, 0)  # OOB (first) & Div-by-0
+
 
 class AssertsChexifyTestSuite(variants.TestCase):
   """Test suite for chexify assertions."""

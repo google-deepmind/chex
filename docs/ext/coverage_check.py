@@ -81,6 +81,10 @@ class CoverageCheck(builders.Builder):
                           'ArrayDevice', 'ArrayDType', 'ArrayNumpy',
                           'ArraySharded', 'ArrayTree', 'Device', 'Numeric',
                           'PRNGKey', 'PyTreeDef', 'Scalar', 'Shape')
+
+    # Exclude public constants.
+    pytypes_exceptions += ('ChexifyChecks',)
+
     undocumented_objects -= {'chex.' + s for s in pytypes_exceptions}
 
     if undocumented_objects:

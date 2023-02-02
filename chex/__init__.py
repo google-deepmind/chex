@@ -67,6 +67,7 @@ from chex._src.asserts import enable_asserts
 from chex._src.asserts import if_args_not_none
 from chex._src.asserts_chexify import block_until_chexify_assertions_complete
 from chex._src.asserts_chexify import chexify
+from chex._src.asserts_chexify import ChexifyChecks
 from chex._src.asserts_chexify import with_jittable_assertions
 from chex._src.dataclass import dataclass
 from chex._src.dataclass import mappable_dataclass
@@ -108,6 +109,7 @@ __all__ = (
     "ArrayNumpy",
     "ArraySharded",
     "ArrayTree",
+    "ChexifyChecks",
     "assert_axis_dimension",
     "assert_axis_dimension_comparator",
     "assert_axis_dimension_gt",

@@ -71,7 +71,7 @@ sys.path.insert(0, os.path.abspath('../'))
 sys.path.append(os.path.abspath('ext'))
 
 import chex
-import sphinxcontrib.katex as katex
+from sphinxcontrib import katex
 
 # -- Project information -----------------------------------------------------
 
