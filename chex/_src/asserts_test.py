@@ -1032,7 +1032,7 @@ class TreeAssertionsTest(parameterized.TestCase):
       with self.assertRaisesRegex(AssertionError,
                                   _get_err_regex('\'1/a\' resides on \'cpu\'')):
         asserts.assert_tree_is_on_device((tpu_1_2_tree, cpu_tree),
-                                         platform=('tpu'))
+                                         platform='tpu')
       with self.assertRaisesRegex(AssertionError,
                                   _get_err_regex('\'0/a\' resides on \'tpu\'')):
         asserts.assert_tree_is_on_device((tpu_1_2_tree, cpu_tree),
@@ -1191,8 +1191,8 @@ class TreeAssertionsTest(parameterized.TestCase):
     self._assert_tree_structs_validation(asserts.assert_trees_all_close)
 
   def test_assert_trees_all_close_fails_values_differ(self):
-    tree1 = (jnp.array([0.0, 2.0]))
-    tree2 = (jnp.array([0.0, 2.1]))
+    tree1 = jnp.array([0.0, 2.0])
+    tree2 = jnp.array([0.0, 2.1])
     asserts.assert_trees_all_close(tree1, tree2, atol=0.1)
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):

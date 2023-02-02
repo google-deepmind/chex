@@ -38,7 +38,7 @@ PYLINT_ARGS="-efail -wfail -cfail -rfail"
 wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 # Append specific config lines.
 echo "signature-mutators=toolz.functoolz.curry" >> .pylintrc
-echo "disable=unnecessary-lambda-assignment" >> .pylintrc
+echo "disable=unnecessary-lambda-assignment,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find chex -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
