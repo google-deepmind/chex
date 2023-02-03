@@ -43,5 +43,8 @@ Numeric = Union[Array, Scalar]
 Shape = jax.core.Shape
 PRNGKey = jax.random.KeyArray
 PyTreeDef = type(jax.tree_util.tree_structure(None))
-Device = jax.lib.xla_extension.Device
+if hasattr(jax, 'Device'):
+  Device = jax.Device  # jax >= 0.4.3
+else:
+  Device = jax.lib.xla_extension.Device
 ArrayDType = type(jnp.float32)
