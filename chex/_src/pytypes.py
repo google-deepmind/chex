@@ -29,7 +29,7 @@ if hasattr(jax, 'Array'):
 elif hasattr(jax.interpreters.xla, '_DeviceArray'):  # 0.2.5 < jax < 0.3.20
   ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint:disable=protected-access
 else:  # jax <= 0.2.5
-  ArrayDevice = jax.interpreters.xla.DeviceArray
+  ArrayDevice = jax.Array
 
 # Generic array type.
 Array = Union[ArrayDevice, ArrayNumpy, ArrayBatched, ArraySharded]
