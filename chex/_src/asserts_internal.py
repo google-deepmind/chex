@@ -28,7 +28,7 @@ import functools
 import re
 import threading
 import traceback
-from typing import Any, Sequence, Union, Callable, Optional, Set, Tuple, Type
+from typing import Any, Sequence, Union, Callable, List, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
@@ -36,6 +36,7 @@ import jax
 from jax.experimental import checkify
 import jax.numpy as jnp
 import numpy as np
+import tree as dm_tree
 
 # Custom pytypes.
 TLeaf = Any
@@ -100,16 +101,17 @@ def deprecation_wrapper(new_fn, old_name, new_name):
   return inner_fn
 
 
-def get_last_non_chex_frame() -> traceback.FrameSummary:
+def get_stacktrace_without_chex_internals() -> List[traceback.FrameSummary]:
   """Returns the latest non-chex frame from the call stack."""
-  for frame in reversed(traceback.extract_stack()):
-    if not frame.filename.count("/chex/") or frame.filename.endswith(
-        "_test.py"):
-      return frame
+  stacktrace = list(traceback.extract_stack())
+  for i in reversed(range(len(stacktrace))):
+    fname = stacktrace[i].filename
+    if fname.find("/chex/") == -1 or fname.endswith("_test.py"):
+      return stacktrace[:i+1]
 
   debug_info = "\n-----\n".join(traceback.format_stack())
   raise RuntimeError(
-      "get_last_non_chex_frame() failed. "
+      "get_stacktrace_without_chex_internals() failed. "
       "Please file a bug at https://github.com/deepmind/chex/issues and "
       "include the following debug info in it. "
       "Please make sure it does not include any private information! "
@@ -129,10 +131,9 @@ def get_err_regex(message: str) -> str:
   return f"{re.escape(ERR_PREFIX)}[\\s\\S]*{message}"
 
 
-def get_chexify_err_message(name: str, custom_msg: Optional[str] = None) -> str:
+def get_chexify_err_message(name: str, msg: str = "") -> str:
   """Constructs an error message for the chexify exception."""
-  custom_msg = f" [{custom_msg}]" if custom_msg else ""
-  return f"{ERR_PREFIX}chexify assertion '{name}' failed{custom_msg}"
+  return f"{ERR_PREFIX}chexify assertion '{name}' failed: {msg}"
 
 
 def _make_host_assertion(assert_fn: TAssertFn,
@@ -241,10 +242,38 @@ def chex_assertion(
         raise RuntimeError(
             "Value assertions can only be called from functions wrapped "
             "with `@chex.chexify`. See the docs.")
-      msg = get_chexify_err_message(name, custom_message)
-      callsite_frame = get_last_non_chex_frame()
-      msg += f" [failed at {callsite_frame.filename}:{callsite_frame.lineno}]"
-      checkify.check(pred=jittable_assert_fn(*args, **kwargs), msg=msg)
+
+      # A wrapped to inject auxiliary debug info and `custom_message`.
+      original_check = checkify.check
+
+      def _check(pred, msg, *fmt_args, **fmt_kwargs):
+        # Add chex info.
+        msg = get_chexify_err_message(name, msg)
+
+        # Add a custom message.
+        if custom_message:
+          msg += f" Custom message: {custom_message}."
+          fmt_args = list(fmt_args) + list(custom_message_format_vars)
+
+        # Add a traceback and a pointer to the callsite.
+        stacktrace = get_stacktrace_without_chex_internals()
+        msg += (
+            f" [failed at: {stacktrace[-1].filename}:{stacktrace[-1].lineno}]"
+        )
+
+        # Call original `checkify.check()`.
+        original_check(pred, msg, *fmt_args, **fmt_kwargs)
+
+      # Mock during the assertion's execution time.
+      checkify.check = _check
+      pred = jittable_assert_fn(*args, **kwargs)  # execute the assertion
+      checkify.check = original_check  # return the original implementation
+
+      # A safeguard to ensure that the results of a check are not ignored.
+      # In particular, this check fails when `pred` is False and no
+      # `checkify.check` calls took place in `jittable_assert_fn`, which would
+      # be a bug in the assertion's implementation.
+      checkify.check(pred, "assertion failed!")
     else:
       try:
         host_assertion_fn(
@@ -377,6 +406,7 @@ def assert_leaves_all_eq_comparator(
 
 def assert_trees_all_eq_comparator_jittable(
     equality_comparator: TLeavesEqCmpFn,
+    error_msg_template: str,
     *trees: Sequence[pytypes.ArrayTree]) -> pytypes.Array:
   """Asserts all trees are equal using custom comparator. JIT-friendly."""
 
@@ -386,13 +416,36 @@ def assert_trees_all_eq_comparator_jittable(
         "`assert_trees_xxx([a, b])` instead of `assert_trees_xxx(a, b)`, or "
         "forgot the `error_msg_fn` arg to `assert_trees_xxx`?")
 
-  def _cmp_leaves(*leaves):
-    res = jnp.array(True)
-    for arr in leaves[1:]:
-      res = jnp.logical_and(res, equality_comparator(arr, leaves[0]))
-    return res
+  def _tree_error_msg_fn(path: str, i_1: int, i_2: int):
+    if path:
+      return (
+          f"Trees {i_1} and {i_2} differ in leaves '{path}':"
+          f" {error_msg_template}"
+      )
+    else:
+      return f"Trees (arrays) {i_1} and {i_2} differ: {error_msg_template}."
 
-  result = jnp.array(True)
-  for res in jax.tree_util.tree_leaves(jax.tree_map(_cmp_leaves, *trees)):
-    result = jnp.logical_and(result, res)
-  return result
+  def _cmp_leaves(path, *leaves):
+    verdict = jnp.array(True)
+    for i in range(1, len(leaves)):
+      check_res = equality_comparator(leaves[0], leaves[i])
+      checkify.check(
+          pred=check_res,
+          msg=_tree_error_msg_fn(path, 0, i),
+          arr_1=leaves[0],
+          arr_2=leaves[i],
+      )
+      verdict = jnp.logical_and(verdict, check_res)
+    return verdict
+
+  # Trees are guaranteed to have the same structure.
+  paths = [path for path, _ in dm_tree.flatten_with_path(trees[0])]
+  trees_leaves = [dm_tree.flatten(tree) for tree in trees]
+
+  verdict = jnp.array(True)
+  for leaf_i, path in enumerate(paths):
+    verdict = jnp.logical_and(
+        verdict, _cmp_leaves(path, *[leaves[leaf_i] for leaves in trees_leaves])
+    )
+
+  return verdict

@@ -44,7 +44,7 @@ compatibility with JAX data structures.
 In addition, we provide a class wrapper that exposes dataclasses as
 `collections.Mapping` descendants which allows to process them
 (e.g. (un-)flatten) in `dm-tree` methods as usual Python dictionaries.
-See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L30)
+See [`@mappable_dataclass`](https://github.com/deepmind/chex/blob/master/chex/_src/dataclass.py#L27)
 docstring for more details.
 
 Example:

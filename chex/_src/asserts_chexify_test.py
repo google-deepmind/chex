@@ -37,6 +37,12 @@ chexify_async = functools.partial(asserts_chexify.chexify, async_check=True)
 chexify_sync = functools.partial(asserts_chexify.chexify, async_check=False)
 
 
+def get_chexify_err_regex(name, msg):
+  return re.escape(_ai.get_chexify_err_message(name, 'ANY')).replace(
+      'ANY', f'.*{msg}.*'
+  )
+
+
 # Follows `ai.TChexAssertion`'s API.
 def _assert_noop(*args,
                  custom_message: Optional[str] = None,
@@ -58,8 +64,10 @@ def _assert_tree_positive(tree):
 
 def _jittable_assert_tree_positive(tree):
   # Jittable version of `_assert_tree_positive`.
-  return jnp.all(
+  pred = jnp.all(
       jnp.array([(x > 0).all() for x in jax.tree_util.tree_leaves(tree)]))
+  asserts_chexify.checkify.check(pred, 'Tree contains non-positive elems!')
+  return pred
 
 
 chex_static_assert_positive = _ai.chex_assertion(
@@ -328,8 +336,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
           fn_static_assert(*invalid_args)
 
       # Value assertion fails on incorrect inputs (with transformations).
-      err_regex = re.escape(
-          _ai.get_chexify_err_message('assert_tree_positive_test', label))
+      err_regex = get_chexify_err_regex('assert_tree_positive_test', label)
       with self.assertRaisesRegex(AssertionError, err_regex):
         chexified_fn_with_value_asserts(*invalid_args)
 
@@ -523,7 +530,102 @@ class AssertsChexifyTestSuite(variants.TestCase):
           jax_transform=lambda fn: jax.jit(jax.vmap(fn)),  # jax + vmap
           devices=jax.local_devices()[:1],
           run_pure=True,
-          run_in_thread=run_in_thread)
+          run_in_thread=run_in_thread,
+      )
+
+
+class AssertsLibraryTest(parameterized.TestCase):
+
+  def test_assert_tree_all_finite(self):
+    @jax.jit
+    def fn(x):
+      asserts.assert_tree_all_finite(x)
+      return jax.tree_map(jnp.sum, x)
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+    chexified_fn({'a': 0, 'b': jnp.ones(3)})  # OK
+
+    err_regex = get_chexify_err_regex(
+        'assert_tree_all_finite', 'Tree contains non-finite value'
+    )
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      chexified_fn({'a': 1, 'b': jnp.array([1, jnp.nan, 3])})  # NaN
+    with self.assertRaisesRegex(AssertionError, re.escape("'b': Array(nan")):
+      chexified_fn({'a': 1, 'b': jnp.array([1, jnp.nan, 3])})  # NaN
+
+  def test_assert_trees_all_equal(self):
+    @jax.jit
+    def fn(x, y):
+      asserts.assert_trees_all_equal(x, y)
+      return jax.tree_map(jnp.add, x, y)
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+
+    tree_1 = {'a': jnp.array([3]), 'b': jnp.array([10, 10])}
+    tree_2 = {'a': jnp.array([3]), 'b': jnp.array([10, 20])}
+    chexified_fn(tree_1, tree_1)  # OK
+
+    err_regex = get_chexify_err_regex(
+        'assert_trees_all_equal', 'Values not exactly equal:'
+    )
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      chexified_fn(tree_1, tree_2)  # Fail: not equal
+
+    with self.assertRaisesRegex(
+        AssertionError, re.escape("Trees 0 and 1 differ in leaves '('b',)'")
+    ):
+      chexified_fn(tree_1, tree_2)  # Fail: not equal
+
+  def test_assert_trees_all_close(self):
+    @jax.jit
+    def fn(x, y, z):
+      asserts.assert_trees_all_close(x, y, z, rtol=0.5, atol=0.5)
+      return jax.tree_map(jnp.add, x, y)
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+
+    tree_1 = {1: {'a': jnp.array([3]), 'b': jnp.array([10, 10])}}
+    tree_1_close = {1: {'a': jnp.array([3.1]), 'b': jnp.array([10.1, 10.1])}}
+    tree_2 = {1: {'a': jnp.array([3]), 'b': jnp.array([10, 20])}}
+    chexified_fn(tree_1, tree_1, tree_1)  # OK
+    chexified_fn(tree_1, tree_1_close, tree_1)  # OK
+
+    err_regex = get_chexify_err_regex(
+        'assert_trees_all_close', 'Values not approximately equal'
+    )
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      chexified_fn(tree_1, tree_2, tree_1)  # Fail: not close
+
+    with self.assertRaisesRegex(
+        AssertionError, re.escape("Trees 0 and 2 differ in leaves '(1, 'b')':")
+    ):
+      chexified_fn(tree_1, tree_1_close, tree_2)  # Fail: not close
+
+  def test_custom_message(self):
+    @jax.jit
+    def fn(x, y):
+      asserts.assert_trees_all_equal(
+          x,
+          y,
+          custom_message='sum(x)={}',
+          custom_message_format_vars=[sum(l.sum() for l in jax.tree_leaves(x))],
+      )
+      return jax.tree_map(jnp.add, x, y)
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+
+    tree_1 = {'a': jnp.array([3]), 'b': jnp.array([10, 10])}
+    tree_2 = {'a': jnp.array([3]), 'b': jnp.array([10, 320])}
+
+    with self.assertRaisesRegex(
+        AssertionError, re.escape('Custom message: sum(x)=') + '.*23'
+    ):
+      chexified_fn(tree_1, tree_2)  # Fail: not equal
+
+    with self.assertRaisesRegex(
+        AssertionError, re.escape('Custom message: sum(x)=') + '.*333'
+    ):
+      chexified_fn(tree_2, tree_1)  # Fail: not equal
 
 
 if __name__ == '__main__':

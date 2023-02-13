@@ -42,7 +42,7 @@ class _ChexifyChecks:
 
 
 _chexify_error_pattern = re.compile(
-    re.escape(_ai.get_chexify_err_message('NAME')).replace('NAME', '.*')
+    re.escape(_ai.get_chexify_err_message('ANY', 'ANY')).replace('ANY', '.*')
 )
 
 

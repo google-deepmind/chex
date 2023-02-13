@@ -26,6 +26,7 @@ from unittest import mock
 from chex._src import asserts_internal as _ai
 from chex._src import pytypes
 import jax
+from jax.experimental import checkify
 import jax.numpy as jnp
 import jax.test_util as jax_test
 import numpy as np
@@ -1423,12 +1424,22 @@ def _assert_tree_all_finite_static(tree_like: ArrayTree) -> None:
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 
-def _assert_tree_all_finite_jittable(tree_like: ArrayTree) -> Array:
+def _assert_tree_all_finite_jittable(
+    tree_like: ArrayTree
+) -> Array:
   """A jittable version of `_assert_tree_all_finite_static`."""
-  return jnp.all(
-      jnp.asarray([
-          jnp.isfinite(x).all() for x in jax.tree_util.tree_leaves(tree_like)
-      ]))
+  labeled_tree = jax.tree_map(
+      lambda x: jax.lax.select(jnp.isfinite(x).all(), .0, jnp.nan), tree_like
+  )
+  predicate = jnp.all(
+      jnp.isfinite(jnp.asarray(jax.tree_util.tree_leaves(labeled_tree)))
+  )
+  checkify.check(
+      pred=predicate,
+      msg="Tree contains non-finite value: {tree}.",
+      tree=labeled_tree,
+  )
+  return predicate
 
 
 assert_tree_all_finite = _value_assertion(
@@ -1480,20 +1491,25 @@ def _assert_trees_all_equal_static(*trees: ArrayTree,
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
 
 
-def _assert_trees_all_equal_jittable(*trees: ArrayTree,
-                                     ignore_nones: bool = False) -> Array:
+def _assert_trees_all_equal_jittable(
+    *trees: ArrayTree, ignore_nones: bool = False
+) -> Array:
   """A jittable version of `_assert_trees_all_equal_static`."""
   if not ignore_nones:
     assert_tree_no_nones(trees)
 
+  err_msg_template = "Values not exactly equal: {arr_1} != {arr_2}."
   cmp_fn = lambda x, y: jnp.array_equal(x, y, equal_nan=True)
-  return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
+  return _ai.assert_trees_all_eq_comparator_jittable(
+      cmp_fn, err_msg_template, *trees
+  )
 
 
 assert_trees_all_equal = _value_assertion(
     assert_fn=_assert_trees_all_equal_static,
     jittable_assert_fn=_assert_trees_all_equal_jittable,
-    name="assert_trees_all_equal")
+    name="assert_trees_all_equal",
+)
 
 
 def _assert_trees_all_close_static(*trees: ArrayTree,
@@ -1553,8 +1569,14 @@ def _assert_trees_all_close_jittable(*trees: ArrayTree,
   if not ignore_nones:
     assert_tree_no_nones(trees)
 
+  err_msg_template = (
+      f"Values not approximately equal ({rtol=}, {atol=}): "
+      + "{arr_1} != {arr_2}."
+  )
   cmp_fn = lambda x, y: jnp.isclose(x, y, rtol=rtol, atol=atol).all()
-  return _ai.assert_trees_all_eq_comparator_jittable(cmp_fn, *trees)
+  return _ai.assert_trees_all_eq_comparator_jittable(
+      cmp_fn, err_msg_template, *trees
+  )
 
 
 assert_trees_all_close = _value_assertion(
