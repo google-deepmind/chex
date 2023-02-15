@@ -152,7 +152,7 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
           "new object every time). Make sure that your code does not exploit "
           "this pattern (move the nested functions to the top level to fix it)."
           " See `chex.clear_trace_counter()` if `@chex.assert_max_traces` is "
-          "used in unittests.")
+          "used in any unit tests (especially @parameterized tests).")
 
     return fn(*args, **kwargs)
 
