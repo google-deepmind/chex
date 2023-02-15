@@ -985,10 +985,13 @@ def _check_sharding(x):
 
 
 @_static_assertion
-def assert_tree_is_on_host(tree: ArrayTree,
-                           *,
-                           allow_cpu_device: bool = True,
-                           ignore_nones: bool = False) -> None:
+def assert_tree_is_on_host(
+    tree: ArrayTree,
+    *,
+    allow_cpu_device: bool = True,
+    allow_sharded_arrays: bool = False,
+    ignore_nones: bool = False,
+) -> None:
   """Checks that all leaves are ndarrays residing in the host memory (on CPU).
 
   This assertion only accepts trees consisting of ndarrays.
@@ -996,6 +999,9 @@ def assert_tree_is_on_host(tree: ArrayTree,
   Args:
     tree: A tree to assert.
     allow_cpu_device: Whether to allow JAX arrays that reside on a CPU device.
+    allow_sharded_arrays: Whether to allow sharded JAX arrays. Sharded arrays
+      are considered "on host" only if they are sharded across CPU devices and
+      `allow_cpu_device` is `True`.
     ignore_nones: Whether to ignore `None` in the tree.
 
   Raises:
@@ -1010,15 +1016,38 @@ def assert_tree_is_on_host(tree: ArrayTree,
       if not isinstance(leaf, np.ndarray):
         nonlocal errors
 
-        if isinstance(leaf, jax.Array) and not _check_sharding(leaf):
-          if allow_cpu_device:
+        if isinstance(leaf, jax.Array):
+          if _check_sharding(leaf):
+            # Sharded array.
+            if not allow_sharded_arrays:
+              errors.append(
+                  f"Tree leaf '{_ai.format_tree_path(path)}' is sharded and"
+                  f" resides on {leaf.devices()} (sharded arrays are"
+                  " disallowed)."
+              )
+            elif allow_cpu_device:
+              if any(d.platform != "cpu" for d in leaf.devices()):
+                errors.append(
+                    f"Tree leaf '{_ai.format_tree_path(path)}' is sharded and"
+                    f" resides on {leaf.devices()}."
+                )
+            else:
+              errors.append(
+                  f"Tree leaf '{_ai.format_tree_path(path)}' is sharded and"
+                  f" resides on {leaf.devices()} (CPU devices are disallowed)."
+              )
+          elif allow_cpu_device:
+            # Device array.
             if leaf.device().platform != "cpu":
-              errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides"
-                             f" on {leaf.device()}."))
+              errors.append(
+                  f"Tree leaf '{_ai.format_tree_path(path)}' resides"
+                  f" on {leaf.device()}."
+              )
           else:
             errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides "
                            f"on {leaf.device()} (CPU devices are disallowed)."))
-        else:  # not a DeviceArray
+        else:
+          # Not a jax.Array.
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                          f"unexpected type: {type(leaf)}."))
 
@@ -1120,14 +1149,24 @@ def assert_tree_is_sharded(tree: ArrayTree,
       nonlocal errors
 
       # Check that the leaf is a ShardedArray.
-      if isinstance(leaf, jax.Array) and _check_sharding(leaf):
-        shards = tuple(buf.device() for buf in leaf.device_buffers)
-        if shards != devices:
-          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
-                         f"across {shards} devices, expected {devices}."))
+      if isinstance(leaf, jax.Array):
+        if _check_sharding(leaf):
+          shards = tuple(buf.device() for buf in leaf.device_buffers)
+          if shards != devices:
+            errors.append(
+                f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
+                f"across {shards} devices, expected {devices}."
+            )
+        else:
+          errors.append(
+              f"Tree leaf '{_ai.format_tree_path(path)}' is not sharded"
+              f" (device={leaf.device()})."
+          )
       else:
-        errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
-                       f"ShardedDeviceArray (type={type(leaf)})."))
+        errors.append(
+            f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
+            f"jax.Array (type={type(leaf)})."
+        )
 
   for path, leaf in dm_tree.flatten_with_path(tree):
     _assert_fn(path, leaf)
