@@ -40,6 +40,15 @@ class NestedDataclass():
 
 
 @chex_dataclass
+class PostInitDataclass:
+  a: pytypes.ArrayDevice
+
+  def __post_init__(self):
+    if not self.a > 0:
+      raise ValueError('a should be > than 0')
+
+
+@chex_dataclass
 class ReverseOrderNestedDataclass():
   # The order of c and d are switched comapred to NestedDataclass.
   d: pytypes.ArrayDevice
@@ -576,6 +585,10 @@ class DataclassesTest(parameterized.TestCase):
     obj2 = jax.tree_util.tree_unflatten(treedef, leaves)
     self.assertSequenceEqual(dataclasses.fields(obj2), dataclasses.fields(obj))
 
+  def test_flatten_respects_post_init(self):
+    obj = PostInitDataclass(a=1)
+    with self.assertRaises(ValueError):
+      _ = jax.tree_util.tree_map(lambda x: 0, obj)
 
 if __name__ == '__main__':
   absltest.main()
