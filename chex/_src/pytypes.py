@@ -42,7 +42,7 @@ Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
 Shape = jax.core.Shape
 PRNGKey = jax.random.KeyArray
-PyTreeDef = type(jax.tree_util.tree_structure(None))
+PyTreeDef = jax.tree_util.PyTreeDef
 if hasattr(jax, 'Device'):
   Device = jax.Device  # jax >= 0.4.3
 else:
