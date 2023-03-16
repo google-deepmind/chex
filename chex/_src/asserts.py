@@ -976,7 +976,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
 # jax version >= 0.3.22.
 # This is for backwards compatibility.
 def _check_sharding(x):
-  if jax.config.jax_array and isinstance(x, jax.Array):
+  if hasattr(jax, "Array") and isinstance(x, jax.Array):
     if isinstance(x.sharding, jax.sharding.PmapSharding):
       return True
     else:

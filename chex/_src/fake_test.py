@@ -72,10 +72,7 @@ def _assert_pmapped(fn, fn_input, is_pmapped, should_jit=False):
   # the function output, if it is a sharded array type then the function has
   # been pmapped
   if is_pmapped:
-    if jax.config.jax_array:
-      expected_type = jax.Array
-    else:
-      expected_type = ArraySharded
+    expected_type = jax.Array
     assert_message = f'Output is type {type(output)}, expected {expected_type}'
     assert isinstance(output, expected_type), assert_message
   else:
@@ -83,12 +80,8 @@ def _assert_pmapped(fn, fn_input, is_pmapped, should_jit=False):
     assert_message = f'Output is type {type(output)}, expected {expected_type}'
     # ShardedDeviceArray is a subclass of DeviceArray. So, to enforce we have
     # a DeviceArray, we also check it's not a sharded one.
-    if jax.config.jax_array:
-      assert (isinstance(output, jax.Array) and
-              len(output.sharding.device_set) == 1), assert_message
-    else:
-      assert (isinstance(output, jax.Array) and
-              not isinstance(output, ArraySharded)), assert_message
+    assert (isinstance(output, jax.Array) and
+            len(output.sharding.device_set) == 1), assert_message
 
 
 class PmapFakeTest(parameterized.TestCase):
@@ -103,9 +96,6 @@ class PmapFakeTest(parameterized.TestCase):
     # output is sharded or not is not correct. With jax.Array, you can check
     # the `len(output.sharding.device_set)` to see if its sharded or not, but
     # here because of a single device it fails.
-    if not jax.config.jax_array:
-      with self.assertRaises(AssertionError):
-        _assert_pmapped(foo, fn_input, False)
 
   def test_assert_jitted(self):
     fn_input = jnp.ones((4,))
