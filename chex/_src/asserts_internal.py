@@ -381,8 +381,7 @@ def is_traceable(fn) -> bool:
         return True
 
       try:
-        if isinstance(fn_, (jax.lib.xla_extension.jax_jit.CompiledFunction,
-                            jax.lib.xla_extension.PjitFunction)):
+        if isinstance(fn_, jax.lib.xla_extension.PjitFunction):
           return True
       except AttributeError:
         pass
