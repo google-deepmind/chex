@@ -981,7 +981,12 @@ def _check_sharding(x):
       return True
     else:
       return len(x.sharding.device_set) > 1
-  return isinstance(x, jax.pxla.ShardedDeviceArray)
+  # pytype: disable=attribute-error
+  return (
+      hasattr(jax, "pxla")
+      and hasattr(jax.pxla, "ShardedDeviceArray")
+      and isinstance(x, jax.pxla.ShardedDeviceArray)
+  )
 
 
 @_static_assertion

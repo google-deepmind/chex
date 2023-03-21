@@ -14,28 +14,41 @@
 # ==============================================================================
 """Type definitions to use for type annotations."""
 
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, Union
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 # Special types of arrays.
-ArrayBatched = jax.interpreters.batching.BatchTracer
 ArrayNumpy = np.ndarray
-ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
 # For instance checking, use `isinstance(x, jax.Array)`.
 if hasattr(jax, 'Array'):
   ArrayDevice = jax.Array  # jax >= 0.3.20
+  ArraySharded = jax.Array
+  ArrayBatched = jax.Array
 elif hasattr(jax.interpreters.xla, '_DeviceArray'):  # 0.2.5 < jax < 0.3.20
   ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint:disable=protected-access
+  ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
+  ArrayBatched = jax.interpreters.batching.BatchTracer
 else:  # jax <= 0.2.5
   ArrayDevice = jax.interpreters.xla.DeviceArray
+  ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
+  ArrayBatched = jax.interpreters.batching.BatchTracer
 
 # Generic array type.
-Array = Union[ArrayDevice, ArrayNumpy, ArrayBatched, ArraySharded]
+# Similar to `jax.typing.ArrayLike` but does not accept python scalar types.
+Array = Union[
+    ArrayDevice, ArrayBatched, ArraySharded,  # JAX array type
+    ArrayNumpy,  # NumPy array type
+    np.bool_, np.number,  # NumPy scalar types
+]
 
 # A tree of generic arrays.
-ArrayTree = Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
+
+# Should be Union[Array, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']].
+# Setting to Any for now to not break the existing code that depends on
+# dynamically registered jax pytrees.
+ArrayTree = Any
 
 # Other types.
 Scalar = Union[float, int]
