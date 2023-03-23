@@ -80,8 +80,10 @@ from chex._src.fake import set_n_cpu_devices
 from chex._src.pytypes import Array
 from chex._src.pytypes import ArrayBatched
 from chex._src.pytypes import ArrayDevice
+from chex._src.pytypes import ArrayDeviceTree
 from chex._src.pytypes import ArrayDType
 from chex._src.pytypes import ArrayNumpy
+from chex._src.pytypes import ArrayNumpyTree
 from chex._src.pytypes import ArraySharded
 from chex._src.pytypes import ArrayTree
 from chex._src.pytypes import Device
@@ -105,8 +107,10 @@ __all__ = (
     "Array",
     "ArrayBatched",
     "ArrayDevice",
+    "ArrayDeviceTree",
     "ArrayDType",
     "ArrayNumpy",
+    "ArrayNumpyTree",
     "ArraySharded",
     "ArrayTree",
     "ChexifyChecks",

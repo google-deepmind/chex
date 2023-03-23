@@ -77,10 +77,25 @@ class CoverageCheck(builders.Builder):
     undocumented_objects -= {'chex.' + s for s in assertion_exceptions}
 
     # Exclude pytypes.
-    pytypes_exceptions = ('Array', 'ArrayBatched', 'Array', 'ArrayBatched',
-                          'ArrayDevice', 'ArrayDType', 'ArrayNumpy',
-                          'ArraySharded', 'ArrayTree', 'Device', 'Numeric',
-                          'PRNGKey', 'PyTreeDef', 'Scalar', 'Shape')
+    pytypes_exceptions = (
+        'Array',
+        'ArrayBatched',
+        'Array',
+        'ArrayBatched',
+        'ArrayDevice',
+        'ArrayDeviceTree',
+        'ArrayDType',
+        'ArrayNumpy',
+        'ArrayNumpyTree',
+        'ArraySharded',
+        'ArrayTree',
+        'Device',
+        'Numeric',
+        'PRNGKey',
+        'PyTreeDef',
+        'Scalar',
+        'Shape',
+    )
 
     # Exclude public constants.
     pytypes_exceptions += ('ChexifyChecks',)

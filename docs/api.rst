@@ -195,8 +195,10 @@ Pytypes
     Array
     ArrayBatched
     ArrayDevice
+    ArrayDeviceTree
     ArrayDType
     ArrayNumpy
+    ArrayNumpyTree
     ArraySharded
     ArrayTree
     Device
