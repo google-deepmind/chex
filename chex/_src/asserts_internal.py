@@ -342,8 +342,6 @@ def is_traceable(fn) -> bool:
   """
 
   fn_string_tokens = (
-      "_python_jit.",  # PyJIT  in Python ver. < 3.7
-      "_cpp_jit.",  # CppJIT in Python ver. < 3.7 (deprecated)
       ".reraise_with_filtered_traceback",  # JIT    in Python ver. >= 3.7
       "CompiledFunction",  # C++ JIT in jaxlib 0.1.66 or newer.
       "pmap.",  # Python pmap
@@ -354,7 +352,6 @@ def is_traceable(fn) -> bool:
   )
 
   fn_type_tokens = (
-      "CompiledFunction",
       "PmapFunction",
       "PjitFunction",
   )
@@ -381,8 +378,7 @@ def is_traceable(fn) -> bool:
         return True
 
       try:
-        if isinstance(fn_, (jax.lib.xla_extension.jax_jit.CompiledFunction,
-                            jax.lib.xla_extension.PjitFunction)):
+        if isinstance(fn_, jax.lib.xla_extension.PjitFunction):
           return True
       except AttributeError:
         pass

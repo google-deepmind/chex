@@ -22,19 +22,13 @@ import numpy as np
 
 # Special types of arrays.
 ArrayNumpy = np.ndarray
+
 # For instance checking, use `isinstance(x, jax.Array)`.
-if hasattr(jax, 'Array'):
-  ArrayDevice = jax.Array  # jax >= 0.3.20
-  ArraySharded = jax.Array
-  ArrayBatched = jax.Array
-elif hasattr(jax.interpreters.xla, '_DeviceArray'):  # 0.2.5 < jax < 0.3.20
-  ArrayDevice = jax.interpreters.xla._DeviceArray  # pylint:disable=protected-access
-  ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
-  ArrayBatched = jax.interpreters.batching.BatchTracer
-else:  # jax <= 0.2.5
-  ArrayDevice = jax.interpreters.xla.DeviceArray
-  ArraySharded = jax.interpreters.pxla.ShardedDeviceArray
-  ArrayBatched = jax.interpreters.batching.BatchTracer
+ArrayDevice = jax.Array
+
+# Types for backward compatibility.
+ArraySharded = jax.Array
+ArrayBatched = jax.Array
 
 # Generic array type.
 # Similar to `jax.typing.ArrayLike` but does not accept python scalar types.
@@ -59,8 +53,5 @@ Numeric = Union[Array, Scalar]
 Shape = jax.core.Shape
 PRNGKey = jax.random.KeyArray
 PyTreeDef = jax.tree_util.PyTreeDef
-if hasattr(jax, 'Device'):
-  Device = jax.Device  # jax >= 0.4.3
-else:
-  Device = jax.lib.xla_extension.Device
+Device = jax.Device
 ArrayDType = type(jnp.float32)
