@@ -520,6 +520,24 @@ class DataclassesTest(parameterized.TestCase):
     asserts.assert_tree_all_equal_structs(
         jax.tree_util.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
 
+  def test_decorator_alias(self):
+    # Make sure, that creating a decorator alias works correctly.
+    configclass = chex_dataclass(frozen=True)
+
+    @configclass
+    class Foo:
+      bar: int = 1
+      toto: int = 2
+
+    @configclass
+    class Bar:
+      bar: int = 1
+      toto: int = 2
+
+    # Verify that both Foo and Bar are correctly registered with jax.tree_util.
+    self.assertLen(jax.tree_util.tree_flatten(Foo())[0], 2)
+    self.assertLen(jax.tree_util.tree_flatten(Bar())[0], 2)
+
   @parameterized.named_parameters(
       ('mappable', True),
       ('not_mappable', False),

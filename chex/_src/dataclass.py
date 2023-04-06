@@ -123,8 +123,12 @@ def dataclass(
   Returns:
     A JAX-friendly dataclass.
   """
-  dcls = _Dataclass(init, repr, eq, order, unsafe_hash, frozen,
-                    mappable_dataclass)
+  def dcls(cls):
+    # Make sure to create a separate _Dataclass instance for each `cls`.
+    return _Dataclass(
+        init, repr, eq, order, unsafe_hash, frozen, mappable_dataclass
+    )(cls)
+
   if cls is None:
     return dcls
   return dcls(cls)
