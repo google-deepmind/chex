@@ -153,6 +153,7 @@ def _fake_pmap(fn,
     call_args = convert_to_varargs(fn_signature, *args, **kwargs)
 
     if static_broadcasted_argnums:
+      # Make sure vmap does not try to map over `static_broadcasted_argnums`.
       if isinstance(in_axes, int):
         vmap_in_axes = jax.tree_util.tree_map(lambda _: in_axes, call_args)
       else:
@@ -161,10 +162,35 @@ def _fake_pmap(fn,
       for argnum in static_broadcasted_argnums:
         vmap_in_axes[argnum] = jax.tree_util.tree_map(
             lambda _: None, call_args[argnum])
+
+      # To protect the arguments from `static_broadcasted_argnums`,
+      # from turning into tracers (because of vmap), we capture the original
+      # `call_args` and replace the passed in tracers with original values.
+      original_call_args = call_args
+
+      # A function passed to vmap, that will simply replace the static args
+      # with their original values.
+      def fn_without_statics(*args):
+        args_with_original_statics = [
+            orig_arg if i in static_broadcasted_argnums else arg
+            for i, (arg, orig_arg) in enumerate(zip(args, original_call_args))
+        ]
+        return fn(*args_with_original_statics)
+
+      # Make sure to avoid turning static args into tracers: Some python objects
+      # might not survive vmap. Just replace with an unused constant.
+      call_args = [
+          1 if i in static_broadcasted_argnums else arg
+          for i, arg in enumerate(call_args)
+      ]
+
     else:
       vmap_in_axes = in_axes
+      fn_without_statics = fn
 
-    vmapped_fn = jax.vmap(fn, in_axes=vmap_in_axes, axis_name=axis_name)
+    vmapped_fn = jax.vmap(
+        fn_without_statics, in_axes=vmap_in_axes, axis_name=axis_name
+    )
     if jit_result:
       vmapped_fn = jax.jit(vmapped_fn)
 

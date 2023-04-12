@@ -231,11 +231,20 @@ class PmapFakeTest(parameterized.TestCase):
 
       # Note: mode='bar' is intended to test that we correctly handle kwargs
       # with defaults for which we don't pass a value at call time.
-      @functools.partial(jax.pmap,
-                         axis_size=num_devices,
-                         static_broadcasted_argnums=static_argnums)
-      @jax.jit
+      @functools.partial(
+          jax.pmap,
+          axis_size=num_devices,
+          static_broadcasted_argnums=static_argnums,
+      )
+      @functools.partial(
+          jax.jit,
+          static_argnums=static_argnums,
+      )
       def foo(x, multiplier, y, mode='bar'):
+        if static_argnums == 1 or 1 in static_argnums:
+          # Verify that the static arguments are not replaced with tracers.
+          self.assertIsInstance(multiplier, int)
+
         if mode == 'bar':
           return (x * multiplier) + y
         else:
@@ -244,7 +253,7 @@ class PmapFakeTest(parameterized.TestCase):
       # pmap over all available devices
       inputs = jnp.array([1, 2])
       inputs = jnp.broadcast_to(inputs, (num_devices,) + inputs.shape)
-      func = lambda: foo(inputs, 100, inputs)   # Pass multiplier=100.
+      func = lambda: foo(inputs, 100, inputs)  # Pass multiplier=100.
 
       if static_argnums == 1:  # Should work.
         expected = jnp.broadcast_to(jnp.array([101, 202]), (num_devices, 2))
