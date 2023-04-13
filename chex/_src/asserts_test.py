@@ -888,6 +888,80 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, err_msg):
       asserts._assert_trees_all_close_jittable(tree2, tree3)
 
+  def test_assert_trees_all_close_ulp_jittable_raises_valueerror(self):
+    tree = (jnp.array([1.0]),)
+    err_msg = 'assert_trees_all_close_ulp is not supported within JIT contexts.'
+    err_regex = _get_err_regex(err_msg)
+    with self.assertRaisesRegex(RuntimeError, err_regex):
+      asserts._assert_trees_all_close_ulp_jittable(tree, tree)
+
+  def test_assert_trees_all_close_ulp_passes_same_tree(self):
+    tree = {
+        'a': [jnp.zeros((1,))],
+        'b': ([0], (0,), 0),
+    }
+    asserts.assert_trees_all_close_ulp(tree, tree)
+
+  def test_assert_trees_all_close_ulp_passes_values_equal(self):
+    tree1 = (jnp.array([0.0, 0.0]),)
+    tree2 = (jnp.array([0.0, 0.0]),)
+    try:
+      asserts.assert_trees_all_close_ulp(tree1, tree2)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError')
+
+  def test_assert_trees_all_close_ulp_passes_values_within_maxulp(self):
+    # np.spacing(np.float32(1 << 23)) == 1.0.
+    value_where_ulp_is_1 = np.float32(1 << 23)
+    tree1 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1]),)
+    tree2 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1 + 1.0]),)
+    assert tree2[0][0] != tree2[0][1]
+    try:
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=2)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError')
+
+  def test_assert_trees_all_close_ulp_passes_values_maxulp_apart(self):
+    # np.spacing(np.float32(1 << 23)) == 1.0.
+    value_where_ulp_is_1 = np.float32(1 << 23)
+    tree1 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1]),)
+    tree2 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1 + 1.0]),)
+    assert tree2[0][0] != tree2[0][1]
+    try:
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError')
+
+  def test_assert_trees_all_close_ulp_fails_values_gt_maxulp_apart(self):
+    # np.spacing(np.float32(1 << 23)) == 1.0.
+    value_where_ulp_is_1 = np.float32(1 << 23)
+    tree1 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1]),)
+    tree2 = (jnp.array([value_where_ulp_is_1, value_where_ulp_is_1 + 2.0]),)
+    assert tree2[0][0] != tree2[0][1]
+    err_msg = re.escape(
+        'not almost equal up to 1 ULP (max difference is 2 ULP)'
+    )
+    err_regex = _get_err_regex(err_msg)
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
+
+  def test_assert_trees_all_close_ulp_nones(self):
+    tree = {'a': [jnp.zeros((1,))], 'b': None}
+    asserts.assert_trees_all_close_ulp(tree, tree, ignore_nones=True)
+    err_regex = _get_err_regex('`None` detected')
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close_ulp(tree, tree, ignore_nones=False)
+
+  def test_assert_trees_all_close_ulp_fails_bfloat16(self):
+    tree_f32 = (jnp.array([0.0]),)
+    tree_bf16 = (jnp.array([0.0], dtype=jnp.bfloat16),)
+    err_msg = 'ULP assertions are not currently supported for bfloat16.'
+    err_regex = _get_err_regex(err_msg)
+    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
+      asserts.assert_trees_all_close_ulp(tree_bf16, tree_bf16)
+    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
+      asserts.assert_trees_all_close_ulp(tree_bf16, tree_f32)
+
   def test_assert_trees_all_equal_shapes_nones(self):
     tree = {'a': [jnp.zeros((1,))], 'b': None}
     asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=True)

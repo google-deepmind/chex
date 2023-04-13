@@ -41,6 +41,7 @@ Assertions
     assert_tree_shape_prefix
     assert_tree_shape_suffix
     assert_trees_all_close
+    assert_trees_all_close_ulp
     assert_trees_all_equal
     assert_trees_all_equal_comparator
     assert_trees_all_equal_dtypes
@@ -89,6 +90,7 @@ Tree Assertions
 .. autofunction:: assert_tree_shape_prefix
 .. autofunction:: assert_tree_shape_suffix
 .. autofunction:: assert_trees_all_close
+.. autofunction:: assert_trees_all_close_ulp
 .. autofunction:: assert_trees_all_equal
 .. autofunction:: assert_trees_all_equal_comparator
 .. autofunction:: assert_trees_all_equal_dtypes

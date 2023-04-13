@@ -1632,3 +1632,131 @@ assert_tree_all_close = _ai.deprecation_wrapper(
     assert_trees_all_close,
     old_name="assert_tree_all_close",
     new_name="assert_trees_all_close")
+
+
+def _assert_trees_all_close_ulp_static(
+    *trees: ArrayTree,
+    maxulp: int = 1,
+    ignore_nones: bool = False,
+) -> None:
+  """Checks that tree leaves differ by at most `maxulp` Units in the Last Place.
+
+  This is the Chex version of np.testing.assert_array_max_ulp.
+
+  Assertions on floating point values are tricky because the precision varies
+  depending on the value. For example, with float32, the precision at 1 is
+  np.spacing(np.float32(1.0)) ≈ 1e-7, but the precision at 5,000,000 is only
+  np.spacing(np.float32(5e6)) = 0.5. This makes it hard to predict ahead of time
+  what tolerance to use when checking whether two numbers are equal: a
+  difference of only a couple of bits can equate to an arbitrarily large
+  absolute difference.
+
+  Assertions based on _relative_ differences are one solution to this problem,
+  but have the disadvantage that it's hard to choose the tolerance. If you want
+  to verify that two calculations produce _exactly_ the same result
+  modulo the inherent non-determinism of floating point operations, do you set
+  the tolerance to...0.01? 0.001? It's hard to be sure you've set it low enough
+  that you won't miss one of your computations being slightly wrong.
+
+  Assertions based on 'units in the last place' (ULP) instead solve this
+  problem by letting you specify tolerances in terms of the precision actually
+  available at the current scale of your values. The ULP at some value x is
+  essentially the spacing between the floating point numbers actually
+  representable in the vicinity of x - equivalent to the 'precision' we
+  discussed above. above. With a tolerance of, say, `maxulp=5`, you're saying
+  that two values are within 5 actually-representable-numbers of each other -
+  a strong guarantee that two computations are as close as possible to
+  identical, while still allowing reasonable wiggle room for small differences
+  due to e.g. different operator orderings.
+
+  Note that this function is not currently supported within JIT contexts,
+  and does not currently support bfloat16 dtypes.
+
+  Args:
+    *trees: A sequence of (at least 2) trees with array leaves.
+    maxulp: The maximum number of ULPs by which leaves may differ.
+    ignore_nones: Whether to ignore `None` in the trees.
+
+  Raises:
+    AssertionError: If actual and desired values are not equal up to
+      specified tolerance; if the trees contain `None` (with
+      ``ignore_nones=False``).
+  """
+
+  def assert_fn(arr_1, arr_2):
+    if (
+        getattr(arr_1, "dtype", None) == jnp.bfloat16
+        or getattr(arr_2, "dtype", None) == jnp.bfloat16
+    ):
+      # jnp_to_np_array currently converts bfloat16 to float32, which will cause
+      # assert_array_max_ulp to give incorrect results -
+      # and assert_array_max_ulp itself does not currently support bfloat16:
+      # https://github.com/jax-ml/ml_dtypes/issues/56
+      raise ValueError(
+          f"{_ai.ERR_PREFIX}ULP assertions are not currently supported for "
+          "bfloat16."
+      )
+    np.testing.assert_array_max_ulp(
+        _ai.jnp_to_np_array(arr_1),
+        _ai.jnp_to_np_array(arr_2),
+        maxulp=maxulp,
+    )
+
+  def cmp_fn(arr_1, arr_2) -> bool:
+    try:
+      # Raises an AssertionError if values are not close.
+      assert_fn(arr_1, arr_2)
+    except AssertionError:
+      return False
+    return True
+
+  def err_msg_fn(arr_1, arr_2) -> str:
+    try:
+      assert_fn(arr_1, arr_2)
+    except AssertionError as e:
+      return (
+          f"{str(e)} \nOriginal dtypes: "
+          f"{np.asarray(arr_1).dtype}, {np.asarray(arr_2).dtype}"
+      )
+    return ""
+
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones
+  )
+
+
+# The return should be typing.NoReturn, but that would significantly complicate
+# the signature of _value_assertion, so we pretend the return is jax.Array.
+def _assert_trees_all_close_ulp_jittable(
+    *trees: ArrayTree,
+    maxulp: int = 1,
+    ignore_nones: bool = False,
+) -> jax.Array:
+  """A dummy jittable version of `_assert_trees_all_close_ulp_static`.
+
+  JAX does not yet have a native version of assert_array_max_ulp, so at the
+  moment making ULP assertions on tracer objects simply isn't supported.
+  This function exists only to make sure a sensible error is given.
+
+  Args:
+    *trees: Ignored.
+    maxulp: Ignored.
+    ignore_nones: Ignored.
+
+  Raises:
+    NotImplementedError: unconditionally.
+
+  Returns:
+    Never returns. (We pretend jax.Array to satisfy the type checker.)
+  """
+  raise NotImplementedError(
+      f"{_ai.ERR_PREFIX}assert_trees_all_close_ulp is not supported within JIT "
+      "contexts."
+  )
+
+
+assert_trees_all_close_ulp = _value_assertion(
+    assert_fn=_assert_trees_all_close_ulp_static,
+    jittable_assert_fn=_assert_trees_all_close_ulp_jittable,
+    name="assert_trees_all_close_ulp",
+)
