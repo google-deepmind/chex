@@ -366,6 +366,87 @@ def assert_scalar_negative(x: Scalar) -> None:
 
 
 @_static_assertion
+def assert_equal_size(inputs: Sequence[Array]) -> None:
+  """Checks that all arrays have the same size.
+
+  Args:
+    inputs: A collection of arrays.
+
+  Raises:
+    AssertionError: If the size of all arrays do not match.
+  """
+  _ai.assert_collection_of_arrays(inputs)
+  size = inputs[0].size
+  expected_sizes = [size] * len(inputs)
+  sizes = [x.size for x in inputs]
+  if sizes != expected_sizes:
+    raise AssertionError(f"Arrays have different sizes: {sizes}")
+
+
+@_static_assertion
+def assert_size(
+    inputs: Union[Scalar, Union[Array, Sequence[Array]]],
+    expected_sizes: Union[_ai.TShapeMatcher,
+                          Sequence[_ai.TShapeMatcher]]) -> None:
+  """Checks that the size of all inputs matches specified ``expected_sizes``.
+  
+  Valid usages include:
+
+  .. code-block:: python
+
+    assert_size(x, 1)                   # x is scalar (size 1)
+    assert_size([x, y], (2, {1, 3}))    # x has size 2, y has size 1 or 3
+    assert_size([x, y], (2, ...))       # x has size 2, y has any size
+    assert_size([x, y], 1)              # x and y are scalar (size 1)
+    assert_size((x, y), (5, 2))         # x has size 5, y has size 2
+
+  Args:
+    inputs: An array or a sequence of arrays.
+    expected_sizes: A sqeuence of expected sizes associated with each input,
+      where the expected size is a sequence of integer and `None` dimensions;
+      if all inputs have same size, a single size may be passed as 
+      ``expected_sizes``.
+
+  Raises:
+    AssertionError: If the lengths of ``inputs`` and ``expected_sizes`` do not
+      match; if ``expected_sizes`` has wrong type; if size of ``input`` does
+      not match ``expected_sizes``.
+  """
+  # Ensure inputs and expected sizes are sequences.
+  if not isinstance(inputs, collections.abc.Sequence):
+    inputs = [inputs]
+
+  if isinstance(expected_sizes, int):
+    expected_sizes = [expected_sizes] * len(inputs)
+
+  if not isinstance(expected_sizes, (list, tuple)):
+    raise AssertionError(
+        "Error in size compatibility check: expected sizes should be an int, "
+        f"list, or tuple of ints, got {expected_sizes}.")  
+
+  if len(inputs) != len(expected_sizes):
+    raise AssertionError(
+        "Length of `inputs` and `expected_sizes` must match: "
+        f"{len(inputs)} is not equal to {len(expected_sizes)}.")
+
+  errors = []
+  for idx, (x, expected) in enumerate(zip(inputs, expected_sizes)):
+    size = getattr(x, "size", 1)  # scalars have size 1 by definition.
+    # Allow any size for the ellipsis case and allow handling of integer
+    # expected sizes or collection of acceptable expected sizes.
+    int_condition = expected in {Ellipsis, None} or size == expected
+    set_condition = (isinstance(expected, collections.abc.Collection) and
+                     size in expected)
+    if not (int_condition or set_condition):
+      errors.append((idx, size, expected))
+
+  if errors:
+    msg = "; ".join(
+        f"input {e[0]} has size {e[1]} but expected {e[2]}" for e in errors)
+    raise AssertionError(f"Error in size compatibility check: {msg}.")
+
+
+@_static_assertion
 def assert_equal_shape(
     inputs: Sequence[Array],
     *,
@@ -1403,6 +1484,26 @@ def assert_trees_all_equal_dtypes(*trees: ArrayTree,
 
   assert_trees_all_equal_comparator(
       cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones)
+
+
+@_static_assertion
+def assert_trees_all_equal_sizes(*trees: ArrayTree,
+                                 ignore_nones: bool = False) -> None:
+  """Checks that trees have the same structure and leaves' sizes.
+
+  Args:
+    *trees: A sequence of (at least 2) trees with array leaves.
+    ignore_nones: Whether to ignore `None` in the trees.
+
+  Raises:
+    AssertionError: If trees' structures or leaves' sizes are different;
+      if the trees contain `None` (with ``ignore_nones=False``).
+  """
+  cmp_fn = lambda arr_1, arr_2: arr_1.size == arr_2.size
+  err_msg_fn = lambda arr_1, arr_2: f"sizes: {arr_1.size} != {arr_2.size}"
+  assert_trees_all_equal_comparator(
+      cmp_fn, err_msg_fn, *trees, ignore_nones=ignore_nones
+  )
 
 
 @_static_assertion

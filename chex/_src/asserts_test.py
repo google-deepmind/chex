@@ -280,6 +280,80 @@ class ScalarAssertTest(parameterized.TestCase):
       asserts.assert_scalar_in(1, 0, 1, included=False)
 
 
+class EqualSizeAssertTest(parameterized.TestCase):
+  @parameterized.named_parameters(
+      ('scalar_vector_matrix', [1, 2, [3], [[4, 5]]]),
+      ('vector_matrix', [[1], [2], [[3, 5]]]),
+      ('matrix', [[[1, 2]], [[3], [4], [5]]]),
+  )
+  def test_equal_size_should_fail(self, arrays):
+    arrays = as_arrays(arrays)
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('Arrays have different sizes')):
+      asserts.assert_equal_size(arrays)
+
+  @parameterized.named_parameters(
+      ('scalar_vector_matrix', [1, 2, [3], [[4]]]),
+      ('vector_matrix', [[1], [2], [[3]]]),
+      ('matrix', [[[1, 2]], [[3], [4]]]),
+  )
+  def test_equal_size_should_pass(self, arrays):
+    arrays = as_arrays(arrays)
+    asserts.assert_equal_size(arrays)
+
+
+class SizeAssertTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('wrong_size', [1, 2], 2),
+      ('some_wrong_size', [[1, 2], [3, 4]], (2, 3)),
+      ('wrong_common_shape', [[1, 2], [3, 4, 3]], 3),
+      ('wrong_common_shape_2', [[1, 2, 3], [1, 2]], 2),
+      ('some_wrong_size_set', [[1, 2], [3, 4]], (2, {3, 4})),
+  )
+  def test_size_should_fail(self, arrays, sizes):
+    arrays = as_arrays(arrays)
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('input .+ has size .+ but expected .+')):
+      asserts.assert_size(arrays, sizes)
+
+  @parameterized.named_parameters(
+      ('too_many_sizes', [[1]], (1, 1)),
+      ('not_enough_sizes', [[1, 2], [3, 4], [5, 6]], (2, 2)),
+  )
+  def test_size_should_fail_wrong_length(self, arrays, sizes):
+    arrays = as_arrays(arrays)
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Length of `inputs` and `expected_sizes` must match')):
+      asserts.assert_size(arrays, sizes)
+
+  @parameterized.named_parameters(
+      ('scalars', [1, 2], 1),
+      ('vectors', [[1, 2], [3, 4, 5]], [2, 3]),
+      ('matrices', [[[1, 2], [3, 4]]], 4),
+      ('common_size_set', [[[1, 2], [3, 4]], [[1], [3]]], (4, {1, 2})),
+  )
+  def test_size_should_pass(self, arrays, sizes):
+    arrays = as_arrays(arrays)
+    asserts.assert_size(arrays, sizes)
+
+  def test_pytypes_pass(self):
+    arrays = as_arrays([[[1, 2], [3, 4]], [[1], [3]]])
+    asserts.assert_size(arrays, (4, None))
+    asserts.assert_size(arrays, (4, {1, 2}))
+    asserts.assert_size(arrays, (4, ...))
+
+  @parameterized.named_parameters(
+      ('single_ellipsis', [[1,2,3,4], [1,2]],(..., 2) ),
+      ('multiple_ellipsis', [[1,2,3], [1,2,3]], (..., ...)),
+  )
+  def test_ellipsis_should_pass(self, arrays, expected_size):
+    arrays = as_arrays(arrays)
+    asserts.assert_size(arrays, expected_size)
+
+
 class EqualShapeAssertTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -1298,6 +1372,30 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('Values not approximately equal')):
       asserts.assert_trees_all_close(tree1, tree2, rtol=0.01)
+
+  def test_assert_trees_all_equal_sizes(self):
+    get_val = lambda s1, s2: jnp.zeros([s1, s2])
+    tree1 = dict(a1=get_val(3,1), d=dict(a2=get_val(4,1), a3=get_val(5,3)))
+    tree2 = dict(a1=get_val(3,1), d=dict(a2=get_val(4,1), a3=get_val(5,3)))
+    tree3 = dict(a1=get_val(3,1), d=dict(a2=get_val(4,2), a3=get_val(5,3)))
+
+    self._assert_tree_structs_validation(asserts.assert_trees_all_equal_sizes)
+    asserts.assert_trees_all_equal_sizes(tree1, tree1)
+    asserts.assert_trees_all_equal_sizes(tree2, tree1)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(
+            r'Trees 0 and 1 differ in leaves \'d/a2\': sizes: 4 != 8'
+        )):
+      asserts.assert_trees_all_equal_sizes(tree1, tree3)
+
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(
+            r'Trees 0 and 3 differ in leaves \'d/a2\': sizes: 4 != 8'
+        )):
+      asserts.assert_trees_all_equal_sizes(tree1, tree2, tree2, tree3, tree1)
 
   def test_assert_trees_all_equal_shapes(self):
     get_val = lambda s: jnp.zeros([s])

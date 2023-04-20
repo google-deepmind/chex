@@ -14,6 +14,7 @@ Assertions
     assert_devices_available
     assert_equal
     assert_equal_rank
+    assert_equal_size
     assert_equal_shape
     assert_equal_shape_prefix
     assert_equal_shape_suffix
@@ -30,6 +31,7 @@ Assertions
     assert_scalar_negative
     assert_scalar_non_negative
     assert_scalar_positive
+    assert_size
     assert_shape
     assert_tpu_available
     assert_tree_all_finite
@@ -45,6 +47,7 @@ Assertions
     assert_trees_all_equal
     assert_trees_all_equal_comparator
     assert_trees_all_equal_dtypes
+    assert_trees_all_equal_sizes
     assert_trees_all_equal_shapes
     assert_trees_all_equal_shapes_and_dtypes
     assert_trees_all_equal_structs
@@ -94,6 +97,7 @@ Tree Assertions
 .. autofunction:: assert_trees_all_equal
 .. autofunction:: assert_trees_all_equal_comparator
 .. autofunction:: assert_trees_all_equal_dtypes
+.. autofunction:: assert_trees_all_equal_sizes
 .. autofunction:: assert_trees_all_equal_shapes
 .. autofunction:: assert_trees_all_equal_shapes_and_dtypes
 .. autofunction:: assert_trees_all_equal_structs
@@ -110,6 +114,7 @@ Generic Assertions
 .. autofunction:: assert_axis_dimension_lteq
 .. autofunction:: assert_equal
 .. autofunction:: assert_equal_rank
+.. autofunction:: assert_equal_size
 .. autofunction:: assert_equal_shape
 .. autofunction:: assert_equal_shape_prefix
 .. autofunction:: assert_equal_shape_suffix
@@ -124,6 +129,7 @@ Generic Assertions
 .. autofunction:: assert_scalar_negative
 .. autofunction:: assert_scalar_non_negative
 .. autofunction:: assert_scalar_positive
+.. autofunction:: assert_size
 .. autofunction:: assert_shape
 .. autofunction:: assert_type
 
