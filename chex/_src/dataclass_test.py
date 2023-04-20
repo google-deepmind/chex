@@ -341,6 +341,38 @@ class DataclassesTest(parameterized.TestCase):
     asserts.assert_trees_all_close(
         jax.tree_util.tree_map(lambda t: factor * t, obj), target_obj)
 
+  def test_tree_flatten_with_keys(self):
+    obj = dummy_dataclass()
+    keys_and_leaves, treedef = jax.tree_util.tree_flatten_with_path(obj)
+    self.assertEqual([k for k, _ in keys_and_leaves],
+                     [('a', 'c'), ('a', 'd'), ('b',)])
+    leaves = [l for _, l in keys_and_leaves]
+    new_obj = treedef.unflatten(leaves)
+    self.assertEqual(new_obj, obj)
+
+  def test_tree_map_with_keys(self):
+    obj = dummy_dataclass()
+    def f(path, x):
+      value = obj
+      for key in path:
+        value = getattr(value, key)
+      np.testing.assert_allclose(value, x)
+      return path
+
+    out = jax.tree_util.tree_map_with_path(f, obj)
+    self.assertEqual(out.a.c, ('a', 'c'))
+    self.assertEqual(out.a.d, ('a', 'd'))
+    self.assertEqual(out.b, ('b',))
+
+  def test_tree_map_with_keys_traversal_order(self):
+    obj = ReverseOrderNestedDataclass(d=1, c=2)
+    leaves = []
+    def f(_, x):
+      leaves.append(x)
+
+    jax.tree_util.tree_map_with_path(f, obj)
+    self.assertEqual(leaves, jax.tree_util.tree_leaves(obj))
+
   @parameterized.parameters([True, False])
   def test_dataclass_replace(self, frozen):
     factor = 5.

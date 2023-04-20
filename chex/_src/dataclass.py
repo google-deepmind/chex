@@ -248,6 +248,15 @@ def _dataclass_unflatten(dcls, keys, values):
   return dcls_object
 
 
+def _flatten_with_path(dcls):
+  path = []
+  keys = []
+  for k, v in sorted(dcls.__dict__.items()):
+    path.append((k, v))
+    keys.append(k)
+  return path, keys
+
+
 def register_dataclass_type_with_jax_tree_util(data_class):
   """Register an existing dataclass so JAX knows how to handle it.
 
@@ -264,7 +273,8 @@ def register_dataclass_type_with_jax_tree_util(data_class):
   flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
   unflatten = functools.partial(_dataclass_unflatten, data_class)
   try:
-    jax.tree_util.register_pytree_node(
-        nodetype=data_class, flatten_func=flatten, unflatten_func=unflatten)
+    jax.tree_util.register_pytree_with_keys(
+        nodetype=data_class, flatten_with_keys=_flatten_with_path,
+        flatten_func=flatten, unflatten_func=unflatten)
   except ValueError:
     logging.info("%s is already registered as JAX PyTree node.", data_class)
