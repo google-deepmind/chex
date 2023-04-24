@@ -26,6 +26,7 @@ from chex._src.asserts import assert_equal_rank
 from chex._src.asserts import assert_equal_shape
 from chex._src.asserts import assert_equal_shape_prefix
 from chex._src.asserts import assert_equal_shape_suffix
+from chex._src.asserts import assert_equal_size
 from chex._src.asserts import assert_exactly_one_is_none
 from chex._src.asserts import assert_gpu_available
 from chex._src.asserts import assert_is_broadcastable
@@ -40,6 +41,7 @@ from chex._src.asserts import assert_scalar_negative
 from chex._src.asserts import assert_scalar_non_negative
 from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
+from chex._src.asserts import assert_size
 from chex._src.asserts import assert_tpu_available
 from chex._src.asserts import assert_tree_all_close  # Deprecated
 from chex._src.asserts import assert_tree_all_equal_comparator  # Deprecated
@@ -60,6 +62,7 @@ from chex._src.asserts import assert_trees_all_equal_comparator
 from chex._src.asserts import assert_trees_all_equal_dtypes
 from chex._src.asserts import assert_trees_all_equal_shapes
 from chex._src.asserts import assert_trees_all_equal_shapes_and_dtypes
+from chex._src.asserts import assert_trees_all_equal_sizes
 from chex._src.asserts import assert_trees_all_equal_structs
 from chex._src.asserts import assert_type
 from chex._src.asserts import clear_trace_counter
@@ -127,6 +130,7 @@ __all__ = (
     "assert_equal_shape",
     "assert_equal_shape_prefix",
     "assert_equal_shape_suffix",
+    "assert_equal_size",
     "assert_exactly_one_is_none",
     "assert_gpu_available",
     "assert_is_broadcastable",
@@ -141,6 +145,7 @@ __all__ = (
     "assert_scalar_non_negative",
     "assert_scalar_positive",
     "assert_shape",
+    "assert_size",
     "assert_tpu_available",
     "assert_tree_all_close",  # Deprecated
     "assert_tree_all_equal_comparator",  # Deprecated
@@ -161,6 +166,7 @@ __all__ = (
     "assert_trees_all_equal_dtypes",
     "assert_trees_all_equal_shapes",
     "assert_trees_all_equal_shapes_and_dtypes",
+    "assert_trees_all_equal_sizes",
     "assert_trees_all_equal_structs",
     "assert_type",
     "block_until_chexify_assertions_complete",
