@@ -164,6 +164,7 @@ __all__ = (
     "assert_trees_all_equal",
     "assert_trees_all_equal_comparator",
     "assert_trees_all_equal_dtypes",
+    "assert_trees_all_equal_sizes",
     "assert_trees_all_equal_shapes",
     "assert_trees_all_equal_shapes_and_dtypes",
     "assert_trees_all_equal_structs",
