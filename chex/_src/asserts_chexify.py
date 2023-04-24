@@ -167,9 +167,15 @@ def chexify(
   # ensure that a program never blocks on Chex side when running in async mode.
   async_timeout = 1800  # 30 minutes
 
+  # Get function name.
+  if isinstance(fn, functools.partial):
+    func_name = fn.func.__name__
+  else:
+    func_name = fn.__name__
+
   if async_check:
     # Spawn a thread for processing blocking calls.
-    thread_pool = futures.ThreadPoolExecutor(1, f'async_chex_{fn.__name__}')
+    thread_pool = futures.ThreadPoolExecutor(1, f'async_chex_{func_name}')
     # A deque for futures.
     async_check_futures = collections.deque()
 
@@ -220,7 +226,7 @@ def chexify(
   else:
     logging.warning(
         "Function %s already defines 'wait_checks' method; "
-        'Chex will not redefine it.', _chexified_fn.__name__)
+        'Chex will not redefine it.', func_name)
 
   return _chexified_fn
 

@@ -273,6 +273,21 @@ class AssertsChexifyTest(variants.TestCase):
     ):
       take_by_index_and_div_safe(jnp.ones(2), 10, 0)  # OOB (first) & Div-by-0
 
+  def test_partial_python_fn(self):
+    def fn(x, y):
+      asserts.assert_trees_all_equal(x, y)
+      return jax.tree_map(jnp.add, x, y)
+
+    partial_fn = functools.partial(fn, y=jnp.array([1]))
+    chexified_fn = chexify_async(partial_fn)  # note: fn is not transformed
+
+    chexified_fn(jnp.array([1]))
+    chexified_fn.wait_checks()
+
+    with self.assertRaisesRegex(AssertionError, '0 and 1 differ'):
+      chexified_fn(jnp.array([2]))
+      chexified_fn.wait_checks()  # Fail: not equal
+
 
 class AssertsChexifyTestSuite(variants.TestCase):
   """Test suite for chexify assertions."""
@@ -608,7 +623,9 @@ class AssertsLibraryTest(parameterized.TestCase):
           x,
           y,
           custom_message='sum(x)={}',
-          custom_message_format_vars=[sum(l.sum() for l in jax.tree_leaves(x))],
+          custom_message_format_vars=[
+              sum(l.sum() for l in jax.tree_util.tree_leaves(x))
+          ],
       )
       return jax.tree_map(jnp.add, x, y)
 
