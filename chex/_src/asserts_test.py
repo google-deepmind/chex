@@ -738,6 +738,11 @@ class AxisDimensionAssertionsTest(parameterized.TestCase):
                                   _get_err_regex('not available')):
         asserts.assert_axis_dimension_lteq(tensor, axis=i, val=0)
 
+  def test_assert_axis_dimension_string_tensor(self):
+    tensor = ['ab', 'cddd']
+    asserts.assert_axis_dimension(tensor, axis=0, expected=2)
+    asserts.assert_axis_dimension(np.array(tensor), axis=0, expected=2)
+
 
 class TreeAssertionsTest(parameterized.TestCase):
 

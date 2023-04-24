@@ -779,7 +779,8 @@ def assert_axis_dimension_comparator(tensor: Array, axis: int,
   Raises:
     AssertionError: if `pass_fn(tensor.shape[axis], val)` does not return true.
   """
-  tensor = jnp.asarray(tensor)
+  if not isinstance(tensor, (jax.Array, np.ndarray)):
+    tensor = np.asarray(tensor)  # np is broader than jnp (it supports strings)
   if axis >= len(tensor.shape) or axis < -len(tensor.shape):
     raise AssertionError(
         f"Expected tensor to have dim {error_string} on axis "
