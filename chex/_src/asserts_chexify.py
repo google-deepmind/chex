@@ -20,6 +20,7 @@ from concurrent import futures
 import dataclasses
 import functools
 import re
+import threading
 from typing import Any, Callable, FrozenSet
 
 from absl import logging
@@ -178,6 +179,8 @@ def chexify(
     thread_pool = futures.ThreadPoolExecutor(1, f'async_chex_{func_name}')
     # A deque for futures.
     async_check_futures = collections.deque()
+    # Protect the futures from concurrent access.
+    async_check_futures_lock = threading.Lock()
 
   # Checkification.
   checkified_fn = checkify.checkify(fn, errors=errors)
@@ -191,8 +194,9 @@ def chexify(
 
     if async_check:
       # Check completed calls.
-      while async_check_futures and async_check_futures[0].done():
-        _check_error(async_check_futures.popleft().result(async_timeout))
+      with async_check_futures_lock:
+        while async_check_futures and async_check_futures[0].done():
+          _check_error(async_check_futures.popleft().result(async_timeout))
 
     # Run the checkified function.
     _ai.CHEXIFY_STORAGE.level += 1
@@ -214,8 +218,9 @@ def chexify(
 
   def _wait_checks():
     if async_check:
-      while async_check_futures:
-        _check_error(async_check_futures.popleft().result(async_timeout))
+      with async_check_futures_lock:
+        while async_check_futures:
+          _check_error(async_check_futures.popleft().result(async_timeout))
 
   # Add a barrier callback to the global storage.
   _ai.CHEXIFY_STORAGE.wait_fns.append(_wait_checks)
