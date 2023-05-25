@@ -155,13 +155,11 @@ def _fake_pmap(fn,
     if static_broadcasted_argnums:
       # Make sure vmap does not try to map over `static_broadcasted_argnums`.
       if isinstance(in_axes, int):
-        vmap_in_axes = jax.tree_util.tree_map(lambda _: in_axes, call_args)
+        vmap_in_axes = [in_axes] * len(call_args)
       else:
-        vmap_in_axes = in_axes
-      vmap_in_axes = list(vmap_in_axes)
+        vmap_in_axes = list(in_axes)
       for argnum in static_broadcasted_argnums:
-        vmap_in_axes[argnum] = jax.tree_util.tree_map(
-            lambda _: None, call_args[argnum])
+        vmap_in_axes[argnum] = None
 
       # To protect the arguments from `static_broadcasted_argnums`,
       # from turning into tracers (because of vmap), we capture the original

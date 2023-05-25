@@ -14,6 +14,7 @@
 # ==============================================================================
 """Tests for `fake.py`."""
 
+import dataclasses
 import functools
 
 from absl.testing import absltest
@@ -262,6 +263,50 @@ class PmapFakeTest(parameterized.TestCase):
       else:  # Should error.
         with self.assertRaises(ValueError):
           result = func()
+
+  @parameterized.parameters(1, [1])
+  def test_pmap_with_complex_static_broadcasted_object(self, static_argnums):
+
+    @dataclasses.dataclass
+    class Multiplier:
+      x: int
+      y: int
+
+    def foo(x, multiplier, y):
+      if static_argnums == 1 or 1 in static_argnums:
+        # Verify that the static arguments are not replaced with tracers.
+        self.assertIsInstance(multiplier, Multiplier)
+
+      return x * multiplier.x + y * multiplier.y
+
+    with fake.fake_pmap_and_jit():
+      num_devices = jax.device_count()
+
+      # pmap over all available devices
+      transformed_foo = jax.pmap(
+          foo,
+          axis_size=num_devices,
+          static_broadcasted_argnums=static_argnums,
+      )
+      x, y = jax.random.randint(
+          jax.random.PRNGKey(27), (2, num_devices, 3, 5), 0, 10
+      )
+
+      # Test 1.
+      mult = Multiplier(x=2, y=7)
+      asserts.assert_trees_all_equal(
+          transformed_foo(x, mult, y),
+          foo(x, mult, y),
+          x * mult.x + y * mult.y,
+      )
+
+      # Test 2.
+      mult = Multiplier(x=72, y=21)
+      asserts.assert_trees_all_equal(
+          transformed_foo(x, mult, y),
+          foo(x, mult, y),
+          x * mult.x + y * mult.y,
+      )
 
   @parameterized.named_parameters([
       ('fake_nothing', False, False),
