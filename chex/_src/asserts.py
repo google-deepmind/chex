@@ -1280,6 +1280,9 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   if not ignore_nones:
     assert_tree_no_nones(tree)
 
+  # To compare with the leaf's `shape`, convert int sequence to tuple.
+  shape_prefix = tuple(shape_prefix)
+
   if not shape_prefix:
     return  # No prefix, this is trivially true.
 
@@ -1328,6 +1331,10 @@ def assert_tree_shape_suffix(tree: ArrayTree,
   """
   if not ignore_nones:
     assert_tree_no_nones(tree)
+
+  # To compare with the leaf's `shape`, convert int sequence to tuple.
+  shape_suffix = tuple(shape_suffix)
+
   if not shape_suffix:
     return  # No suffix, this is trivially true.
 
