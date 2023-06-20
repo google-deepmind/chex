@@ -556,8 +556,8 @@ def _shape_matches(actual_shape: Sequence[int],
                    expected_shape: _ai.TShapeMatcher) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   # Splits `expected_shape` based on the position of the ellipsis, if present.
-  expected_prefix: List[Union[int, Set[int]]] = []
-  expected_suffix: Optional[List[Union[int, Set[int]]]] = None
+  expected_prefix: List[_ai.TDimMatcher] = []
+  expected_suffix: Optional[List[_ai.TDimMatcher]] = None
   for dim in expected_shape:
     if dim is Ellipsis:
       if expected_suffix is not None:
@@ -1069,6 +1069,7 @@ def _check_sharding(x):
       and hasattr(jax.pxla, "ShardedDeviceArray")
       and isinstance(x, jax.pxla.ShardedDeviceArray)
   )
+  # pytype: enable=attribute-error
 
 
 @_static_assertion
@@ -1280,9 +1281,6 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   if not ignore_nones:
     assert_tree_no_nones(tree)
 
-  # To compare with the leaf's `shape`, convert int sequence to tuple.
-  shape_prefix = tuple(shape_prefix)
-
   if not shape_prefix:
     return  # No prefix, this is trivially true.
 
@@ -1331,10 +1329,6 @@ def assert_tree_shape_suffix(tree: ArrayTree,
   """
   if not ignore_nones:
     assert_tree_no_nones(tree)
-
-  # To compare with the leaf's `shape`, convert int sequence to tuple.
-  shape_suffix = tuple(shape_suffix)
-
   if not shape_suffix:
     return  # No suffix, this is trivially true.
 
