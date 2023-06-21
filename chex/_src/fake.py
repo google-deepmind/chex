@@ -417,7 +417,7 @@ class OnCallOfTransformedFunction():
     """
     self._fn_transformation = fn_transformation
     self._callback_fn = callback_fn
-    self._patch = None
+    self._patch: mock._patch[Callable[[Any], Any]] = None  # pylint: disable=unsubscriptable-object
     self._original_fn_transformation = None
 
   def __enter__(self):
