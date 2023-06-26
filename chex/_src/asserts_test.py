@@ -432,10 +432,16 @@ class ShapeAssertTest(parameterized.TestCase):
   )
   def test_shape_should_fail(self, arrays, shapes):
     arrays = as_arrays(arrays)
-    with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex('input .+ has shape .+ but expected .+')):
-      asserts.assert_shape(arrays, shapes)
+    with self.subTest('list'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('input .+ has shape .+ but expected .+')):
+        asserts.assert_shape(arrays, list(shapes))
+    with self.subTest('tuple'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('input .+ has shape .+ but expected .+')):
+        asserts.assert_shape(arrays, tuple(shapes))
 
   @parameterized.named_parameters(
       ('too_many_shapes', [[1]], [(1,), (2,)]),
@@ -446,7 +452,11 @@ class ShapeAssertTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex('Length of `inputs` and `expected_shapes` must match')):
-      asserts.assert_shape(arrays, shapes)
+      asserts.assert_shape(arrays, tuple(shapes))
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Length of `inputs` and `expected_shapes` must match')):
+      asserts.assert_shape(arrays, list(shapes))
 
   @parameterized.named_parameters(
       ('scalars', [1, 2], ()),
@@ -459,13 +469,22 @@ class ShapeAssertTest(parameterized.TestCase):
   )
   def test_shape_should_pass(self, arrays, shapes):
     arrays = as_arrays(arrays)
-    asserts.assert_shape(arrays, shapes)
+    with self.subTest('tuple'):
+      asserts.assert_shape(arrays, tuple(shapes))
+    with self.subTest('list'):
+      asserts.assert_shape(arrays, list(shapes))
 
-  def test_pytypes_pass(self):
+  @parameterized.named_parameters(
+      ('variable_shape', (2, None)),
+      ('shape_set', (2, {1, 2})),
+      ('suffix', (2, ...)),
+  )
+  def test_pytypes_pass(self, shape):
     arrays = as_arrays([[[1, 2], [3, 4]], [[1], [3]]])
-    asserts.assert_shape(arrays, (2, None))
-    asserts.assert_shape(arrays, (2, {1, 2}))
-    asserts.assert_shape(arrays, (2, ...))
+    with self.subTest('tuple'):
+      asserts.assert_shape(arrays, tuple(shape))
+    with self.subTest('list'):
+      asserts.assert_shape(arrays, list(shape))
 
   @parameterized.named_parameters(
       ('prefix_2', array_from_shape(2, 3, 4, 5, 6), (..., 4, 5, 6)),
@@ -479,7 +498,10 @@ class ShapeAssertTest(parameterized.TestCase):
       ('suffix_0', array_from_shape(2, 3, 4), (2, 3, 4, ...)),
   )
   def test_ellipsis_should_pass(self, array, expected_shape):
-    asserts.assert_shape(array, expected_shape)
+    with self.subTest('list'):
+      asserts.assert_shape(array, list(expected_shape))
+    with self.subTest('tuple'):
+      asserts.assert_shape(array, tuple(expected_shape))
 
   @parameterized.named_parameters(
       ('prefix', array_from_shape(3, 1, 5), (..., 4, 5, 6)),
@@ -492,10 +514,16 @@ class ShapeAssertTest(parameterized.TestCase):
       ('short_rank_suffix', array_from_shape(2, 3), (2, 3, 4, ...)),
   )
   def test_ellipsis_should_fail(self, array, expected_shape):
-    with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex('input .+ has shape .+ but expected .+')):
-      asserts.assert_shape(array, expected_shape)
+    with self.subTest('tuple'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('input .+ has shape .+ but expected .+')):
+        asserts.assert_shape(array, tuple(expected_shape))
+    with self.subTest('list'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex('input .+ has shape .+ but expected .+')):
+        asserts.assert_shape(array, list(expected_shape))
 
   @parameterized.named_parameters(
       ('prefix_and_suffix', array_from_shape(2, 3), (..., 2, 3, ...)),)
@@ -1438,62 +1466,104 @@ class TreeAssertionsTest(parameterized.TestCase):
     asserts.assert_trees_all_equal_structs(tree3, tree3)
     self._assert_tree_structs_validation(asserts.assert_trees_all_equal_structs)
 
-  def test_assert_tree_shape_prefix(self):
+  @parameterized.named_parameters(
+      ('scalars', ()),
+      ('vectors', (3,)),
+      ('matrices', (3, 2)),
+  )
+  def test_assert_tree_shape_prefix(self, shape):
     tree = {'x': {'y': np.zeros([3, 2])}, 'z': np.zeros([3, 2, 1])}
-    asserts.assert_tree_shape_prefix(tree, ())
-    asserts.assert_tree_shape_prefix(tree, (3,))
-    asserts.assert_tree_shape_prefix(tree, (3, 2))
+    with self.subTest('tuple'):
+      asserts.assert_tree_shape_prefix(tree, tuple(shape))
+    with self.subTest('list'):
+      asserts.assert_tree_shape_prefix(tree, list(shape))
 
+  def test_leaf_shape_should_fail_wrong_length(self):
+    tree = {'x': {'y': np.zeros([3, 2])}, 'z': np.zeros([3, 2, 1])}
     with self.assertRaisesRegex(
         AssertionError,
         _get_err_regex(r'leaf \'x/y\' has a shape of length 2')):
       asserts.assert_tree_shape_prefix(tree, (3, 2, 1))
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex(r'leaf \'x/y\' has a shape of length 2')):
+      asserts.assert_tree_shape_prefix(tree, [3, 2, 1])
 
   def test_assert_tree_shape_prefix_none(self):
     tree = {'x': np.zeros([3]), 'n': None}
     asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=True)
+    asserts.assert_tree_shape_prefix(tree, [3], ignore_nones=True)
 
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
 
-  def test_assert_tree_shape_suffix_matching(self):
-    tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([2, 1])}
-    asserts.assert_tree_shape_suffix(tree, ())
-    asserts.assert_tree_shape_suffix(tree, (1,))
-    asserts.assert_tree_shape_suffix(tree, (2, 1))
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_shape_prefix(tree, [3], ignore_nones=False)
 
-  def test_assert_tree_shape_suffix_mismatch(self):
+  @parameterized.named_parameters(
+      ('scalars', ()),
+      ('vectors', (1,)),
+      ('matrices', (2, 1)),
+  )
+  def test_assert_tree_shape_suffix_matching(self, shape):
+    tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([2, 1])}
+    with self.subTest('tuple'):
+      asserts.assert_tree_shape_suffix(tree, tuple(shape))
+    with self.subTest('list'):
+      asserts.assert_tree_shape_suffix(tree, list(shape))
+
+  @parameterized.named_parameters(
+      ('bad_suffix_leaf_1', 'z', (1, 1), (2, 1)),
+      ('bad_suffix_leaf_2', 'x/y', (2, 1), (1, 1)),
+  )
+  def test_assert_tree_shape_suffix_mismatch(self, leaf, shape_true, shape):
     tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([1, 1])}
 
-    with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex(
-            r'Tree leaf \'z\'.*different from expected: \(1, 1\) != \(2, 1\)')):
-      asserts.assert_tree_shape_suffix(tree, (2, 1))
+    error_msg = (
+        r'Tree leaf \'' + str(leaf) + '\'.*different from expected: '
+        + re.escape(str(shape_true)) + ' != ' + re.escape(str(shape))
+    )
+    with self.subTest('tuple'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(
+              error_msg)):
+        asserts.assert_tree_shape_suffix(tree, tuple(shape))
 
-    with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex(
-            r'Tree leaf \'x/y\'.*different from expected: \(2, 1\) != \(1, 1\)')
-    ):
-      asserts.assert_tree_shape_suffix(tree, (1, 1))
+    with self.subTest('list'):
+      with self.assertRaisesRegex(
+          AssertionError,
+          _get_err_regex(
+              error_msg)):
+        asserts.assert_tree_shape_suffix(tree, list(shape))
 
   def test_assert_tree_shape_suffix_long_suffix(self):
     tree = {'x': {'y': np.zeros([4, 2, 1])}, 'z': np.zeros([4, 2, 1])}
     asserts.assert_tree_shape_suffix(tree, (4, 2, 1))
+    asserts.assert_tree_shape_suffix(tree, [4, 2, 1])
 
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('which is smaller than the expected')):
       asserts.assert_tree_shape_suffix(tree, (3, 4, 2, 1))
 
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex('which is smaller than the expected')):
+      asserts.assert_tree_shape_suffix(tree, [3, 4, 2, 1])
+
   def test_assert_tree_shape_suffix_none(self):
     tree = {'x': np.zeros([3]), 'n': None}
     asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=True)
+    asserts.assert_tree_shape_suffix(tree, [3], ignore_nones=True)
 
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('`None` detected')):
       asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=False)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('`None` detected')):
+      asserts.assert_tree_shape_suffix(tree, [3], ignore_nones=False)
 
   def test_assert_trees_all_equal_dtypes(self):
     t_0 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
