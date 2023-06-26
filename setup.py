@@ -58,7 +58,7 @@ setup(
         os.path.join(_CURRENT_DIR, 'requirements', 'requirements-test.txt')),
     zip_safe=False,  # Required for full installation.
     include_package_data=True,
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
