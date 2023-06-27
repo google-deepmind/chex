@@ -943,6 +943,30 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError, err_regex):
       asserts._assert_trees_all_equal_jittable(tree, tree, ignore_nones=False)
 
+  def test_assert_trees_all_equal_strict_mode(self):
+    # See 'notes' section of
+    # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_array_equal.html
+    # for details about the 'strict' mode of `numpy.testing.assert_array_equal`.
+    # tldr; it has special handling for scalar values (by default).
+    tree1 = {'a': jnp.array([1.0], dtype=jnp.float32), 'b': 0.0}
+    tree2 = {'a': jnp.array(1.0, dtype=jnp.float32), 'b': 0.0}
+
+    asserts.assert_trees_all_equal(tree1, tree2)
+    asserts.assert_trees_all_equal(tree1, tree2, strict=False)
+    err_regex = _get_err_regex(r'Trees 0 and 1 differ in leaves \'a\'')
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_equal(tree1, tree2, strict=True)
+
+    err_regex = r'Trees 0 and 1 differ in leaves'
+    with self.assertRaisesRegex(ValueError, err_regex):
+      asserts._assert_trees_all_equal_jittable(tree1, tree2, strict=True)
+
+    # We do not implement this special scalar handling in the jittable
+    # assertion (it's possible, but doesn't seem worth the effort).
+    err_regex = r'`strict=False` is not implemented'
+    with self.assertRaisesRegex(NotImplementedError, err_regex):
+      asserts._assert_trees_all_equal_jittable(tree1, tree2, strict=False)
+
   def test_assert_trees_all_close_passes_same_tree(self):
     tree = {
         'a': [jnp.zeros((1,))],

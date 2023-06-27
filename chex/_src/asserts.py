@@ -1603,8 +1603,9 @@ assert_tree_all_finite = _value_assertion(
 
 
 @_static_assertion
-def _assert_trees_all_equal_static(*trees: ArrayTree,
-                                   ignore_nones: bool = False) -> None:
+def _assert_trees_all_equal_static(
+    *trees: ArrayTree, ignore_nones: bool = False, strict: bool = False
+) -> None:
   """Checks that all trees have leaves with *exactly* equal values.
 
   If you are comparing floating point numbers, an exact equality check may not
@@ -1613,6 +1614,8 @@ def _assert_trees_all_equal_static(*trees: ArrayTree,
   Args:
     *trees: A sequence of (at least 2) trees with array leaves.
     ignore_nones: Whether to ignore `None` in the trees.
+    strict: If True, disable special scalar handling as described in
+      `np.testing.assert_array_equals` notes section.
 
   Raises:
     AssertionError: If the leaf values actual and desired are not exactly equal,
@@ -1623,7 +1626,8 @@ def _assert_trees_all_equal_static(*trees: ArrayTree,
     np.testing.assert_array_equal(
         _ai.jnp_to_np_array(arr_1),
         _ai.jnp_to_np_array(arr_2),
-        err_msg="Error in value equality check: Values not exactly equal")
+        err_msg="Error in value equality check: Values not exactly equal",
+        strict=strict)
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:
@@ -1646,9 +1650,18 @@ def _assert_trees_all_equal_static(*trees: ArrayTree,
 
 
 def _assert_trees_all_equal_jittable(
-    *trees: ArrayTree, ignore_nones: bool = False
+    *trees: ArrayTree, ignore_nones: bool = False, strict: bool = True,
 ) -> Array:
   """A jittable version of `_assert_trees_all_equal_static`."""
+  if not strict:
+    raise NotImplementedError(
+        "`strict=False` is not implemented by"
+        " `_assert_trees_all_equal_jittable`. This is a feature of"
+        " `np.testing.assert_array_equal` used in the static implementation of"
+        " `assert_trees_all_equal` that we do not implement in the jittable"
+        " version."
+    )
+
   if not ignore_nones:
     assert_tree_no_nones(trees)
 
