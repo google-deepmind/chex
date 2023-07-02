@@ -507,7 +507,6 @@ class DataclassesTest(parameterized.TestCase):
       get: int
 
     with self.assertRaisesRegex(ValueError, 'dataclass fields are disallowed'):
-
       @chex_dataclass(mappable_dataclass=True)
       class InvalidMappable:
         get: int
@@ -571,17 +570,22 @@ class DataclassesTest(parameterized.TestCase):
     self.assertLen(jax.tree_util.tree_flatten(Bar())[0], 2)
 
   @parameterized.named_parameters(
-      ('mappable', True),
-      ('not_mappable', False),
+      ('mappable_frozen', True, True),
+      ('not_mappable_frozen', False, True),
+      ('mappable_not_frozen', True, False),
+      ('not_mappable_not_frozen', False, False),
   )
-  def test_generic_dataclass(self, mappable):
+  def test_generic_dataclass(self, mappable, frozen):
     T = TypeVar('T')
 
-    @chex_dataclass(mappable_dataclass=mappable)
+    @chex_dataclass(mappable_dataclass=mappable, frozen=frozen)
     class GenericDataclass(Generic[T]):
       a: T  # pytype: disable=invalid-annotation  # enable-bare-annotations
 
     obj = GenericDataclass(a=np.array([1.0, 1.0]))
+    asserts.assert_tree_all_close(obj.a, 1.0)
+
+    obj = GenericDataclass[np.array](a=np.array([1.0, 1.0]))
     asserts.assert_tree_all_close(obj.a, 1.0)
 
   def test_mappable_eq_override(self):
