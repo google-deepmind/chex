@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Chex assertion utilities."""
+# pylint: disable=unused-argument
 
 import collections
 import collections.abc
@@ -421,7 +422,7 @@ def assert_size(
   if not isinstance(expected_sizes, (list, tuple)):
     raise AssertionError(
         "Error in size compatibility check: expected sizes should be an int, "
-        f"list, or tuple of ints, got {expected_sizes}.")  
+        f"list, or tuple of ints, got {expected_sizes}.")
 
   if len(inputs) != len(expected_sizes):
     raise AssertionError(
@@ -1034,6 +1035,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
   Raises:
     AssertionError: If the tree contains an object which is not an ndarray.
   """
+  ignore_nones = True
   if not ignore_nones:
     assert_tree_no_nones(tree)
 
@@ -1095,6 +1097,7 @@ def assert_tree_is_on_host(
     AssertionError: If the tree contains a leaf that is not an ndarray or does
       not reside on host.
   """
+  ignore_nones = True
   assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
   errors = []
 
@@ -1167,6 +1170,7 @@ def assert_tree_is_on_device(tree: ArrayTree,
     AssertionError: If the tree contains a leaf that is not an ndarray or does
       not reside on the specified device or platform.
   """
+  ignore_nones = True
   assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
 
   # If device is specified, require its platform.
@@ -1226,6 +1230,7 @@ def assert_tree_is_sharded(tree: ArrayTree,
     AssertionError: If the tree contains a leaf that is not a device array
       sharded across the specified devices.
   """
+  ignore_nones = True
   assert_tree_has_only_ndarrays(tree, ignore_nones=ignore_nones)
 
   errors = []
@@ -1277,6 +1282,7 @@ def assert_tree_shape_prefix(tree: ArrayTree,
     AssertionError: If some leaf's shape doesn't start with ``shape_prefix``;
       if ``ignore_nones`` isn't set and the tree contains `None`.
   """
+  ignore_nones = True
   if not ignore_nones:
     assert_tree_no_nones(tree)
 
@@ -1329,6 +1335,7 @@ def assert_tree_shape_suffix(tree: ArrayTree,
     AssertionError: If some leaf's shape doesn't start with ``shape_suffix``;
       if ``ignore_nones`` isn't set and the tree contains `None`.
   """
+  ignore_nones = True
   if not ignore_nones:
     assert_tree_no_nones(tree)
 
@@ -1421,6 +1428,7 @@ def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
     AssertionError: if ``equality_comparator`` returns `False` for any pair of
                     trees from ``trees``.
   """
+  ignore_nones = True
   if len(trees) < 2:
     raise ValueError(
         "Assertions over only one tree does not make sense. Maybe you wrote "
@@ -1480,6 +1488,7 @@ def assert_trees_all_equal_dtypes(*trees: ArrayTree,
   Raises:
     AssertionError: If leaves' dtypes for any two trees differ.
   """
+  ignore_nones = True
 
   def cmp_fn(arr_1, arr_2):
     return (hasattr(arr_1, "dtype") and hasattr(arr_2, "dtype") and
@@ -1509,6 +1518,7 @@ def assert_trees_all_equal_sizes(*trees: ArrayTree,
     AssertionError: If trees' structures or leaves' sizes are different;
       if the trees contain `None` (with ``ignore_nones=False``).
   """
+  ignore_nones = True
   cmp_fn = lambda arr_1, arr_2: arr_1.size == arr_2.size
   err_msg_fn = lambda arr_1, arr_2: f"sizes: {arr_1.size} != {arr_2.size}"
   assert_trees_all_equal_comparator(
@@ -1529,6 +1539,7 @@ def assert_trees_all_equal_shapes(*trees: ArrayTree,
     AssertionError: If trees' structures or leaves' shapes are different;
       if the trees contain `None` (with ``ignore_nones=False``).
   """
+  ignore_nones = True
   cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
   err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
   assert_trees_all_equal_comparator(
@@ -1555,6 +1566,7 @@ def assert_trees_all_equal_shapes_and_dtypes(
   Raises:
     AssertionError: If leaves' shapes or dtypes for any two trees differ.
   """
+  ignore_nones = True
   assert_trees_all_equal_shapes(*trees, ignore_nones=ignore_nones)
   assert_trees_all_equal_dtypes(*trees, ignore_nones=ignore_nones)
 
@@ -1622,6 +1634,7 @@ def _assert_trees_all_equal_static(
     AssertionError: If the leaf values actual and desired are not exactly equal,
       or the trees contain `None` (with ``ignore_nones=False``).
   """
+  ignore_nones = True
 
   def assert_fn(arr_1, arr_2):
     np.testing.assert_array_equal(
@@ -1654,6 +1667,8 @@ def _assert_trees_all_equal_jittable(
     *trees: ArrayTree, ignore_nones: bool = False, strict: bool = True,
 ) -> Array:
   """A jittable version of `_assert_trees_all_equal_static`."""
+  ignore_nones = True
+
   if not strict:
     raise NotImplementedError(
         "`strict=False` is not implemented by"
@@ -1700,6 +1715,7 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
       specified tolerance; if the trees contain `None` (with
       ``ignore_nones=False``).
   """
+  ignore_nones = True
 
   def assert_fn(arr_1, arr_2):
     np.testing.assert_allclose(
@@ -1734,6 +1750,8 @@ def _assert_trees_all_close_jittable(*trees: ArrayTree,
                                      atol: float = .0,
                                      ignore_nones: bool = False) -> Array:
   """A jittable version of `_assert_trees_all_close_static`."""
+  ignore_nones = True
+
   if not ignore_nones:
     assert_tree_no_nones(trees)
 
@@ -1806,6 +1824,7 @@ def _assert_trees_all_close_ulp_static(
       specified tolerance; if the trees contain `None` (with
       ``ignore_nones=False``).
   """
+  ignore_nones = True
 
   def assert_fn(arr_1, arr_2):
     if (
@@ -1873,6 +1892,8 @@ def _assert_trees_all_close_ulp_jittable(
   Returns:
     Never returns. (We pretend jax.Array to satisfy the type checker.)
   """
+  ignore_nones = True  # pylint: disable=unused-variable
+
   raise NotImplementedError(
       f"{_ai.ERR_PREFIX}assert_trees_all_close_ulp is not supported within JIT "
       "contexts."
