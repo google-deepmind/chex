@@ -28,7 +28,7 @@ import functools
 import re
 import threading
 import traceback
-from typing import Any, Sequence, Union, Callable, List, Optional, Set, Tuple, Type
+from typing import Any, Sequence, Union, Callable, Hashable, List, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
@@ -36,7 +36,6 @@ import jax
 from jax.experimental import checkify
 import jax.numpy as jnp
 import numpy as np
-import tree as dm_tree
 
 # Custom pytypes.
 TLeaf = Any
@@ -412,7 +411,8 @@ def assert_trees_all_eq_comparator_jittable(
         "`assert_trees_xxx([a, b])` instead of `assert_trees_xxx(a, b)`, or "
         "forgot the `error_msg_fn` arg to `assert_trees_xxx`?")
 
-  def _tree_error_msg_fn(path: str, i_1: int, i_2: int):
+  def _tree_error_msg_fn(
+      path: Tuple[Union[int, str, Hashable]], i_1: int, i_2: int):
     if path:
       return (
           f"Trees {i_1} and {i_2} differ in leaves '{path}':"
@@ -435,8 +435,10 @@ def assert_trees_all_eq_comparator_jittable(
     return verdict
 
   # Trees are guaranteed to have the same structure.
-  paths = [path for path, _ in dm_tree.flatten_with_path(trees[0])]
-  trees_leaves = [dm_tree.flatten(tree) for tree in trees]
+  paths = [
+      convert_jax_path_to_dm_path(path)
+      for path, _ in jax.tree_util.tree_flatten_with_path(trees[0])[0]]
+  trees_leaves = [jax.tree_util.tree_leaves(tree) for tree in trees]
 
   verdict = jnp.array(True)
   for leaf_i, path in enumerate(paths):
@@ -445,3 +447,37 @@ def assert_trees_all_eq_comparator_jittable(
     )
 
   return verdict
+
+
+JaxKeyType = Union[
+    int,
+    str,
+    Hashable,
+    jax.tree_util.SequenceKey,
+    jax.tree_util.DictKey,
+    jax.tree_util.FlattenedIndexKey,
+    jax.tree_util.GetAttrKey,
+]
+
+
+def convert_jax_path_to_dm_path(
+    jax_tree_path: Sequence[JaxKeyType],
+) -> Tuple[Union[int, str, Hashable]]:
+  """Converts a path from jax.tree_util to one from dm-tree."""
+
+  # pytype:disable=attribute-error
+  def _convert_key_fn(key: JaxKeyType) -> Union[int, str, Hashable]:
+    if isinstance(key, (str, int)):
+      return key  # int | str.
+    if isinstance(key, jax.tree_util.SequenceKey):
+      return key.idx  # int.
+    if isinstance(key, jax.tree_util.DictKey):
+      return key.key  # Hashable
+    if isinstance(key, jax.tree_util.FlattenedIndexKey):
+      return key.key  # int.
+    if isinstance(key, jax.tree_util.GetAttrKey):
+      return key.name  # str.
+    raise ValueError(f"Jax tree key '{key}' of type '{type(key)}' not valid.")
+  # pytype:enable=attribute-error
+
+  return tuple(_convert_key_fn(key) for key in jax_tree_path)

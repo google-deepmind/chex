@@ -933,16 +933,6 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, error_msg):
       asserts._assert_trees_all_equal_jittable(tree1, tree2)
 
-  def test_assert_trees_all_equal_nones(self):
-    tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_trees_all_equal(tree, tree, ignore_nones=True)
-    err_regex = _get_err_regex('`None` detected')
-    with self.assertRaisesRegex(AssertionError, err_regex):
-      asserts.assert_trees_all_equal(tree, tree, ignore_nones=False)
-
-    with self.assertRaisesRegex(AssertionError, err_regex):
-      asserts._assert_trees_all_equal_jittable(tree, tree, ignore_nones=False)
-
   def test_assert_trees_all_equal_strict_mode(self):
     # See 'notes' section of
     # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_array_equal.html
@@ -988,15 +978,6 @@ class TreeAssertionsTest(parameterized.TestCase):
     asserts.assert_trees_all_close(tree1, tree2, rtol=1e-6)
     self.assertTrue(
         asserts._assert_trees_all_close_jittable(tree1, tree2, rtol=1e-6))
-
-  def test_assert_trees_all_close_nones(self):
-    tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_trees_all_close(tree, tree, ignore_nones=True)
-    err_regex = _get_err_regex('`None` detected')
-    with self.assertRaisesRegex(AssertionError, err_regex):
-      asserts.assert_trees_all_close(tree, tree, ignore_nones=False)
-    with self.assertRaisesRegex(AssertionError, err_regex):
-      asserts._assert_trees_all_close_jittable(tree, tree, ignore_nones=False)
 
   def test_assert_trees_all_close_bfloat16(self):
     tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
@@ -1078,13 +1059,6 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError, err_regex):
       asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
 
-  def test_assert_trees_all_close_ulp_nones(self):
-    tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_trees_all_close_ulp(tree, tree, ignore_nones=True)
-    err_regex = _get_err_regex('`None` detected')
-    with self.assertRaisesRegex(AssertionError, err_regex):
-      asserts.assert_trees_all_close_ulp(tree, tree, ignore_nones=False)
-
   def test_assert_trees_all_close_ulp_fails_bfloat16(self):
     tree_f32 = (jnp.array([0.0]),)
     tree_bf16 = (jnp.array([0.0], dtype=jnp.bfloat16),)
@@ -1094,13 +1068,6 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_trees_all_close_ulp(tree_bf16, tree_bf16)
     with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
       asserts.assert_trees_all_close_ulp(tree_bf16, tree_f32)
-
-  def test_assert_trees_all_equal_shapes_nones(self):
-    tree = {'a': [jnp.zeros((1,))], 'b': None}
-    asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_trees_all_equal_shapes(tree, tree, ignore_nones=False)
 
   def test_assert_tree_has_only_ndarrays(self):
     # Check correct inputs.
@@ -1115,13 +1082,6 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('\'b/1\' is not an ndarray')):
       asserts.assert_tree_has_only_ndarrays({'a': jnp.zeros(101), 'b': [1, 2]})
-
-    # Check `None`.
-    tree_with_none = (np.array([2]), None)
-    asserts.assert_tree_has_only_ndarrays(tree_with_none, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_has_only_ndarrays(tree_with_none)
 
   def test_assert_tree_is_on_host(self):
     cpu = jax.devices('cpu')[0]
@@ -1191,13 +1151,6 @@ class TreeAssertionsTest(parameterized.TestCase):
           allow_cpu_device=False,
           allow_sharded_arrays=True,
       )
-
-    # Check `None`.
-    tree_with_none = (np.array([2]), None)
-    asserts.assert_tree_is_on_host(tree_with_none, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_is_on_host(tree_with_none)
 
   def test_assert_tree_is_on_device(self):
     # Check CPU platform.
@@ -1282,12 +1235,6 @@ class TreeAssertionsTest(parameterized.TestCase):
       # ShardedArrays are disallowed.
       asserts.assert_tree_is_on_device(
           {'a': jax.device_put_replicated(np.zeros(1), (cpu,))}, device=cpu)
-
-    # Check `None`.
-    asserts.assert_tree_is_on_device((None,), ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_is_on_device((None,))
 
   def test_assert_tree_is_sharded(self):
     np_tree = {'a': np.zeros(1), 'b': np.ones(3)}
@@ -1396,26 +1343,6 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_is_sharded({'a': jax.device_put(np.zeros(1), cpu)},
                                      devices=(cpu,))
 
-    # Check `None`.
-    asserts.assert_tree_is_sharded((None,), devices=(cpu,), ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_is_sharded((None,), devices=(cpu,))
-
-  def test_assert_tree_no_nones(self):
-    tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
-    asserts.assert_tree_no_nones(tree_ok)
-
-    tree_with_none = {'a': [jnp.zeros((1,))], 'b': None}
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_no_nones(tree_with_none)
-
-    # Check `None`.
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_no_nones(None)
-
   def test_assert_trees_all_close_fails_different_structure(self):
     self._assert_tree_structs_validation(asserts.assert_trees_all_close)
 
@@ -1513,19 +1440,6 @@ class TreeAssertionsTest(parameterized.TestCase):
         _get_err_regex(r'leaf \'x/y\' has a shape of length 2')):
       asserts.assert_tree_shape_prefix(tree, [3, 2, 1])
 
-  def test_assert_tree_shape_prefix_none(self):
-    tree = {'x': np.zeros([3]), 'n': None}
-    asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=True)
-    asserts.assert_tree_shape_prefix(tree, [3], ignore_nones=True)
-
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_shape_prefix(tree, (3,), ignore_nones=False)
-
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_shape_prefix(tree, [3], ignore_nones=False)
-
   @parameterized.named_parameters(
       ('scalars', ()),
       ('vectors', (1,)),
@@ -1575,19 +1489,6 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('which is smaller than the expected')):
       asserts.assert_tree_shape_suffix(tree, [3, 4, 2, 1])
-
-  def test_assert_tree_shape_suffix_none(self):
-    tree = {'x': np.zeros([3]), 'n': None}
-    asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=True)
-    asserts.assert_tree_shape_suffix(tree, [3], ignore_nones=True)
-
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_shape_suffix(tree, (3,), ignore_nones=False)
-
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_tree_shape_suffix(tree, [3], ignore_nones=False)
 
   def test_assert_trees_all_equal_dtypes(self):
     t_0 = {'x': np.zeros(3, dtype=np.int16), 'y': np.ones(2, dtype=np.float32)}
@@ -1663,10 +1564,6 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('Trees 0 and 2 differ')):
       asserts.assert_trees_all_equal_dtypes(t_0, t_1, t_2, ignore_nones=True)
     asserts.assert_trees_all_equal_dtypes(t_0, t_1, ignore_nones=True)
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('`None` detected')):
-      asserts.assert_trees_all_equal_dtypes(t_0, t_1, ignore_nones=False)
-
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('trees 0 and 1 do not match')):
       asserts.assert_trees_all_equal_dtypes(t_0, t_3, ignore_nones=True)

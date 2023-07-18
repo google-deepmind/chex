@@ -30,7 +30,6 @@ from jax.experimental import checkify
 import jax.numpy as jnp
 import jax.test_util as jax_test
 import numpy as np
-import tree as dm_tree
 
 Scalar = pytypes.Scalar
 Array = pytypes.Array
@@ -1016,8 +1015,8 @@ def assert_tree_no_nones(tree: ArrayTree) -> None:
       nonlocal errors
       errors.append(f"`None` detected at '{_ai.format_tree_path(path)}'.")
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1047,8 +1046,8 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree,
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not an "
                        f"ndarray (type={type(leaf)})."))
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1139,8 +1138,8 @@ def assert_tree_is_on_host(
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                          f"unexpected type: {type(leaf)}."))
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1204,8 +1203,8 @@ def assert_tree_is_on_device(tree: ArrayTree,
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                        f"unexpected type: {type(leaf)}."))
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1256,8 +1255,8 @@ def assert_tree_is_sharded(tree: ArrayTree,
             f"jax.Array (type={type(leaf)})."
         )
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1308,8 +1307,8 @@ def assert_tree_shape_prefix(tree: ArrayTree,
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape prefix "
            f"different from expected: {suffix} != {shape_prefix}."))
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1360,8 +1359,8 @@ def assert_tree_shape_suffix(tree: ArrayTree,
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape suffix "
            f"different from expected: {suffix} != {shape_suffix}."))
 
-  for path, leaf in dm_tree.flatten_with_path(tree):
-    _assert_fn(path, leaf)
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
   if errors:
     raise AssertionError("\n".join(errors))
 
@@ -1453,8 +1452,10 @@ def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
                              wrapped_equality_comparator, tree_error_msg_fn)
 
   # Trees are guaranteed to have the same structure.
-  paths = [path for path, _ in dm_tree.flatten_with_path(trees[0])]
-  trees_leaves = [dm_tree.flatten(tree) for tree in trees]
+  paths = [
+      _ai.convert_jax_path_to_dm_path(path)
+      for path, _ in jax.tree_util.tree_flatten_with_path(trees[0])[0]]
+  trees_leaves = [jax.tree_util.tree_leaves(tree) for tree in trees]
   for leaf_i, path in enumerate(paths):
     cmp_fn(path, *[leaves[leaf_i] for leaves in trees_leaves])
 
