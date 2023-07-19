@@ -17,6 +17,7 @@
 import collections
 import dataclasses
 import functools
+import sys
 
 from absl import logging
 import jax
@@ -93,6 +94,7 @@ def dataclass(
     order=False,
     unsafe_hash=False,
     frozen=False,
+    kw_only: bool = False,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
 ):
   """JAX-friendly wrapper for :py:func:`dataclasses.dataclass`.
@@ -109,6 +111,7 @@ def dataclass(
     order: See :py:func:`dataclasses.dataclass`.
     unsafe_hash: See :py:func:`dataclasses.dataclass`.
     frozen: See :py:func:`dataclasses.dataclass`.
+    kw_only: See :py:func:`dataclasses.dataclass`.
     mappable_dataclass: If True (the default), methods to make the class
       implement the :py:class:`collections.abc.Mapping` interface will be
       generated and the class will include :py:class:`collections.abc.Mapping`
@@ -126,7 +129,7 @@ def dataclass(
   def dcls(cls):
     # Make sure to create a separate _Dataclass instance for each `cls`.
     return _Dataclass(
-        init, repr, eq, order, unsafe_hash, frozen, mappable_dataclass
+        init, repr, eq, order, unsafe_hash, frozen, kw_only, mappable_dataclass
     )(cls)
 
   if cls is None:
@@ -145,6 +148,7 @@ class _Dataclass():
       order=False,
       unsafe_hash=False,
       frozen=False,
+      kw_only=False,
       mappable_dataclass=True,  # pylint: disable=redefined-outer-name
   ):
     self.init = init
@@ -153,6 +157,7 @@ class _Dataclass():
     self.order = order
     self.unsafe_hash = unsafe_hash
     self.frozen = frozen
+    self.kw_only = kw_only
     self.mappable_dataclass = mappable_dataclass
     self.registered = False
 
@@ -165,6 +170,11 @@ class _Dataclass():
           getattr(base, "__dataclass_params__").frozen and not self.frozen):
         raise TypeError("cannot inherit non-frozen dataclass from a frozen one")
 
+    # `kw_only` is only available starting from 3.10.
+    version_dependent_args = {}
+    version = sys.version_info
+    if version.major == 3 and version.minor >= 10:
+      version_dependent_args = {"kw_only": self.kw_only}
     # pytype: disable=wrong-keyword-args
     dcls = dataclasses.dataclass(
         cls,
@@ -173,7 +183,9 @@ class _Dataclass():
         eq=self.eq,
         order=self.order,
         unsafe_hash=self.unsafe_hash,
-        frozen=self.frozen)
+        frozen=self.frozen,
+        **version_dependent_args,
+    )
     # pytype: enable=wrong-keyword-args
 
     fields_names = set(f.name for f in dataclasses.fields(dcls))

@@ -16,6 +16,7 @@
 import copy
 import dataclasses
 import pickle
+import sys
 from typing import Any, Generic, Mapping, TypeVar
 
 from absl.testing import absltest
@@ -382,6 +383,50 @@ class DataclassesTest(parameterized.TestCase):
     obj = obj.replace(b=factor * obj.b)
     target_obj = dummy_dataclass(factor=factor, frozen=frozen)
     asserts.assert_trees_all_close(obj, target_obj)
+
+  def test_dataclass_requires_kwargs_by_default(self):
+    factor = 1.0
+    with self.assertRaisesRegex(
+        ValueError,
+        "Mappable dataclass constructor doesn't support positional args.",
+    ):
+      Dataclass(
+          NestedDataclass(
+              c=factor * np.ones((3,), dtype=np.float32),
+              d=factor * np.ones((4,), dtype=np.float32),
+          ),
+          factor * 2 * np.ones((5,), dtype=np.float32),
+      )
+
+  def test_dataclass_mappable_dataclass_false(self):
+    factor = 1.0
+
+    @chex_dataclass(mappable_dataclass=False)
+    class NonMappableDataclass:
+      a: NestedDataclass
+      b: pytypes.ArrayDevice
+
+    NonMappableDataclass(
+        NestedDataclass(
+            c=factor * np.ones((3,), dtype=np.float32),
+            d=factor * np.ones((4,), dtype=np.float32),
+        ),
+        factor * 2 * np.ones((5,), dtype=np.float32),
+    )
+
+  def test_inheritance_is_possible_thanks_to_kw_only(self):
+    if sys.version_info.minor < 10:  # Feature only available for Python >= 3.10
+      return
+
+    @chex_dataclass(kw_only=True)
+    class Base:
+      default: int = 1
+
+    @chex_dataclass(kw_only=True)
+    class Child(Base):
+      non_default: int
+
+    Child(non_default=2)
 
   def test_unfrozen_dataclass_is_mutable(self):
     factor = 5.
