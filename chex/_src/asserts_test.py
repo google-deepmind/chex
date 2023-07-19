@@ -1562,14 +1562,14 @@ class TreeAssertionsTest(parameterized.TestCase):
     t_3 = {'y': np.array([23], dtype=np.int32)}
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('Trees 0 and 2 differ')):
-      asserts.assert_trees_all_equal_dtypes(t_0, t_1, t_2, ignore_nones=True)
-    asserts.assert_trees_all_equal_dtypes(t_0, t_1, ignore_nones=True)
+      asserts.assert_trees_all_equal_dtypes(t_0, t_1, t_2)
+    asserts.assert_trees_all_equal_dtypes(t_0, t_1)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('trees 0 and 1 do not match')):
-      asserts.assert_trees_all_equal_dtypes(t_0, t_3, ignore_nones=True)
+      asserts.assert_trees_all_equal_dtypes(t_0, t_3)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('trees 0 and 1 do not match')):
-      asserts.assert_trees_all_equal_dtypes(t_0, t_3, ignore_nones=False)
+      asserts.assert_trees_all_equal_dtypes(t_0, t_3)
 
 
 class DevicesAssertTest(parameterized.TestCase):
