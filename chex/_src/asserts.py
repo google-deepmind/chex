@@ -1016,17 +1016,17 @@ def assert_tree_no_nones(tree: ArrayTree) -> None:
   Raises:
     AssertionError: If the tree contains at least one `None`.
   """
-  errors = []
+  has_nones = False
 
-  def _assert_fn(path, leaf):
-    if leaf is None:
-      nonlocal errors
-      errors.append(f"`None` detected at '{_ai.format_tree_path(path)}'.")
+  def _is_leaf(value):
+    if value is None:
+      nonlocal has_nones
+      has_nones = True
+    return False
 
-  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
-    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
-  if errors:
-    raise AssertionError("\n".join(errors))
+  treedef = jax.tree_util.tree_structure(tree, is_leaf=_is_leaf)
+  if has_nones:
+    raise AssertionError(f"Tree contains `None`(s): {treedef}.")
 
 
 @_static_assertion
@@ -1378,8 +1378,6 @@ def assert_tree_shape_suffix(tree: ArrayTree,
 def assert_trees_all_equal_structs(*trees: ArrayTree) -> None:
   """Checks that trees have the same structure.
 
-  Note that `None` is treated as a PyTree node.
-
   Args:
     *trees: A sequence of (at least 2) trees to assert equal structure between.
 
@@ -1471,8 +1469,6 @@ def assert_trees_all_equal_dtypes(*trees: ArrayTree,
                                   ignore_nones: bool = False) -> None:
   """Checks that trees' leaves have the same dtype.
 
-  Note that `None` is treated as a PyTree nodes.
-
   Args:
     *trees: A sequence of (at least 2) trees to check.
     ignore_nones: Deprecated.
@@ -1545,8 +1541,6 @@ assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
 def assert_trees_all_equal_shapes_and_dtypes(
     *trees: ArrayTree, ignore_nones: bool = False) -> None:
   """Checks that trees' leaves have the same shape and dtype.
-
-  Note that `None` is treated as a PyTree nodes.
 
   Args:
     *trees: A sequence of (at least 2) trees to check.

@@ -892,6 +892,25 @@ class TreeAssertionsTest(parameterized.TestCase):
         _get_err_regex('Error in tree structs equality check.*trees 0 and 1')):
       assert_fn(tree5, tree6)
 
+  def test_assert_tree_no_nones(self):
+    with self.subTest('tree_no_nones'):
+      tree_ok = {'a': [jnp.zeros((1,))], 'b': 1}
+      asserts.assert_tree_no_nones(tree_ok)
+
+    with self.subTest('tree_with_nones'):
+      tree_with_none = {'a': [jnp.zeros((1,))], 'b': None}
+      with self.assertRaisesRegex(
+          AssertionError, _get_err_regex('Tree contains `None`')
+      ):
+        asserts.assert_tree_no_nones(tree_with_none)
+
+    # Check `None`.
+    with self.subTest('input_none'):
+      with self.assertRaisesRegex(
+          AssertionError, _get_err_regex('Tree contains `None`')
+      ):
+        asserts.assert_tree_no_nones(None)
+
   def test_tree_all_finite_passes_finite(self):
     finite_tree = {'a': jnp.ones((3,)), 'b': jnp.array([0.0, 0.0])}
     asserts.assert_tree_all_finite(finite_tree)
