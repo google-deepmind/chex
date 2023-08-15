@@ -31,7 +31,14 @@ import contextlib
 import functools
 from typing import Optional, Sequence
 
-import jax._src.dispatch as jax_dispatch
+# pylint: disable=g-import-not-at-top
+try:
+  from jax._src import compiler
+except ImportError:
+  # TODO(phawkins): remove this path after jax>=0.4.15 is the minimum version
+  # required by chex.
+  from jax._src import dispatch as compiler  # type: ignore
+# pylint: enable=g-import-not-at-top
 
 
 class RestrictedBackendError(RuntimeError):
@@ -73,7 +80,7 @@ def restrict_backends(
     return ((backend_platform in allowed) if allowed is not None else
             (backend_platform not in forbidden))
 
-  inner_backend_compile = jax_dispatch.backend_compile
+  inner_backend_compile = compiler.backend_compile
 
   @functools.wraps(inner_backend_compile)
   def wrapper(backend, *args, **kwargs):
@@ -84,9 +91,9 @@ def restrict_backends(
     return inner_backend_compile(backend, *args, **kwargs)
 
   try:
-    jax_dispatch.backend_compile = wrapper
+    compiler.backend_compile = wrapper
     yield
   finally:
-    backend_compile = jax_dispatch.backend_compile
+    backend_compile = compiler.backend_compile
     assert backend_compile is wrapper, backend_compile
-    jax_dispatch.backend_compile = inner_backend_compile
+    compiler.backend_compile = inner_backend_compile
