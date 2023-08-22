@@ -264,6 +264,7 @@ def _flatten_with_path(dcls):
   path = []
   keys = []
   for k, v in sorted(dcls.__dict__.items()):
+    k = jax.tree_util.GetAttrKey(k)
     path.append((k, v))
     keys.append(k)
   return path, keys
