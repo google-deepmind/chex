@@ -43,10 +43,6 @@ from chex._src.asserts import assert_scalar_positive
 from chex._src.asserts import assert_shape
 from chex._src.asserts import assert_size
 from chex._src.asserts import assert_tpu_available
-from chex._src.asserts import assert_tree_all_close  # Deprecated
-from chex._src.asserts import assert_tree_all_equal_comparator  # Deprecated
-from chex._src.asserts import assert_tree_all_equal_shapes  # Deprecated
-from chex._src.asserts import assert_tree_all_equal_structs  # Deprecated
 from chex._src.asserts import assert_tree_all_finite
 from chex._src.asserts import assert_tree_has_only_ndarrays
 from chex._src.asserts import assert_tree_is_on_device
@@ -147,10 +143,6 @@ __all__ = (
     "assert_shape",
     "assert_size",
     "assert_tpu_available",
-    "assert_tree_all_close",  # Deprecated
-    "assert_tree_all_equal_comparator",  # Deprecated
-    "assert_tree_all_equal_shapes",  # Deprecated
-    "assert_tree_all_equal_structs",  # Deprecated
     "assert_tree_all_finite",
     "assert_tree_has_only_ndarrays",
     "assert_tree_is_on_device",

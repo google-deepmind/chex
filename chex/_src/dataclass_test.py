@@ -616,7 +616,7 @@ class DataclassesTest(parameterized.TestCase):
         (dcls.str_val, dcls.inner_dcls, dcls.dct['md1'], dcls.dct['md2']),
         leaves)
 
-    asserts.assert_tree_all_equal_structs(
+    asserts.assert_trees_all_equal_structs(
         jax.tree_util.tree_map(lambda x: x, dcls, is_leaf=_is_leaf), dcls)
 
   def test_decorator_alias(self):
@@ -649,7 +649,7 @@ class DataclassesTest(parameterized.TestCase):
       a: T  # pytype: disable=invalid-annotation  # enable-bare-annotations
 
     obj = GenericDataclass(a=np.array([1.0, 1.0]))
-    asserts.assert_tree_all_close(obj.a, 1.0)
+    asserts.assert_trees_all_close(obj.a, 1.0)
 
   def test_mappable_eq_override(self):
 

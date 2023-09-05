@@ -1257,6 +1257,9 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   Args:
     tree: A tree to check.
     shape_prefix: An expected shape prefix.
+
+  Raises:
+    AssertionError: If some leaf's shape doesn't start with ``shape_prefix``.
   """
   # To compare with the leaf's `shape`, convert int sequence to tuple.
   shape_prefix = tuple(shape_prefix)
@@ -1358,12 +1361,6 @@ def assert_trees_all_equal_structs(*trees: ArrayTree) -> None:
           f"\n tree {i}: {treedef}")
 
 
-assert_tree_all_equal_structs = _ai.deprecation_wrapper(
-    assert_trees_all_equal_structs,
-    old_name="assert_tree_all_equal_structs",
-    new_name="assert_trees_all_equal_structs")
-
-
 @_static_assertion
 def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
                                       error_msg_fn: _ai.TLeavesEqCmpErrorFn,
@@ -1408,12 +1405,6 @@ def assert_trees_all_equal_comparator(equality_comparator: _ai.TLeavesEqCmpFn,
   trees_leaves = [jax.tree_util.tree_leaves(tree) for tree in trees]
   for leaf_i, path in enumerate(paths):
     cmp_fn(path, *[leaves[leaf_i] for leaves in trees_leaves])
-
-
-assert_tree_all_equal_comparator = _ai.deprecation_wrapper(
-    assert_trees_all_equal_comparator,
-    old_name="assert_tree_all_equal_comparator",
-    new_name="assert_trees_all_equal_comparator")
 
 
 @_static_assertion
@@ -1468,12 +1459,6 @@ def assert_trees_all_equal_shapes(*trees: ArrayTree) -> None:
   cmp_fn = lambda arr_1, arr_2: arr_1.shape == arr_2.shape
   err_msg_fn = lambda arr_1, arr_2: f"shapes: {arr_1.shape} != {arr_2.shape}"
   assert_trees_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
-
-
-assert_tree_all_equal_shapes = _ai.deprecation_wrapper(
-    assert_trees_all_equal_shapes,
-    old_name="assert_tree_all_equal_shapes",
-    new_name="assert_trees_all_equal_shapes")
 
 
 @_static_assertion
@@ -1664,11 +1649,6 @@ assert_trees_all_close = _value_assertion(
     assert_fn=_assert_trees_all_close_static,
     jittable_assert_fn=_assert_trees_all_close_jittable,
     name="assert_trees_all_close")
-
-assert_tree_all_close = _ai.deprecation_wrapper(
-    assert_trees_all_close,
-    old_name="assert_tree_all_close",
-    new_name="assert_trees_all_close")
 
 
 def _assert_trees_all_close_ulp_static(
