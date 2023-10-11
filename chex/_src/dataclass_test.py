@@ -119,10 +119,10 @@ def _get_mappable_dataclasses(test_type):
     k_arr: np.ndarray
     k_dclass_with_map: Class
     k_dclass_no_map: ClassWithoutMap
-    k_dict_factory: dict = dataclasses.field(  # pylint:disable=g-bare-generic
+    k_dict_factory: dict = dataclasses.field(  # pylint:disable=g-bare-generic,invalid-field-call
         default_factory=lambda: dict(x='x', y='y'))
     k_default: str = 'default_str'
-    k_non_init: int = dataclasses.field(default=1, init=False)
+    k_non_init: int = dataclasses.field(default=1, init=False)  # pylint:disable=g-bare-generic,invalid-field-call
     k_init_only: dataclasses.InitVar[int] = 10
 
     def some_method(self, *args):
