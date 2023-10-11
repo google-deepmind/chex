@@ -17,7 +17,6 @@
 from typing import Any, Iterable, Mapping, Union
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 
 # Special types of arrays.
@@ -33,9 +32,12 @@ ArrayBatched = jax.Array
 # Generic array type.
 # Similar to `jax.typing.ArrayLike` but does not accept python scalar types.
 Array = Union[
-    ArrayDevice, ArrayBatched, ArraySharded,  # JAX array type
+    ArrayDevice,
+    ArrayBatched,
+    ArraySharded,  # JAX array type
     ArrayNumpy,  # NumPy array type
-    np.bool_, np.number,  # NumPy scalar types
+    np.bool_,
+    np.number,  # NumPy scalar types
 ]
 
 # A tree of generic arrays.
@@ -54,4 +56,10 @@ Shape = jax.core.Shape
 PRNGKey = jax.Array
 PyTreeDef = jax.tree_util.PyTreeDef
 Device = jax.Device
-ArrayDType = type(jnp.float32)
+
+# TODO(iukemaev, jakevdp): upgrade minimum jax version & remove this condition.
+if hasattr(jax.typing, 'DTypeLike'):
+  # jax version 0.4.19 or newer
+  ArrayDType = jax.typing.DTypeLike
+else:
+  ArrayDType = Any
