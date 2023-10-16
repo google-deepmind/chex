@@ -14,7 +14,7 @@
 # ==============================================================================
 """Type definitions to use for type annotations."""
 
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, Iterable, Mapping, Sequence, Union
 
 import jax
 import numpy as np
@@ -52,7 +52,7 @@ ArrayNumpyTree = Union[
 # Other types.
 Scalar = Union[float, int]
 Numeric = Union[Array, Scalar]
-Shape = jax.core.Shape
+Shape = Sequence[Union[int, Any]]
 PRNGKey = jax.Array
 PyTreeDef = jax.tree_util.PyTreeDef
 Device = jax.Device
