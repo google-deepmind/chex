@@ -288,6 +288,36 @@ class AssertsChexifyTest(variants.TestCase):
       chexified_fn(jnp.array([2]))
       chexified_fn.wait_checks()  # Fail: not equal
 
+  def test_wrong_order_of_wrapping(self):
+
+    @chexify_async
+    def inner_fn(x, y):
+      asserts.assert_trees_all_equal(x, y)
+      return jax.tree_map(jnp.add, x, y)
+
+    def outer_fn(x, y):
+      z = inner_fn(x, y)
+      return jax.tree_map(jnp.square, z)
+
+    x = jnp.array([1])
+    y = jnp.array([1])
+    with self.assertRaisesRegex(
+        RuntimeError, '@chexify must be applied on top of all'
+    ):
+      jax.jit(inner_fn)(x, y)
+
+    with self.assertRaisesRegex(
+        RuntimeError, '@chexify must be applied on top of all'
+    ):
+      jax.jit(outer_fn)(x, y)
+
+    with self.assertRaisesRegex(
+        RuntimeError, '@chexify must be applied on top of all'
+    ):
+      jax.jit(chexify_async(outer_fn))(x, y)
+
+    outer_fn(x, y)
+
 
 class AssertsChexifyTestSuite(variants.TestCase):
   """Test suite for chexify assertions."""
