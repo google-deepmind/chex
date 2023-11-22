@@ -100,7 +100,7 @@ from chex._src.variants import TestCase
 from chex._src.variants import variants
 
 
-__version__ = "0.1.84"
+__version__ = "0.1.85"
 
 __all__ = (
     "all_variants",
