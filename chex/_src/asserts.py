@@ -1226,7 +1226,7 @@ def assert_tree_is_sharded(tree: ArrayTree,
       # Check that the leaf is a ShardedArray.
       if isinstance(leaf, jax.Array):
         if _check_sharding(leaf):
-          shards = tuple(buf.device() for buf in leaf.device_buffers)
+          shards = tuple(shard.device for shard in leaf.addressable_shards)
           if shards != devices:
             errors.append(
                 f"Tree leaf '{_ai.format_tree_path(path)}' is sharded "
