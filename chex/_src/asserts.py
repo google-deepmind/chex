@@ -815,12 +815,34 @@ def assert_type(
   if not isinstance(expected_types, (list, tuple)):
     expected_types = [expected_types] * len(inputs)
 
+  def is_dtype_object(obj):
+    # Numpy uses dtype objects, not dtype classes. They only guarantee equality.
+    for dtype_object in [
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.uint8,
+        np.uint16,
+        np.uint32,
+        np.uint64,
+        np.float16,
+        np.float32,
+        np.float64,
+        jnp.bfloat16,  # JAX adds the bfloat16 object.
+    ]:
+      if obj == dtype_object:
+        return True
+    return False
+
   errors = []
   if len(inputs) != len(expected_types):
     raise AssertionError(f"Length of `inputs` and `expected_types` must match, "
                          f"got {len(inputs)} != {len(expected_types)}.")
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
-    if jnp.issubdtype(expected, jnp.floating):
+    if is_dtype_object(expected):
+      parent = expected
+    elif jnp.issubdtype(expected, jnp.floating):
       parent = jnp.floating
     elif jnp.issubdtype(expected, jnp.integer):
       parent = jnp.integer

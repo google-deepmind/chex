@@ -15,6 +15,7 @@
 """Tests for `asserts.py`."""
 
 import functools
+import itertools
 import re
 
 from absl.testing import absltest
@@ -729,6 +730,50 @@ class TypeAssertTest(parameterized.TestCase):
                                 _get_err_regex('unsupported dtype')):
       asserts.assert_type([a_float, an_int, a_np_float, a_jax_int],
                           [complex, complex, float, int])
+
+  def test_type_should_match_exact_for_dtype(self):
+    """Test that when a dtype is expected, matching is exact."""
+    dtypes = [
+        jnp.bool_,
+        jnp.uint8,
+        jnp.uint16,
+        jnp.uint32,
+        jnp.int8,
+        jnp.int16,
+        jnp.int32,
+        jnp.float16,
+        jnp.bfloat16,
+        jnp.float32,
+    ]
+
+    for i1, i2 in itertools.product(range(len(dtypes)), repeat=2):
+      value = jnp.zeros(shape=(1,), dtype=dtypes[i1])
+      expected_type = dtypes[i2]
+      if i1 == i2:
+        asserts.assert_type(value, expected_type)
+      else:
+        with self.assertRaisesRegex(
+            AssertionError,
+            _get_err_regex('input .+ has type .+ but expected .+'),
+        ):
+          asserts.assert_type(value, expected_type)
+
+  def test_type_jnp_np_equivalence(self):
+    """Test numpy and JAX types are treated as equivalent."""
+    types = [jnp.int32, jnp.float32]
+    for t in types:
+      asserts.assert_type(jnp.zeros(shape=(1,), dtype=t), np.dtype(t))
+      asserts.assert_type(jnp.zeros(shape=(1,), dtype=np.dtype(t)), t)
+
+  def test_type_64bit_mode_disabled(self):
+    """Test under 32-bit mode."""
+    if not jax.config.jax_enable_x64:
+      asserts.assert_type(jnp.zeros(shape=(1,), dtype=jnp.float64), jnp.float32)
+      asserts.assert_type(jnp.zeros(shape=(1,), dtype=jnp.int64), jnp.int32)
+      asserts.assert_type(jnp.zeros(shape=(1,), dtype=jnp.uint64), jnp.uint32)
+    else:
+      # Not tested in this configuration.
+      pass
 
 
 class AxisDimensionAssertionsTest(parameterized.TestCase):
