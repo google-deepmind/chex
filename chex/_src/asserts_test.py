@@ -1204,16 +1204,19 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_is_on_device(tpu_1_tree, device=tpu_1)
       asserts.assert_tree_is_on_device(tpu_2_tree, device=tpu_2)
 
-      with self.assertRaisesRegex(AssertionError,
-                                  _get_err_regex('\'a\' resides on TPU_0')):
+      with self.assertRaisesRegex(
+          AssertionError, _get_err_regex(r"'a' resides on.*TpuDevice\(id=0")
+      ):
         asserts.assert_tree_is_on_device(tpu_1_tree, device=tpu_2)
 
-      with self.assertRaisesRegex(AssertionError,
-                                  _get_err_regex('\'a\' resides on TPU_1')):
+      with self.assertRaisesRegex(
+          AssertionError, _get_err_regex(r"'a' resides on.*TpuDevice\(id=1")
+      ):
         asserts.assert_tree_is_on_device(tpu_2_tree, device=tpu_1)
 
-      with self.assertRaisesRegex(AssertionError,
-                                  _get_err_regex('\'a\' resides on .*CPU')):
+      with self.assertRaisesRegex(
+          AssertionError, _get_err_regex("'a' resides on .*Cpu")
+      ):
         asserts.assert_tree_is_on_device(cpu_tree, device=tpu_2)
 
       # Platform asserts.
@@ -1358,7 +1361,8 @@ class TreeAssertionsTest(parameterized.TestCase):
       asserts.assert_tree_is_sharded({'a': jnp.zeros(1)}, devices=(cpu,))
 
     with self.assertRaisesRegex(
-        AssertionError, _get_err_regex('\'a\' is not sharded.*CPU')):
+        AssertionError, _get_err_regex("'a' is not sharded.*Cpu")
+    ):
       asserts.assert_tree_is_sharded({'a': jax.device_put(np.zeros(1), cpu)},
                                      devices=(cpu,))
 

@@ -1117,18 +1117,23 @@ def assert_tree_is_on_host(
               )
           elif allow_cpu_device:
             # Device array.
-            if leaf.device().platform != "cpu":
+            leaf_device = list(leaf.devices())[0]
+            if leaf_device.platform != "cpu":
               errors.append(
                   f"Tree leaf '{_ai.format_tree_path(path)}' resides"
-                  f" on {leaf.device()}."
+                  f" on {leaf_device}."
               )
           else:
-            errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' resides "
-                           f"on {leaf.device()} (CPU devices are disallowed)."))
+            errors.append((
+                f"Tree leaf '{_ai.format_tree_path(path)}' resides "
+                f"on {leaf.devices()} (CPU devices are disallowed)."
+            ))
         else:
           # Not a jax.Array.
-          errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
-                         f"unexpected type: {type(leaf)}."))
+          errors.append((
+              f"Tree leaf '{_ai.format_tree_path(path)}' has "
+              f"unexpected type: {type(leaf)}."
+          ))
 
   for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
     _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
@@ -1179,16 +1184,19 @@ def assert_tree_is_on_device(tree: ArrayTree,
                          f" (type={type(leaf)})."))
         else:  # DeviceArray and not ShardedDeviceArray
           # Check the platform.
-          if leaf.device().platform not in platform:
-            errors.append(
-                (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
-                 f"'{leaf.device().platform}', expected '{platform}'."))
+          leaf_device = list(leaf.devices())[0]
+          if leaf_device.platform not in platform:
+            errors.append((
+                f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                f"'{leaf_device.platform}', expected '{platform}'."
+            ))
 
           # Check the device.
-          if device is not None and leaf.device() != device:
-            errors.append(
-                (f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
-                 f"{leaf.device()}, expected {device}."))
+          if device is not None and leaf.devices() != {device}:
+            errors.append((
+                f"Tree leaf '{_ai.format_tree_path(path)}' resides on "
+                f"{leaf.devices()}, expected {device}."
+            ))
       else:
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' has "
                        f"unexpected type: {type(leaf)}."))
@@ -1235,7 +1243,7 @@ def assert_tree_is_sharded(tree: ArrayTree,
         else:
           errors.append(
               f"Tree leaf '{_ai.format_tree_path(path)}' is not sharded"
-              f" (device={leaf.device()})."
+              f" (devices={leaf.devices()})."
           )
       else:
         errors.append(
