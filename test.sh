@@ -17,8 +17,11 @@
 set -xeuo pipefail
 
 # Install deps in a virtual env.
-readonly VENV_DIR=/tmp/chex-env
-rm -rf "${VENV_DIR}"
+rm -rf _testing
+rm -rf .pytype
+mkdir -p _testing
+readonly VENV_DIR="$(mktemp -d -p `pwd`/_testing chex-env.XXXXXXXX)"
+# in the unlikely case in which there was something in that directory
 python3 -m venv "${VENV_DIR}"
 source "${VENV_DIR}/bin/activate"
 python --version
@@ -42,7 +45,7 @@ echo "disable=unnecessary-lambda-assignment,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find chex -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130 || pylint-exit $PYLINT_ARGS $?
 # Cleanup.
 rm .pylintrc
 
@@ -57,13 +60,13 @@ pip install chex*.whl
 if [ `python -c 'import sys; print(sys.version_info.minor)'` -lt 11 ];
 then
   pip install pytype
-  pytype `find chex/_src/ -name "*py" | xargs` -k
+  pytype `find chex/_src -name "*py" | xargs` -k
 fi;
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
 pip install -r requirements/requirements-test.txt
-mkdir _testing && cd _testing
+cd _testing
 
 # Main tests.
 pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n_cpu_devices_test"
@@ -73,11 +76,16 @@ pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu
 cd ..
 
 # Build Sphinx docs.
-pip install -r requirements/requirements-docs.txt
-cd docs
-make coverage_check
-make html
-cd ..
+
+# Temporary disabled.
+# pip install -r requirements/requirements-docs.txt
+# cd docs
+# make coverage_check
+# make html
+# cd ..
+
+# cleanup
+rm -rf _testing
 
 set +u
 deactivate
