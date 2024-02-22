@@ -38,8 +38,8 @@ def array_from_shape(*shape):
   return np.ones(shape=shape)
 
 
-def emplace(arrays):
-  return arrays
+def emplace(arrays, dtype):
+  return jnp.array(arrays, dtype=dtype)
 
 
 class AssertsSwitchTest(parameterized.TestCase):
@@ -664,11 +664,14 @@ class TypeAssertTest(parameterized.TestCase):
 
   @variants.variants(with_device=True, without_device=True)
   @parameterized.named_parameters(
-      ('one_float_array', [1., 2.], int),
-      ('one_int_array', [1, 2], float),
+      ('one_float_array', [1., 2.], float, int),
+      ('one_int_array', [1, 2], int, float),
+      ('bfloat16_array', [1, 2], jnp.bfloat16, jnp.float32),
+      ('int8_array', [1, 2], jnp.int8, jnp.int32),
+      ('float32_array', [1, 2], jnp.float32, np.integer),
   )
-  def test_type_should_fail_array(self, array, wrong_type):
-    array = self.variant(emplace)(array)
+  def test_type_should_fail_array(self, array, dtype, wrong_type):
+    array = self.variant(emplace)(array, dtype)
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('input .+ has type .+ but expected .+')):
       asserts.assert_type(array, wrong_type)
@@ -680,17 +683,19 @@ class TypeAssertTest(parameterized.TestCase):
       ('many_floats', [1., 2., 3.], float),
       ('many_floats_verbose', [1., 2., 3.], [float, float, float]),
   )
-  def test_type_should_pass_scalar(self, array, wrong_type):
-    asserts.assert_type(array, wrong_type)
+  def test_type_should_pass_scalar(self, array, expected_type):
+    asserts.assert_type(array, expected_type)
 
   @variants.variants(with_device=True, without_device=True)
   @parameterized.named_parameters(
-      ('one_float_array', [1., 2.], float),
-      ('one_int_array', [1, 2], int),
+      ('one_float_array', [1., 2.], float, float),
+      ('one_int_array', [1, 2], int, int),
+      ('one_integer_array', [1, 2], int, np.integer),
+      ('one_bool_array', [True], bool, bool),
   )
-  def test_type_should_pass_array(self, array, wrong_type):
-    array = self.variant(emplace)(array)
-    asserts.assert_type(array, wrong_type)
+  def test_type_should_pass_array(self, array, dtype, expected_type):
+    array = self.variant(emplace)(array, dtype)
+    asserts.assert_type(array, expected_type)
 
   def test_type_should_fail_mixed(self):
     a_float = 1.
@@ -719,16 +724,6 @@ class TypeAssertTest(parameterized.TestCase):
         AssertionError,
         _get_err_regex('Length of `inputs` and `expected_types` must match')):
       asserts.assert_type(array, wrong_type)
-
-  def test_type_should_fail_unsupported_dtype(self):
-    a_float = 1.
-    an_int = 2
-    a_np_float = np.asarray([3., 4.])
-    a_jax_int = jnp.asarray([5, 6])
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('unsupported dtype')):
-      asserts.assert_type([a_float, an_int, a_np_float, a_jax_int],
-                          [complex, complex, float, int])
 
 
 class AxisDimensionAssertionsTest(parameterized.TestCase):

@@ -19,7 +19,7 @@ import collections.abc
 import functools
 import inspect
 import traceback
-from typing import Any, Callable, List, Optional, Sequence, Set, Type, Union, cast
+from typing import Any, Callable, List, Optional, Sequence, Set, Union, cast
 import unittest
 from unittest import mock
 
@@ -33,7 +33,9 @@ import numpy as np
 
 Scalar = pytypes.Scalar
 Array = pytypes.Array
+ArrayDType = pytypes.ArrayDType  # pylint:disable=invalid-name
 ArrayTree = pytypes.ArrayTree
+
 
 _value_assertion = _ai.chex_assertion
 _static_assertion = functools.partial(
@@ -782,10 +784,14 @@ def assert_rank(
 @_static_assertion
 def assert_type(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-    expected_types: Union[Type[Scalar], Sequence[Type[Scalar]]]) -> None:
+    expected_types: Union[ArrayDType, Sequence[ArrayDType]]) -> None:
   """Checks that the type of all inputs matches specified ``expected_types``.
 
-  Valid usages include:
+  If the expected type is a Python type or abstract dtype (e.g. `np.floating`),
+  assert that the input has the same sub-type. If the expected type is a
+  concrete dtype (e.g. np.float32), assert that the input's type is the same.
+
+  Example usage:
 
   .. code-block:: python
 
@@ -796,8 +802,9 @@ def assert_type(
     assert_type([7, 7.1], [int, float])
     assert_type(np.array(7), int)
     assert_type(np.array(7.1), float)
-    assert_type(jnp.array(7), int)
     assert_type([jnp.array([7, 8]), np.array(7.1)], [int, float])
+    assert_type(jnp.array(1., dtype=jnp.bfloat16)), jnp.bfloat16)
+    assert_type(jnp.ones(1, dtype=np.int8), np.int8)
 
   Args:
     inputs: An array or a sequence of arrays or scalars.
@@ -817,21 +824,22 @@ def assert_type(
 
   errors = []
   if len(inputs) != len(expected_types):
-    raise AssertionError(f"Length of `inputs` and `expected_types` must match, "
-                         f"got {len(inputs)} != {len(expected_types)}.")
+    raise AssertionError(
+        "Length of `inputs` and `expected_types` must match, "
+        f"got {len(inputs)} != {len(expected_types)}."
+    )
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
-    if jnp.issubdtype(expected, jnp.floating):
-      parent = jnp.floating
-    elif jnp.issubdtype(expected, jnp.integer):
-      parent = jnp.integer
-    elif jnp.issubdtype(expected, jnp.bool_):
-      parent = jnp.bool_
+    dtype = np.result_type(x)
+    if expected in {float, jnp.floating}:
+      if not jnp.issubdtype(dtype, jnp.floating):
+        errors.append((idx, dtype, expected))
+    elif expected in {int, jnp.integer}:
+      if not jnp.issubdtype(dtype, jnp.integer):
+        errors.append((idx, dtype, expected))
     else:
-      raise AssertionError(
-          f"Error in type compatibility check, unsupported dtype '{expected}'.")
-
-    if not jnp.issubdtype(jnp.result_type(x), parent):
-      errors.append((idx, jnp.result_type(x), expected))
+      expected = np.dtype(expected)
+      if dtype != expected:
+        errors.append((idx, dtype, expected))
 
   if errors:
     msg = "; ".join(
