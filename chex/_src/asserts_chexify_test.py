@@ -624,7 +624,7 @@ class AssertsLibraryTest(parameterized.TestCase):
   def test_assert_trees_all_close(self):
     @jax.jit
     def fn(x, y, z):
-      asserts.assert_trees_all_close(x, y, z, rtol=0.5, atol=0.5)
+      asserts.assert_trees_all_close(x, y, z, rtol=0.1, atol=0.1)
       return jax.tree_map(jnp.add, x, y)
 
     chexified_fn = asserts_chexify.chexify(fn, async_check=False)
