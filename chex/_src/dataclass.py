@@ -49,6 +49,12 @@ def mappable_dataclass(cls):
   setattr(cls, "__getitem__", lambda self, x: self.__dict__[x])
   setattr(cls, "__len__", lambda self: len(self.__dict__))
   setattr(cls, "__iter__", lambda self: iter(self.__dict__))
+  # Override the default `collections.abc.Mapping` method implementation for
+  # cleaner visualization. Without this change x.keys() shows the full repr(x)
+  # instead of only the dict_keys present. The same goes for values and items.
+  setattr(cls, "keys", lambda self: self.__dict__.keys())
+  setattr(cls, "values", lambda self: self.__dict__.values())
+  setattr(cls, "items", lambda self: self.__dict__.items())
 
   # Update constructor.
   orig_init = cls.__init__
@@ -195,11 +201,6 @@ class _Dataclass():
 
     if self.mappable_dataclass:
       dcls = mappable_dataclass(dcls)
-      # We remove `collection.abc.Mapping` mixin methods here to allow
-      # fields with these names.
-      for attr in ("values", "keys", "get", "items"):
-        setattr(dcls, attr, None)  # redefine
-        delattr(dcls, attr)        # delete
 
     def _from_tuple(args):
       return dcls(zip(dcls.__dataclass_fields__.keys(), args))

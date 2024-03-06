@@ -707,5 +707,32 @@ class DataclassesTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       _ = jax.tree_util.tree_map(lambda x: 0, obj)
 
+  @parameterized.parameters([False, True])
+  def test_keys_and_values_type(self, frozen):
+    obj = dummy_dataclass(frozen=frozen)
+    self.assertEqual(
+        type(obj.keys()),  # pytype: disable=attribute-error
+        type({}.keys()),
+    )
+    self.assertEqual(
+        type(obj.values()),  # pytype: disable=attribute-error
+        type({}.values()),
+    )
+
+  @parameterized.parameters([False, True])
+  def test_keys_and_values_override(self, frozen):
+    @chex_dataclass(frozen=frozen)
+    class _Dataclass:
+      x: int
+      values: int
+
+    obj = _Dataclass(x=1, values=2)
+    self.assertEqual(
+        list(obj.keys()),  # pytype: disable=attribute-error
+        ['x', 'values'],
+    )
+    self.assertEqual(obj.values, 2)
+
+
 if __name__ == '__main__':
   absltest.main()
