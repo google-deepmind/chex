@@ -214,15 +214,31 @@ class _Dataclass():
     def _getstate(self):
       return self.__dict__
 
-    # Patch __setstate__ to register the object on deserialization.
+    # Register the dataclass at definition. As long as the dataclass is defined
+    # outside __main__, this is sufficient to make JAX's PyTree registry
+    # recognize the dataclass and the dataclass' custom PyTreeDef, especially
+    # when unpickling either the dataclass object, its type, or its PyTreeDef,
+    # in a different process, because the defining module will be imported.
+    #
+    # However, if the dataclass is defined in __main__, unpickling in a
+    # subprocess does not trigger re-registration. Therefore we also need to
+    # register when deserializing the object, or construction (e.g. when the
+    # dataclass type is being unpickled). Unfortunately, there is not yet a way
+    # to trigger re-registration when the treedef is unpickled as that's handled
+    # by JAX.
+    #
+    # See internal dataclass_test for unit tests demonstrating the problems.
+    register_dataclass_type_with_jax_tree_util(dcls)
+
+    # Patch __setstate__ to register the dataclass on deserialization.
     def _setstate(self, state):
       register_dataclass_type_with_jax_tree_util(dcls)
       self.__dict__.update(state)
 
     orig_init = dcls.__init__
 
-    # Patch object's __init__ such that the class is registered on creation if
-    # it is not registered on deserialization.
+    # Patch __init__ such that the dataclass is registered on creation if it is
+    # not registered on deserialization.
     @functools.wraps(orig_init)
     def _init(self, *args, **kwargs):
       register_dataclass_type_with_jax_tree_util(dcls)
