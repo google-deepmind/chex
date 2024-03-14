@@ -91,6 +91,14 @@ class DimensionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(e, m):
       dims[k]  # pylint: disable=pointless-statement
 
+  @parameterized.named_parameters([
+      ('scalar', '', (), 1),
+      ('nonscalar', 'ab', (3, 5), 15),
+  ])
+  def test_size_ok(self, names, shape, expected_size):
+    dims = dimensions.Dimensions(**dict(zip(names, shape)))
+    self.assertEqual(dims.size(names), expected_size)
+
 
 if __name__ == '__main__':
   absltest.main()
