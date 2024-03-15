@@ -149,6 +149,15 @@ Utils
 .. autofunction:: if_args_not_none
 
 
+Warnings
+==========
+
+.. currentmodule:: chex
+
+.. autofunction:: warn_keyword_args_only_in_future
+.. autofunction:: warn_only_n_pos_args_in_future
+
+
 Backend restriction
 ===================
 

@@ -8,7 +8,7 @@ Chex is a library of utilities for helping to write reliable JAX code.
 
 This includes utils to help:
 
-* Instrument your code (e.g. assertions)
+* Instrument your code (e.g. assertions, warnings)
 * Debug (e.g. transforming `pmaps` in `vmaps` within a context manager).
 * Test JAX code across many `variants` (e.g. jitted vs non-jitted).
 
@@ -226,6 +226,11 @@ Can be used with `jax.pmap()` as well:
 See
 [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
 section for more information about tracing.
+
+### Warnings ([warnigns.py](https://github.com/deepmind/chex/blob/master/chex/_src/warnings.py))
+
+In addition to hard assertions Chex also offers utilities to add common
+warnings, such as specific types of deprecation warnings.
 
 ### Test variants ([variants.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants.py))
 
