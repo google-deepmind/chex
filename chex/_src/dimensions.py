@@ -14,6 +14,7 @@
 # ==============================================================================
 """Utilities to hold expected dimension sizes."""
 
+import math
 import re
 from typing import Any, Collection, Dict, Optional, Sized, Tuple
 
@@ -59,6 +60,13 @@ class Dimensions:
     >>> dims['XY'] = z.shape
     >>> dims
     Dimensions(B=3, N=7, T=5, X=2, Y=4)
+
+  You can access the flat size of a shape as
+
+  .. code::
+
+    >>> dims.size('BT')  # Same as prod(dims['BT']).
+    15
 
   You can set a wildcard dimension, cf. :func:`chex.assert_shape`:
 
@@ -118,6 +126,14 @@ class Dimensions:
   def __init__(self, **dim_sizes) -> None:
     for dim, size in dim_sizes.items():
       self._setdim(dim, size)
+
+  def size(self, key: str) -> int:
+    """Returns the flat size of a given named shape, i.e. prod(shape)."""
+    if None in (shape := self[key]):
+      raise ValueError(
+          f"cannot take product of shape '{key}' = {shape}, "
+          'because it contains wildcard dimensions')
+    return math.prod(shape)
 
   def __getitem__(self, key: str) -> Shape:
     self._validate_key(key)
