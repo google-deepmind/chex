@@ -55,3 +55,30 @@ def warn_only_n_pos_args_in_future(fun, n):
 warn_keyword_args_only_in_future = functools.partial(
     warn_only_n_pos_args_in_future, n=0
 )
+
+
+def warn_deprecated_function(fun, replacement):
+  """A decorator to mark a function definition as deprecated.
+
+  Example usage:
+  @warn_deprecated_function(fun, replacement='g')
+  def f(a, b):
+    return a + b
+
+  Args:
+    fun: the deprecated function.
+    replacement: the name of the function to be used instead.
+
+  Returns:
+    the wrapped function.
+  """
+
+  @functools.wraps(fun)
+  def new_fun(*args, **kwargs):
+    warnings.warn(
+        f'The function {fun.__name__} is deprecated, '
+        f'please use {replacement} instead.',
+        category=DeprecationWarning,
+        stacklevel=2)
+    return fun(*args, **kwargs)
+  return new_fun

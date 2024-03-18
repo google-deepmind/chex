@@ -98,6 +98,7 @@ from chex._src.variants import ChexVariantType
 from chex._src.variants import params_product
 from chex._src.variants import TestCase
 from chex._src.variants import variants
+from chex._src.warnings import warn_deprecated_function
 from chex._src.warnings import warn_keyword_args_only_in_future
 from chex._src.warnings import warn_only_n_pos_args_in_future
 
@@ -188,6 +189,9 @@ __all__ = (
     "Shape",
     "TestCase",
     "variants",
+    "warn_deprecated_function",
+    "warn_keyword_args_only_in_future",
+    "warn_only_n_pos_args_in_future",
     "with_jittable_assertions",
 )
 

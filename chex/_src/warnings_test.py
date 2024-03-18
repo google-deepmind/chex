@@ -26,6 +26,11 @@ def f(a, b, c):
   return a + b + c
 
 
+@functools.partial(warnings.warn_deprecated_function, replacement='h')
+def g(a, b, c):
+  return a + b + c
+
+
 class WarningsTest(absltest.TestCase):
 
   def test_warn_only_n_pos_args_in_future(self):
@@ -34,6 +39,10 @@ class WarningsTest(absltest.TestCase):
     with self.assertWarns(Warning):
       f(1, 2, c=3)
 
+  def test_warn_deprecated_function(self):
+    with self.assertWarns(Warning):
+      g(1, 2, 3)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
   absltest.main()
