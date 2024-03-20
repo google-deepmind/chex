@@ -62,7 +62,7 @@ class DimensionsTest(parameterized.TestCase):
     self.assertEqual(dims['x*y**'], (23, None, 29, None, None))
     asserts.assert_shape(np.empty((23, 1, 29, 2, 3)), dims['x*y**'])
     with self.assertRaisesRegex(KeyError, r'\_'):
-      dims['xy_']  # pylint: disable=pointless-statement
+      _ = dims['xy_']
 
   def test_get_literals(self):
     dims = dimensions.Dimensions(x=23, y=29)
@@ -89,7 +89,7 @@ class DimensionsTest(parameterized.TestCase):
   def test_get_exception(self, k, e, m):
     dims = dimensions.Dimensions(x=23, y=29)
     with self.assertRaisesRegex(e, m):
-      dims[k]  # pylint: disable=pointless-statement
+      _ = dims[k]
 
   @parameterized.named_parameters([
       ('scalar', '', (), 1),
@@ -102,11 +102,45 @@ class DimensionsTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('named', 'ab'),
       ('asterisk', 'a*'),
+      ('zero', 'a0'),
+      ('negative', 'ac'),
   ])
   def test_size_fail_wildcard(self, names):
-    dims = dimensions.Dimensions(a=3, b=None)
+    dims = dimensions.Dimensions(a=3, b=None, c=-1)
     with self.assertRaisesRegex(ValueError, r'cannot take product of shape'):
       dims.size(names)
+
+  @parameterized.named_parameters([
+      ('trivial_start', '(a)bc', (3, 5, 7)),
+      ('trivial_mid', 'a(b)c', (3, 5, 7)),
+      ('trivial_end', 'ab(c)', (3, 5, 7)),
+      ('start', '(ab)cd', (15, 7, 11)),
+      ('mid', 'a(bc)d', (3, 35, 11)),
+      ('end', 'ab(cd)', (3, 5, 77)),
+      ('multiple', '(ab)(cd)', (15, 77)),
+      ('all', '(abc)', (105,)),
+  ])
+  def test_flatten_ok(self, named_shape, expected_shape):
+    dims = dimensions.Dimensions(a=3, b=5, c=7, d=11)
+    self.assertEqual(dims[named_shape], expected_shape)
+
+  @parameterized.named_parameters([
+      ('unmatched_open', '(ab', r'unmatched parentheses in named shape'),
+      ('unmatched_closed', 'a)b', r'unmatched parentheses in named shape'),
+      ('nested', '(a(bc))', r'nested parentheses are unsupported'),
+      ('wildcard_named', 'a(bx)', r'cannot take product of shape'),
+      ('wildcard_asterisk', '(a*)b', r'cannot take product of shape'),
+      ('zero_sized_dim', '(a0)b', r'cannot take product of shape'),
+      ('neg_sized_dim', '(ay)b', r'cannot take product of shape'),
+      ('empty_start', '()ab', r'found empty parentheses in named shape'),
+      ('empty_mid', 'a()b', r'found empty parentheses in named shape'),
+      ('empty_end', 'ab()', r'found empty parentheses in named shape'),
+      ('empty_solo', '()', r'found empty parentheses in named shape'),
+  ])
+  def test_flatten_fail(self, named_shape, error_message):
+    dims = dimensions.Dimensions(a=3, b=5, x=None, y=-1)
+    with self.assertRaisesRegex(ValueError, error_message):
+      _ = dims[named_shape]
 
 
 if __name__ == '__main__':
