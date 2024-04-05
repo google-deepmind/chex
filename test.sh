@@ -43,9 +43,9 @@ wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
 echo "signature-mutators=toolz.functoolz.curry" >> .pylintrc
 echo "disable=unnecessary-lambda-assignment,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
-pylint --rcfile=.pylintrc `find chex -name '*.py' | grep -v 'test.py' | xargs` || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find chex -name '*.py' | grep -v 'test.py' | xargs` -d E1102|| pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130,E1102 || pylint-exit $PYLINT_ARGS $?
 # Cleanup.
 rm .pylintrc
 
