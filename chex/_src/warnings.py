@@ -61,9 +61,9 @@ def warn_deprecated_function(fun, replacement):
   """A decorator to mark a function definition as deprecated.
 
   Example usage:
-  @warn_deprecated_function(fun, replacement='g')
-  def f(a, b):
-    return a + b
+  >>> @functools.partial(chex.warn_deprecated_function, replacement='g')
+  ... def f(a, b):
+  ...   return a + b
 
   Args:
     fun: the deprecated function.
