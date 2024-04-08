@@ -154,6 +154,7 @@ Warnings
 
 .. currentmodule:: chex
 
+.. autofunction:: create_deprecated_function_alias
 .. autofunction:: warn_deprecated_function
 .. autofunction:: warn_keyword_args_only_in_future
 .. autofunction:: warn_only_n_pos_args_in_future

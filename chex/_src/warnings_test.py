@@ -31,6 +31,11 @@ def g(a, b, c):
   return a + b + c
 
 
+def h1(a, b, c):
+  return a + b + c
+h2 = warnings.create_deprecated_function_alias(h1, 'path.h2', 'path.h1')
+
+
 class WarningsTest(absltest.TestCase):
 
   def test_warn_only_n_pos_args_in_future(self):
@@ -42,6 +47,10 @@ class WarningsTest(absltest.TestCase):
   def test_warn_deprecated_function(self):
     with self.assertWarns(Warning):
       g(1, 2, 3)
+
+  def test_create_deprecated_function_alias(self):
+    with self.assertWarns(Warning):
+      h2(1, 2, 3)
 
 
 if __name__ == '__main__':
