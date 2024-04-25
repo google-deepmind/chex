@@ -174,7 +174,8 @@ class AssertsChexifyTest(variants.TestCase):
     # Explicit wait, through object-local wait.
     async_check(invalid_x)  # enqueued
     with self.assertRaisesRegex(AssertionError, 'err_label'):
-      async_check.wait_checks()  # the error gets retrieved  # pytype: disable=attribute-error
+      # Retrieve the error.
+      async_check.wait_checks()  # pytype: disable=attribute-error
 
     # Explicit wait, through module-level wait.
     async_check(invalid_x)  # enqueued
@@ -286,7 +287,8 @@ class AssertsChexifyTest(variants.TestCase):
 
     with self.assertRaisesRegex(AssertionError, '0 and 1 differ'):
       chexified_fn(jnp.array([2]))
-      chexified_fn.wait_checks()  # Fail: not equal  # pytype: disable=attribute-error
+      # Fail: not equal.
+      chexified_fn.wait_checks()  # pytype: disable=attribute-error
 
   def test_wrong_order_of_wrapping(self):
 
