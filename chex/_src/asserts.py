@@ -1318,7 +1318,7 @@ def assert_tree_shape_suffix(
     shape_suffix: An expected shape suffix.
 
   Raises:
-    AssertionError: If some leaf's shape doesn't start with ``shape_suffix``.
+    AssertionError: If some leaf's shape doesn't end with ``shape_suffix``.
   """
   # To compare with the leaf's `shape`, convert int sequence to tuple.
   shape_suffix = tuple(shape_suffix)
