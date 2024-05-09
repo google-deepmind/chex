@@ -78,7 +78,7 @@ cd ..
 # Build Sphinx docs.
 
 # Temporary disabled.
-# pip install -r requirements/requirements-docs.txt
+pip install -r requirements/requirements-docs.txt
 # cd docs
 # make coverage_check
 # make html
