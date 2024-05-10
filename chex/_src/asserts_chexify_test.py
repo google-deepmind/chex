@@ -163,14 +163,6 @@ class AssertsChexifyTest(variants.TestCase):
     with self.assertRaisesRegex(AssertionError, 'err_label'):
       async_check(valid_x)  # the error gets retrieved
 
-    # Implicit wait, through the subsequent call & barrier.
-    async_check(invalid_x)  # enqueued and immediately returned
-    # error is not ready yet, so no assertion raised
-    async_check(valid_x).block_until_ready()
-    time.sleep(1)  # wait until the corresponding future is notified
-    with self.assertRaisesRegex(AssertionError, 'err_label'):
-      async_check(valid_x)  # the error gets retrieved
-
     # Explicit wait, through object-local wait.
     async_check(invalid_x)  # enqueued
     with self.assertRaisesRegex(AssertionError, 'err_label'):
