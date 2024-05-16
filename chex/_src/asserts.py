@@ -1507,13 +1507,13 @@ def _assert_tree_all_finite_static(tree_like: ArrayTree) -> None:
       jax.tree_util.tree_map(lambda x: np.all(np.isfinite(x)), tree_like))
   if not all_finite:
     is_finite = lambda x: "Finite" if np.all(np.isfinite(x)) else "Nonfinite"
-    error_msg = jax.tree_map(is_finite, tree_like)
+    error_msg = jax.tree.map(is_finite, tree_like)
     raise AssertionError(f"Tree contains non-finite value: {error_msg}.")
 
 
 def _assert_tree_all_finite_jittable(tree_like: ArrayTree) -> Array:
   """A jittable version of `_assert_tree_all_finite_static`."""
-  labeled_tree = jax.tree_map(
+  labeled_tree = jax.tree.map(
       lambda x: jax.lax.select(jnp.isfinite(x).all(), .0, jnp.nan), tree_like
   )
   predicate = jnp.all(

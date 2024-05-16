@@ -929,7 +929,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         'b': ([0], (0,), 0),
     }
     asserts.assert_trees_all_equal(tree, tree)
-    tree = jax.tree_map(jnp.asarray, tree)
+    tree = jax.tree.map(jnp.asarray, tree)
     self.assertTrue(asserts._assert_trees_all_equal_jittable(tree, tree))
 
   def test_assert_trees_all_equal_passes_values_equal(self):
@@ -977,7 +977,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         'b': ([0], (0,), 0),
     }
     asserts.assert_trees_all_close(tree, tree)
-    tree = jax.tree_map(jnp.asarray, tree)
+    tree = jax.tree.map(jnp.asarray, tree)
     self.assertTrue(asserts._assert_trees_all_close_jittable(tree, tree))
 
   def test_assert_trees_all_close_passes_values_equal(self):

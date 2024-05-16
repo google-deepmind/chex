@@ -97,7 +97,7 @@ class AssertsChexifyTest(variants.TestCase):
 
     # Define a simple function that uses the assertion.
     def _sum_fn(tree):
-      jax.tree_map(lambda x: chex_assert_shape(x, shape), tree)
+      jax.tree.map(lambda x: chex_assert_shape(x, shape), tree)
       return sum(x.sum() for x in jax.tree_util.tree_leaves(tree))
 
     chexified_sum_fn = chexify_sync(self.variant(_sum_fn))
@@ -269,7 +269,7 @@ class AssertsChexifyTest(variants.TestCase):
   def test_partial_python_fn(self):
     def fn(x, y):
       asserts.assert_trees_all_equal(x, y)
-      return jax.tree_map(jnp.add, x, y)
+      return jax.tree.map(jnp.add, x, y)
 
     partial_fn = functools.partial(fn, y=jnp.array([1]))
     chexified_fn = chexify_async(partial_fn)  # note: fn is not transformed
@@ -287,11 +287,11 @@ class AssertsChexifyTest(variants.TestCase):
     @chexify_async
     def inner_fn(x, y):
       asserts.assert_trees_all_equal(x, y)
-      return jax.tree_map(jnp.add, x, y)
+      return jax.tree.map(jnp.add, x, y)
 
     def outer_fn(x, y):
       z = inner_fn(x, y)
-      return jax.tree_map(jnp.square, z)
+      return jax.tree.map(jnp.square, z)
 
     x = jnp.array([1])
     y = jnp.array([1])
@@ -452,7 +452,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
         assert_input_fn(tree_1, custom_message='label_1')
         assert_input_fn(tree_2, custom_message='label_2')
 
-        return jax.tree_map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
+        return jax.tree.map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
                             tree_1, tree_2)
 
       return _pure_log_fn
@@ -474,14 +474,14 @@ class AssertsChexifyTestSuite(variants.TestCase):
       @jax.jit
       def _abs(tree):
         assert_input_fn(tree, custom_message='label_1')
-        tree_p1 = jax.tree_map(lambda x: x + 1, tree)
-        return jax.tree_map(jnp.abs, tree_p1)
+        tree_p1 = jax.tree.map(lambda x: x + 1, tree)
+        return jax.tree.map(jnp.abs, tree_p1)
 
       def _pure_log_fn(tree_1, tree_2):
         tree_1 = _abs(tree_1)
         assert_input_fn(tree_2, custom_message='label_2')
 
-        return jax.tree_map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
+        return jax.tree.map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
                             tree_1, tree_2)
 
       return _pure_log_fn
@@ -502,14 +502,14 @@ class AssertsChexifyTestSuite(variants.TestCase):
 
       def _abs(tree):
         assert_input_fn(tree, custom_message='label_1')
-        tree_p1 = jax.tree_map(lambda x: x + 1, tree)
-        return jax.tree_map(jnp.abs, tree_p1)
+        tree_p1 = jax.tree.map(lambda x: x + 1, tree)
+        return jax.tree.map(jnp.abs, tree_p1)
 
       def _pure_log_fn(tree_1, tree_2):
         tree_1 = jax.jit(_abs)(tree_1)
         assert_input_fn(tree_2, custom_message='label_2')
 
-        return jax.tree_map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
+        return jax.tree.map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
                             tree_1, tree_2)
 
       return _pure_log_fn
@@ -534,7 +534,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
         assert_input_fn(tree_2, custom_message='label_2')
 
         tree_1 = jax.lax.pmean(tree_1, axis_name='i')
-        return jax.tree_map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
+        return jax.tree.map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
                             tree_1, tree_2)
 
       return _pure_log_fn
@@ -558,7 +558,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
         assert_input_fn(tree_1, custom_message='label_1')
         assert_input_fn(tree_2, custom_message='label_2')
 
-        return jax.tree_map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
+        return jax.tree.map(lambda x1, x2: jnp.log(jnp.abs(x1 + x2) + EPS),
                             tree_1, tree_2)
 
       return _pure_log_fn
@@ -579,7 +579,7 @@ class AssertsLibraryTest(parameterized.TestCase):
     @jax.jit
     def fn(x):
       asserts.assert_tree_all_finite(x)
-      return jax.tree_map(jnp.sum, x)
+      return jax.tree.map(jnp.sum, x)
 
     chexified_fn = asserts_chexify.chexify(fn, async_check=False)
     chexified_fn({'a': 0, 'b': jnp.ones(3)})  # OK
@@ -596,7 +596,7 @@ class AssertsLibraryTest(parameterized.TestCase):
     @jax.jit
     def fn(x, y):
       asserts.assert_trees_all_equal(x, y)
-      return jax.tree_map(jnp.add, x, y)
+      return jax.tree.map(jnp.add, x, y)
 
     chexified_fn = asserts_chexify.chexify(fn, async_check=False)
 
@@ -619,7 +619,7 @@ class AssertsLibraryTest(parameterized.TestCase):
     @jax.jit
     def fn(x, y, z):
       asserts.assert_trees_all_close(x, y, z, rtol=0.1, atol=0.1)
-      return jax.tree_map(jnp.add, x, y)
+      return jax.tree.map(jnp.add, x, y)
 
     chexified_fn = asserts_chexify.chexify(fn, async_check=False)
 
@@ -651,7 +651,7 @@ class AssertsLibraryTest(parameterized.TestCase):
               sum(l.sum() for l in jax.tree_util.tree_leaves(x))
           ],
       )
-      return jax.tree_map(jnp.add, x, y)
+      return jax.tree.map(jnp.add, x, y)
 
     chexified_fn = asserts_chexify.chexify(fn, async_check=False)
 
