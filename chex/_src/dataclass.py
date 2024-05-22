@@ -228,7 +228,12 @@ class _Dataclass():
     # by JAX.
     #
     # See internal dataclass_test for unit tests demonstrating the problems.
-    register_dataclass_type_with_jax_tree_util(dcls)
+    # The registration below may result in pickling failures of the sort
+    # _pickle.PicklingError: Can't pickle <functools._lru_cache_wrapper object>:
+    # it's not the same object as register_dataclass_type_with_jax_tree_util
+    # for modules defined in __main__ so we disable registration in this case.
+    if dcls.__module__ != "__main__":
+      register_dataclass_type_with_jax_tree_util(dcls)
 
     # Patch __setstate__ to register the dataclass on deserialization.
     def _setstate(self, state):
