@@ -14,6 +14,8 @@
 # ==============================================================================
 """Chex: Testing made fun, in JAX!"""
 
+# Small change to trigger CI
+
 from chex._src.asserts import assert_axis_dimension
 from chex._src.asserts import assert_axis_dimension_comparator
 from chex._src.asserts import assert_axis_dimension_gt
