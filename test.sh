@@ -32,6 +32,15 @@ pip install flake8 pytest-xdist pylint pylint-exit
 pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-test.txt
 
+# Install the requested JAX version
+if [ "$JAX_VERSION" = "" ]; then
+  : # use version installed in requirements above
+elif [ "$JAX_VERSION" = "newest" ]; then
+  pip install -U jax jaxlib
+else
+  pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
+fi
+
 # Lint with flake8.
 flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
