@@ -15,6 +15,7 @@
 """Utilities to emit warnings."""
 
 import functools
+from typing import Any, Callable, Optional
 import warnings
 
 
@@ -57,7 +58,9 @@ warn_keyword_args_only_in_future = functools.partial(
 )
 
 
-def warn_deprecated_function(fun, replacement):
+def warn_deprecated_function(
+    fun: Callable[..., Any], replacement: Optional[str] = None
+) -> Callable[..., Any]:
   """A decorator to mark a function definition as deprecated.
 
   Example usage:
@@ -67,20 +70,23 @@ def warn_deprecated_function(fun, replacement):
 
   Args:
     fun: the deprecated function.
-    replacement: the name of the function to be used instead.
+    replacement: name of the function to be used instead.
 
   Returns:
     the wrapped function.
   """
+  if hasattr(fun, '__name__'):
+    warning_message = f'The function {fun.__name__} is deprecated.'
+  else:
+    warning_message = 'The function is deprecated.'
+  if replacement:
+    warning_message += f' Please use {replacement} instead.'
 
   @functools.wraps(fun)
   def new_fun(*args, **kwargs):
-    warnings.warn(
-        f'The function {fun.__name__} is deprecated, '
-        f'please use {replacement} instead.',
-        category=DeprecationWarning,
-        stacklevel=2)
+    warnings.warn(warning_message, category=DeprecationWarning, stacklevel=2)
     return fun(*args, **kwargs)
+
   return new_fun
 
 

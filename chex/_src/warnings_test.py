@@ -17,7 +17,6 @@
 import functools
 
 from absl.testing import absltest
-
 from chex._src import warnings
 
 
@@ -26,13 +25,20 @@ def f(a, b, c):
   return a + b + c
 
 
+@warnings.warn_deprecated_function
+def g0(a, b, c):
+  return a + b + c
+
+
 @functools.partial(warnings.warn_deprecated_function, replacement='h')
-def g(a, b, c):
+def g1(a, b, c):
   return a + b + c
 
 
 def h1(a, b, c):
   return a + b + c
+
+
 h2 = warnings.create_deprecated_function_alias(h1, 'path.h2', 'path.h1')
 
 
@@ -44,9 +50,24 @@ class WarningsTest(absltest.TestCase):
     with self.assertWarns(Warning):
       f(1, 2, c=3)
 
+  def test_warn_deprecated_function_no_replacement(self):
+    with self.assertWarns(Warning) as cm:
+      g0(1, 2, 3)
+
+    warning_message = str(cm.warnings[0].message)
+
+    self.assertIn('The function g0 is deprecated', warning_message)
+    # the warning message doesn't have a replacement function
+    self.assertNotIn('please use', warning_message)
+
   def test_warn_deprecated_function(self):
-    with self.assertWarns(Warning):
-      g(1, 2, 3)
+    with self.assertWarns(Warning) as cm:
+      g1(1, 2, 3)
+
+    warning_message = str(cm.warnings[0].message)
+    self.assertIn('The function g1 is deprecated', warning_message)
+    # check that the warning message points to replacement function
+    self.assertIn('Please use h instead', warning_message)
 
   def test_create_deprecated_function_alias(self):
     with self.assertWarns(Warning):
