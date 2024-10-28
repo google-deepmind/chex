@@ -923,6 +923,15 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, err_msg):
       asserts._assert_tree_all_finite_jittable(inf_tree)
 
+  def test_assert_trees_all_equal_prng_keys(self):
+    tree1 = {'a': jnp.array([3]), 'key': jax.random.split(jax.random.key(1))}
+    tree2 = {'a': jnp.array([3]), 'key': jax.random.split(jax.random.key(2))}
+    asserts.assert_trees_all_equal(tree1, tree1)  # OK
+
+    err_regex = _get_err_regex(r'Trees 0 and 1 differ in leaves \'key\'')
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_equal(tree1, tree2)  # Fail: not equal
+
   def test_assert_trees_all_equal_passes_same_tree(self):
     tree = {
         'a': [jnp.zeros((1,))],

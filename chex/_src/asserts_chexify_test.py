@@ -615,6 +615,21 @@ class AssertsLibraryTest(parameterized.TestCase):
     ):
       chexified_fn(tree_1, tree_2)  # Fail: not equal
 
+  def test_assert_trees_all_equal_with_prng_keys(self):
+    @jax.jit
+    def fn(x, y):
+      asserts.assert_trees_all_equal(x, y)
+      return x['a'] + y['a']
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+    tree1 = {'a': jnp.array([3]), 'key': jax.random.split(jax.random.key(1))}
+    tree2 = {'a': jnp.array([3]), 'key': jax.random.split(jax.random.key(2))}
+    chexified_fn(tree1, tree1)  # OK
+    with self.assertRaisesRegex(
+        AssertionError, re.escape("Trees 0 and 1 differ in leaves '('key',)'")
+    ):
+      chexified_fn(tree1, tree2)  # Fail: not equal
+
   def test_assert_trees_all_close(self):
     @jax.jit
     def fn(x, y, z):

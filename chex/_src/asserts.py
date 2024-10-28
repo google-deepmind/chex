@@ -1551,11 +1551,20 @@ def _assert_trees_all_equal_static(
     AssertionError: If the leaf values actual and desired are not exactly equal.
   """
   def assert_fn(arr_1, arr_2):
+    if isinstance(arr_1, jax.Array) and jax.dtypes.issubdtype(
+        arr_1.dtype, jax.dtypes.prng_key
+    ) and isinstance(arr_2, jax.Array) and jax.dtypes.issubdtype(
+        arr_2.dtype, jax.dtypes.prng_key
+    ):
+      assert jax.random.key_impl(arr_1) == jax.random.key_impl(arr_2)
+      arr_1 = jax.random.key_data(arr_1)
+      arr_2 = jax.random.key_data(arr_2)
     np.testing.assert_array_equal(
         _ai.jnp_to_np_array(arr_1),
         _ai.jnp_to_np_array(arr_2),
         err_msg="Error in value equality check: Values not exactly equal",
-        strict=strict)
+        strict=strict,
+    )
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:
