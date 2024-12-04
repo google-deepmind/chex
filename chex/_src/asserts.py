@@ -996,7 +996,7 @@ def assert_numerical_grads(f: Callable[..., Array],
       difference gradients.
   """
   # Correct scaling.
-  # Remove after https://github.com/google/jax/issues/3130 is fixed.
+  # Remove after https://github.com/jax-ml/jax/issues/3130 is fixed.
   atol *= f_args[0].size
 
   # Mock `jax.lax.stop_gradient` because finite diff. method does not honour it.
