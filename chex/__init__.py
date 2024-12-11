@@ -104,7 +104,7 @@ from chex._src.warnings import warn_keyword_args_only_in_future
 from chex._src.warnings import warn_only_n_pos_args_in_future
 
 
-__version__ = "0.1.87"
+__version__ = "0.1.88"
 
 __all__ = (
     "all_variants",
