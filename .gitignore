@@ -1,10 +1,9 @@
 # Building and releasing library:
-*.egg-info
+*.egg-info/
 *.pyc
 *.so
 build/
 dist/
-venv/
 docs/_build/
 
 # Mac OS
@@ -18,3 +17,9 @@ docs/_build/
 # Editors
 .idea
 .vscode
+
+# Virtual environments
+pyvenv.cfg
+venv/
+/Lib/
+/Scripts/
