@@ -37,6 +37,8 @@ if [ "$JAX_VERSION" = "" ]; then
   : # use version installed in requirements above
 elif [ "$JAX_VERSION" = "newest" ]; then
   pip install -U jax jaxlib
+elif [ "$JAX_VERSION" = "nightly" ]; then
+  pip install -U --pre jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
 else
   pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi

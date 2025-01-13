@@ -8,6 +8,14 @@ on:
   schedule:
     - cron: '30 2 * * *'
 
+permissions:
+  contents: read
+  actions: write  # to cancel previous workflows
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     name: "Python ${{ matrix.python-version }} on ${{ matrix.os }} jax=${{ matrix.jax-version}}"
@@ -21,11 +29,14 @@ jobs:
         include:
           - python-version: "3.9"
             os: "ubuntu-latest"
-            jax-version: "0.4.27"  # Keep this in sync with version in pyproject.toml
+            jax-version: "0.4.27"  # Keep this in sync with version in requirements.txt
+          - python-version: "3.11"
+            os: "ubuntu-latest"
+            jax-version: "nightly"
 
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v4"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
             python-version: "${{ matrix.python-version }}"
             cache: "pip"
