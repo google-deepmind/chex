@@ -14,9 +14,10 @@
 # ==============================================================================
 """Utilities to hold expected dimension sizes."""
 
+from collections.abc import Sized
 import math
 import re
-from typing import Any, Collection, Dict, Optional, Sized, Tuple
+from typing import Any, Collection, Dict, Optional, Tuple
 
 
 Shape = Tuple[Optional[int], ...]

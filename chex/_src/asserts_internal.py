@@ -24,11 +24,12 @@ Instead, consider opening an issue on GitHub and describing your use case.
 
 import collections
 import collections.abc
+from collections.abc import Hashable
 import functools
 import re
 import threading
 import traceback
-from typing import Any, Sequence, Union, Callable, Hashable, List, Optional, Set, Tuple, Type
+from typing import Any, Sequence, Union, Callable, List, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
@@ -299,7 +300,7 @@ def format_tree_path(path: Sequence[Any]) -> str:
 
 
 def format_shape_matcher(shape: TShapeMatcher) -> str:
-  return f"({', '.join('...' if d is Ellipsis else str(d) for d in shape)})"
+  return f"({', '.join('...' if d is Ellipsis else str(d) for d in shape)})"  # pylint: disable=inconsistent-quotes
 
 
 def num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
