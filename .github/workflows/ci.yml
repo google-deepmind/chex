@@ -30,7 +30,7 @@ jobs:
           - python-version: "3.9"
             os: "ubuntu-latest"
             jax-version: "0.4.27"  # Keep this in sync with version in requirements.txt
-          - python-version: "3.12"
+          - python-version: "3.13"
             os: "ubuntu-latest"
             jax-version: "nightly"
 
