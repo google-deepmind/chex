@@ -2,14 +2,14 @@
 
 ![CI status](https://github.com/deepmind/chex/workflows/ci/badge.svg)
 ![docs](https://readthedocs.org/projects/chex/badge/?version=latest)
-![pypi](https://img.shields.io/pypi/v/chex)
+![PyPI](https://img.shields.io/pypi/v/chex)
 
 Chex is a library of utilities for helping to write reliable JAX code.
 
-This includes utils to help:
+This includes utilities to help:
 
 * Instrument your code (e.g. assertions, warnings)
-* Debug (e.g. transforming `pmaps` in `vmaps` within a context manager).
+* Debug (e.g. transforming `pmap` in `vmap` within a context manager).
 * Test JAX code across many `variants` (e.g. jitted vs non-jitted).
 
 ## Installation
@@ -35,7 +35,7 @@ easily specify typed data structures with minimal boilerplate code. They are
 not, however, compatible with JAX and
 [dm-tree](https://github.com/deepmind/tree) out of the box.
 
-In Chex we provide a JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
+In Chex, we provide a JAX-friendly dataclass implementation reusing python [dataclasses](https://docs.python.org/3/library/dataclasses.html#module-dataclasses).
 
 Chex implementation of `dataclass` registers dataclasses as internal [_PyTree_
 nodes](https://jax.readthedocs.io/en/latest/pytrees.html) to ensure
@@ -69,7 +69,7 @@ tree.flatten(parameters)
 
 **NOTE**: Unlike standard Python 3.7 dataclasses, Chex
 dataclasses cannot be constructed using positional arguments. They support
-construction arguments provided in the same format as the Python dict
+construction arguments provided in the same format as the Python `dict`
 constructor. Dataclasses can be converted to tuples with the `from_tuple` and
 `to_tuple` methods if necessary.
 
@@ -87,8 +87,8 @@ One limitation of PyType annotations for JAX is that they do not support the
 specification of `DeviceArray` ranks, shapes or dtypes. Chex includes a number
 of functions that allow flexible and concise specification of these properties.
 
-E.g. suppose you want to ensure that all tensors `t1`, `t2`, `t3` have the same
-shape, and that tensors `t4`, `t5` have rank `2` and (`3` or `4`), respectively.
+For example, suppose you want to ensure that all tensors `t1`, `t2`, `t3` have the same
+shape and that tensors `t4`, `t5` have rank `2` and (`3` or `4`), respectively.
 
 ```python
 chex.assert_equal_shape([t1, t2, t3])
@@ -126,7 +126,7 @@ See `asserts.py`
 find all supported assertions.
 
 If you cannot find a specific assertion, please consider making a pull request
-or openning an issue on
+or opening an issue on
 [the bug tracker](https://github.com/deepmind/chex/issues).
 
 #### Optional Arguments
@@ -151,22 +151,22 @@ for i in range(num_steps):
                               exception_type=ValueError)
 ```
 
-will raise a `ValueError` that includes a step number when `params` get polluted
-with `NaNs` or `None`s.
+will raise a `ValueError` that includes a step number when `params` gets polluted
+with `NaN`s or `None`s.
 
-#### Static and Value (aka *Runtime*) Assertions
+#### Static and Value (aka _Runtime_) Assertions
 
-Chex divides all assertions into 2 classes: ***static*** and ***value***
+Chex divides all assertions into two classes: _**static**_ and _**value**_
 assertions.
 
-1.  ***static*** assertions use anything except concrete values of tensors.
+1. _**static**_ assertions use anything except concrete values of tensors.
     Examples: `assert_shape`, `assert_trees_all_equal_dtypes`,
     `assert_max_traces`.
 
-2.  ***value*** assertions require access to tensor values, which are not
+2. _**value**_ assertions require access to tensor values, which are not
     available during JAX tracing (see
     [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)),
-    thus such assertion need special treatment in a *jitted* code.
+    thus such assertion need special treatment in _jitted_ code.
 
 To enable value assertions in a jitted function, it can be decorated with
 `chex.chexify()` wrapper. Example:
@@ -192,9 +192,9 @@ for more detail on `chex.chexify()`.
 
 #### JAX Tracing Assertions
 
-JAX re-traces JIT'ted function every time the structure of passed arguments
+JAX re-traces jitted functions every time the structure of passed arguments
 changes. Often this behavior is inadvertent and leads to a significant
-performance drop which is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
+performance drop that is hard to debug. [@chex.assert_max_traces](https://github.com/deepmind/chex/blob/master/chex/_src/asserts.py#L44)
 decorator asserts that the function is not re-traced more than `n` times during
 program execution.
 
@@ -223,33 +223,33 @@ Can be used with `jax.pmap()` as well:
   fn_sub_pmapped = jax.pmap(chex.assert_max_traces(fn_sub, n=10))
 ```
 
-See
+See the
 [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
 section for more information about tracing.
 
-### Warnings ([warnigns.py](https://github.com/deepmind/chex/blob/master/chex/_src/warnings.py))
+### Warnings ([warnings.py](https://github.com/deepmind/chex/blob/master/chex/_src/warnings.py))
 
-In addition to hard assertions Chex also offers utilities to add common
-warnings, such as specific types of deprecation warnings.
+In addition to hard assertions, Chex offers utilities to add common
+warnings such as specific types of deprecation warnings.
 
 ### Test variants ([variants.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants.py))
 
 JAX relies extensively on code transformation and compilation, meaning that it
 can be hard to ensure that code is properly tested. For instance, just testing a
 python function using JAX code will not cover the actual code path that is
-executed when jitted, and that path will also differ whether the code is jitted
+executed when jitted, and that path will differ whether the code is jitted
 for CPU, GPU, or TPU. This has been a source of obscure and hard to catch bugs
-where XLA changes would lead to undesirable behaviours that however only
+where XLA changes would lead to undesirable behaviors that only
 manifest in one specific code transformation.
 
 Variants make it easy to ensure that unit tests cover different ‘variations’ of
 a function, by providing a simple decorator that can be used to repeat any test
 under all (or a subset) of the relevant code transformations.
 
-E.g. suppose you want to test the output of a function `fn` with or without jit.
+For example, suppose you want to test the output of a function `fn` with or without `jit`.
 You can use `chex.variants` to run the test with both the jitted and non-jitted
 version of the function by simply decorating a test method with
-`@chex.variants`, and then using `self.variant(fn)` in place of `fn` in the body
+`@chex.variants` and then using `self.variant(fn)` in place of `fn` in the body
 of the test.
 
 ```python
@@ -330,13 +330,13 @@ please see an example in [variants_test.py](https://github.com/deepmind/chex/blo
 by using the decorator `@chex.all_variants`.
 
 * **[`with_pmap` variant]** `jax.pmap(fn)`
-([doc](https://jax.readthedocs.io/en/latest/jax.html#jax.pmap)) performs
+([doc](https://jax.readthedocs.io/en/latest/jax.html#jax.pmap)) performs a
 parallel map of `fn` onto multiple devices. Since most tests run in a
-single-device environment (i.e. having access to a single CPU or GPU), in which
-case `jax.pmap` is a functional equivalent to `jax.jit`, ` with_pmap` variant is
-skipped by default (although it works fine with a single device). Below we
-describe  a way to properly test `fn` if it is supposed to be used in
-multi-device environments (TPUs or multiple CPUs/GPUs). To disable skipping
+single-device environment (e.g., having access to a single CPU or GPU), in which
+case, `jax.pmap` is the functional equivalent of `jax.jit` and `with_pmap` variant is
+skipped by default (although it works fine with a single device). Below, we
+describe a way to properly test `fn` if it is supposed to be used in
+multi-device environments (e.g., TPUs or multiple CPUs/GPUs). To disable skipping
 `with_pmap` variants in case of a single device, add
 `--chex_skip_pmap_variant_if_single_device=false` to your test command.
 
@@ -347,10 +347,10 @@ and `pmap`, which introduce optimizations that make code hard to inspect and
 trace. It can also be difficult to disable those transformations during
 debugging as they can be called at several places in the underlying
 code. Chex provides tools to globally replace `jax.jit` with a no-op
-transformation and `jax.pmap` with a (non-parallel) `jax.vmap`, in order to more
+transformation and `jax.pmap` with a (non-parallel) `jax.vmap` in order to more
 easily debug code in a single-device context.
 
-For example, you can use Chex to fake `pmap` and have it replaced with a `vmap`.
+For example, you can use Chex to fake `pmap` and have it be replaced with `vmap`.
 This can be achieved by wrapping your code with a context manager:
 
 ```python
@@ -384,11 +384,11 @@ In situations where you do not have easy access to multiple devices, you can
 still test parallel computation using single-device multi-threading.
 
 In particular, one can force XLA to use a single CPU's threads as separate
-devices, i.e. to fake a real multi-device environment with a multi-threaded one.
-These two options are theoretically equivalent from XLA perspective because they
+devices, i.e., to fake a real multi-device environment with a multi-threaded one.
+These two options are theoretically equivalent from the XLA perspective because they
 expose the same interface and use identical abstractions.
 
-Chex has a flag `chex_n_cpu_devices` that specifies a number of CPU threads to
+Chex has a flag, `chex_n_cpu_devices`, that specifies the number of CPU threads to
 use as XLA devices.
 
 To set up a multi-threaded XLA environment for `absl` tests, define
@@ -399,13 +399,13 @@ def setUpModule():
   chex.set_n_cpu_devices()
 ```
 
-Now you can launch your test with `python test.py --chex_n_cpu_devices=N` to run
-it in multi-device regime. Note that **all** tests within a module will have an
+Then you can launch your test with `python test.py --chex_n_cpu_devices=N` to run
+it in a multi-device regime. Note that **all** tests within a module will have
 access to `N` devices.
 
 More examples can be found in [variants_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants_test.py), [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) and [fake_set_n_cpu_devices_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_set_n_cpu_devices_test.py).
 
-### Using named dimension sizes.
+### Using named dimension sizes
 
 Chex comes with a small utility that allows you to package a collection of
 dimension sizes into a single object. The basic idea is:
@@ -438,7 +438,7 @@ documentation.
 
 ## Citing Chex
 
-This repository is part of the [DeepMind JAX Ecosystem], to cite Chex please use
+This repository is part of the [DeepMind JAX Ecosystem]; to cite Chex, please use
 the [DeepMind JAX Ecosystem citation].
 
 [DeepMind JAX Ecosystem]: https://deepmind.com/blog/article/using-jax-to-accelerate-our-research "DeepMind JAX Ecosystem"
