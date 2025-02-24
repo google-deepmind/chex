@@ -50,13 +50,14 @@ flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
 # Download Google OSS config.
 wget -nd -v -t 3 -O .pylintrc https://google.github.io/styleguide/pylintrc
+# Enforce two space indent style.
+sed -i "s/indent-string.*/indent-string='  '/" .pylintrc
 # Append specific config lines.
-echo "signature-mutators=toolz.functoolz.curry" >> .pylintrc
 echo "disable=unnecessary-lambda-assignment,use-dict-literal" >> .pylintrc
 # Lint modules and tests separately.
 pylint --rcfile=.pylintrc `find chex -name '*.py' | grep -v 'test.py' | xargs` -d E1102|| pylint-exit $PYLINT_ARGS $?
 # Disable `protected-access` warnings for tests.
-pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130,E1102 || pylint-exit $PYLINT_ARGS $?
+pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130,E1102,E1120 || pylint-exit $PYLINT_ARGS $?
 # Cleanup.
 rm .pylintrc
 
