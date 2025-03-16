@@ -19,7 +19,8 @@ import re
 import sys
 import threading
 import time
-from typing import Any, Optional, Sequence, Type
+from collections.abc import Sequence
+from typing import Any, Optional, Type
 
 from absl.testing import absltest
 from absl.testing import parameterized

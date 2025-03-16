@@ -25,7 +25,8 @@ import functools
 import inspect
 import os
 import re
-from typing import Any, Callable, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Any, Callable, Optional, Union
 from unittest import mock
 from absl import flags
 import jax

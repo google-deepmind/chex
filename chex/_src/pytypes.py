@@ -14,7 +14,8 @@
 # ==============================================================================
 """Type definitions to use for type annotations."""
 
-from typing import Any, Iterable, Mapping, Sequence, Union
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any, Union
 
 import jax
 import numpy as np
