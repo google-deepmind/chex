@@ -15,7 +15,8 @@
 """Utilities to emit warnings."""
 
 import functools
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 import warnings
 
 

@@ -18,7 +18,8 @@ import enum
 import functools
 import inspect
 import itertools
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 import unittest
 
 from absl import flags
