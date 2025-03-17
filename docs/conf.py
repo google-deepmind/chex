@@ -176,7 +176,7 @@ def linkcode_resolve(domain, info):
 
   # TODO(slebedev): support tags after we release an initial version.
   return (
-      'https://github.com/google-deepmind/chex/tree/main/chex/%s#L%d#L%d'
+      'https://github.com/google-deepmind/chex/tree/master/chex/%s#L%d#L%d'
       % (
           os.path.relpath(filename, start=os.path.dirname(chex.__file__)),
           lineno,
