@@ -143,7 +143,6 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
     # That is, case of n=0 for no-arguments function won't raise a error.
     has_tracers_in_args = _ai.has_tracers((args, kwargs))
 
-    nonlocal fn_hash
     _ai.TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
     if not _ai.DISABLE_ASSERTIONS and _ai.TRACE_COUNTER[fn_hash] > n:
       raise AssertionError(
@@ -1044,7 +1043,6 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree) -> None:
   def _assert_fn(path, leaf):
     if leaf is not None:
       if not isinstance(leaf, (np.ndarray, jnp.ndarray)):
-        nonlocal errors
         errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is not an "
                        f"ndarray (type={type(leaf)})."))
 
@@ -1101,8 +1099,6 @@ def assert_tree_is_on_host(
   def _assert_fn(path, leaf):
     if leaf is not None:
       if not isinstance(leaf, np.ndarray):
-        nonlocal errors
-
         if isinstance(leaf, jax.Array):
           if _check_sharding(leaf):
             # Sharded array.
@@ -1182,8 +1178,6 @@ def assert_tree_is_on_device(tree: ArrayTree,
 
   def _assert_fn(path, leaf):
     if leaf is not None:
-      nonlocal errors
-
       # Check that the leaf is a DeviceArray.
       if isinstance(leaf, jax.Array):
         if _check_sharding(leaf):
@@ -1237,8 +1231,6 @@ def assert_tree_is_sharded(tree: ArrayTree,
 
   def _assert_fn(path, leaf):
     if leaf is not None:
-      nonlocal errors
-
       # Check that the leaf is a ShardedArray.
       if isinstance(leaf, jax.Array):
         if _check_sharding(leaf):
@@ -1286,7 +1278,6 @@ def assert_tree_shape_prefix(tree: ArrayTree,
   errors = []
 
   def _assert_fn(path, leaf):
-    nonlocal errors
     if len(shape_prefix) > len(leaf.shape):
       errors.append(
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape "
@@ -1329,7 +1320,6 @@ def assert_tree_shape_suffix(
   errors = []
 
   def _assert_fn(path, leaf):
-    nonlocal errors
     if len(shape_suffix) > len(leaf.shape):
       errors.append(
           (f"Tree leaf '{_ai.format_tree_path(path)}' has a shape "
