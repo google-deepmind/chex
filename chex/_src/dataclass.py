@@ -305,7 +305,7 @@ def _flatten_with_path(dcls):
     # Store the static keys separately.
     if (dcls.static_keynames is not None and
         k.name in dcls.static_keynames):
-      static_keynames.append(k)
+      static_keynames.append(k.name)
       static_keyvals.append(v)
     else:
       path.append((k, v))
