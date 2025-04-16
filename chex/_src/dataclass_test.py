@@ -757,6 +757,35 @@ class DataclassesTest(parameterized.TestCase):
     )
     self.assertEqual(obj.values, 2)
 
+  @parameterized.parameters([False, True])
+  def test_jax_incompatible_crash_wihtout_static_keynames(self, frozen):
+    @chex_dataclass(frozen=frozen)
+    class _Dataclass:
+      jax_incompatible_type: str
+      jax_compatible_type: int
+
+    obj = _Dataclass(jax_incompatible_type="a", jax_compatible_type=1)
+
+    def jitted_fn(x: _Dataclass):
+      return x.jax_compatible_type + 1
+
+    with self.assertRaises(TypeError):
+      jax.jit(jitted_fn)(obj)
+
+  @parameterized.parameters([False, True])
+  def test_static_keynames(self, frozen):
+    @chex_dataclass(static_keynames=["jax_incompatible_type"], frozen=frozen)
+    class _Dataclass:
+      jax_incompatible_type: str
+      jax_compatible_type: int
+
+    obj = _Dataclass(jax_incompatible_type="a", jax_compatible_type=1)
+
+    def jitted_fn(x: _Dataclass):
+      return x.jax_compatible_type + 1
+
+    self.assertEqual(jax.jit(jitted_fn)(obj), 2)
+
 
 if __name__ == '__main__':
   absltest.main()

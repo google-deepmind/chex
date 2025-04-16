@@ -300,7 +300,6 @@ def _flatten_with_path(dcls):
   static_keyvals = []
 
   for k, v in sorted(dcls.__dict__.items()):
-    keys.append(k)  # generate same aux data as flatten without path
     k = jax.tree_util.GetAttrKey(k)
     # Store the static keys separately.
     if (dcls.static_keynames is not None and
@@ -309,14 +308,13 @@ def _flatten_with_path(dcls):
       static_keyvals.append(v)
     else:
       path.append((k, v))
-      keys.append(k)
+      keys.append(k.name)
   return path, (keys, static_keynames, static_keyvals)
 
 
 def flatten(dcls):
   paths, (keys, static_keynames, static_keyvals) = _flatten_with_path(dcls)
-  vals = [p[1] for p in paths]
-  keys = [k.name for k in keys]
+  vals = [val for key, val in paths]
   return vals, (keys, static_keynames, static_keyvals)
 
 
