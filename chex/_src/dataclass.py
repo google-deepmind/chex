@@ -299,7 +299,10 @@ def register_dataclass_type_with_jax_tree_util(data_class):
       constructable from keyword arguments corresponding to the members exposed
       in instance.__dict__.
   """
-  flatten = lambda d: jax.util.unzip2(sorted(d.__dict__.items()))[::-1]
+  def flatten(d):
+    if d.__dict__:
+      return tuple(zip(*sorted(d.__dict__.items())))[::-1]
+    return ((), ())
   unflatten = functools.partial(_dataclass_unflatten, data_class)
   try:
     jax.tree_util.register_pytree_with_keys(
