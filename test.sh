@@ -38,7 +38,7 @@ if [ "$JAX_VERSION" = "" ]; then
 elif [ "$JAX_VERSION" = "newest" ]; then
   pip install -U jax jaxlib
 elif [ "$JAX_VERSION" = "nightly" ]; then
-  pip install -U --pre jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
+  pip install -U --pre jax jaxlib --extra-index-url https://us-python.pkg.dev/ml-oss-artifacts-published/jax-public-nightly-artifacts-registry/simple/
 else
   pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi
