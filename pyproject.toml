@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chex"
+dynamic = ["version"]
+description = "Chex: Testing made fun, in JAX!"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+    { name = "DeepMind", email = "chex-dev@google.com" },
+]
+keywords = [
+    "debugging",
+    "jax",
+    "learning",
+    "machine",
+    "python",
+    "testing",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing :: Mocking",
+    "Topic :: Software Development :: Testing :: Unit",
+]
+dependencies = [
+    "absl-py>=0.9.0",
+    "jax>=0.4.27",
+    "jaxlib>=0.4.27",
+    "numpy>=1.24.1",
+    "toolz>=0.9.0",
+    "typing_extensions>=4.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest-xdist",
+    "pylint",
+    "pylint-exit",
+]
+test = [
+    "cloudpickle==3.1.0",
+    "dm-tree>=0.1.9",
+]
+docs = [
+    "sphinx>=6.0.0",
+    "sphinx-book-theme>=1.0.1",
+    "sphinxcontrib-katex",
+]
+
+[project.urls]
+Homepage = "https://github.com/deepmind/chex"
+
+[tool.hatch.version]
+path = "chex/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/chex",
+]
+
+[tool.ruff]
+preview = true
+
+[tool.ruff.lint]
+select = [
+    "E9",
+    "F63",
+    "F7",
+    "F82",
+    "E225",
+    "E251",
+]
