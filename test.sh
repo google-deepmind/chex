@@ -27,10 +27,8 @@ source "${VENV_DIR}/bin/activate"
 python --version
 
 # Install dependencies.
-pip install --upgrade pip setuptools wheel
-pip install flake8 pytest-xdist pylint pylint-exit
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
+pip install --upgrade pip
+pip install .[dev]
 
 # Install the requested JAX version
 if [ "$JAX_VERSION" = "" ]; then
@@ -43,8 +41,8 @@ else
   pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi
 
-# Lint with flake8.
-flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+# Lint with Ruff.
+ruff check
 
 # Lint with pylint.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
@@ -62,9 +60,10 @@ pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130,E
 rm .pylintrc
 
 # Build the package.
-python setup.py sdist
+pip install build
+python -m build
 pip wheel --verbose --no-deps --no-clean dist/chex*.tar.gz
-pip install chex*.whl
+pip install chex*.whl --force-reinstall
 
 # Check types with pytype.
 # Note: pytype does not support 3.11 as of 25.06.23
@@ -77,7 +76,7 @@ fi;
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
-pip install -r requirements/requirements-test.txt
+pip install .[test]
 cd _testing
 
 # Main tests.
@@ -88,8 +87,7 @@ pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu
 cd ..
 
 # Build Sphinx docs.
-
-pip install -r requirements/requirements-docs.txt
+pip install .[docs]
 cd docs
 make coverage_check
 make html
