@@ -31,14 +31,7 @@ import contextlib
 import functools
 from typing import Optional, Sequence
 
-# pylint: disable=g-import-not-at-top
-try:
-  from jax._src import compiler
-except ImportError:
-  # TODO(phawkins): remove this path after jax>=0.4.15 is the minimum version
-  # required by chex.
-  from jax._src import dispatch as compiler  # type: ignore
-# pylint: enable=g-import-not-at-top
+from jax._src import compiler
 
 
 class RestrictedBackendError(RuntimeError):
