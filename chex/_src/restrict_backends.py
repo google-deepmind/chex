@@ -29,13 +29,35 @@ at the end of the first iteration, the system can detect any overlooked cases.
 """
 import contextlib
 import functools
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 from jax._src import compiler
 
 
 class RestrictedBackendError(RuntimeError):
   pass
+
+
+@contextlib.contextmanager
+def _restrict_by_attr_name(name: str, is_allowed: Callable[[str], bool]):
+  """Patch the given backend restriction onto getattr(compiler, name)."""
+  inner_backend_compile = getattr(compiler, name)
+
+  @functools.wraps(inner_backend_compile)
+  def wrapper(backend, *args, **kwargs):
+    if not is_allowed(backend.platform):
+      raise RestrictedBackendError(
+          f'Compiling a JAX program for {backend.platform} is forbidden by '
+          f'restrict_backends().')
+    return inner_backend_compile(backend, *args, **kwargs)
+
+  try:
+    setattr(compiler, name, wrapper)
+    yield
+  finally:
+    backend_compile = getattr(compiler, name)
+    assert backend_compile is wrapper, backend_compile
+    setattr(compiler, name, inner_backend_compile)
 
 
 @contextlib.contextmanager
@@ -70,23 +92,18 @@ def restrict_backends(
         f"Backends {contradictions} can't be both allowed and forbidden.")
 
   def is_allowed(backend_platform):
-    return ((backend_platform in allowed) if allowed is not None else
-            (backend_platform not in forbidden))
+    return (
+        (backend_platform in allowed)
+        if allowed is not None
+        else (backend_platform not in forbidden)
+    )
 
-  inner_backend_compile = compiler.backend_compile
-
-  @functools.wraps(inner_backend_compile)
-  def wrapper(backend, *args, **kwargs):
-    if not is_allowed(backend.platform):
-      raise RestrictedBackendError(
-          f'Compiling a JAX program for {backend.platform} is forbidden by '
-          f'restrict_backends().')
-    return inner_backend_compile(backend, *args, **kwargs)
-
-  try:
-    compiler.backend_compile = wrapper
+  with contextlib.ExitStack() as stack:
+    # This is for compatibility with JAX both before and after
+    # https://github.com/jax-ml/jax/commit/06448864abd6e8187e5b4d9b1ff08ab14fe3b8e0
+    if hasattr(compiler, 'backend_compile'):
+      stack.enter_context(_restrict_by_attr_name('backend_compile', is_allowed))
+    if hasattr(compiler, 'backend_compile_and_load'):
+      stack.enter_context(
+          _restrict_by_attr_name('backend_compile_and_load', is_allowed))
     yield
-  finally:
-    backend_compile = compiler.backend_compile
-    assert backend_compile is wrapper, backend_compile
-    compiler.backend_compile = inner_backend_compile
