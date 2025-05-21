@@ -20,7 +20,8 @@ import copy
 import dataclasses
 import pickle
 import sys
-from typing import Any, Generic, Mapping, TypeVar
+from collections.abc import Mapping
+from typing import Any, Generic, TypeVar
 import unittest
 
 from absl.testing import absltest

@@ -19,7 +19,8 @@ import collections.abc
 import functools
 import inspect
 import traceback
-from typing import Any, Callable, List, Optional, Sequence, Set, Union, cast
+from collections.abc import Sequence
+from typing import Any, Callable, List, Optional, Set, Union, cast
 import unittest
 from unittest import mock
 

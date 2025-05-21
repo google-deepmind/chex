@@ -24,12 +24,12 @@ Instead, consider opening an issue on GitHub and describing your use case.
 
 import collections
 import collections.abc
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
 import functools
 import re
 import threading
 import traceback
-from typing import Any, Sequence, Union, Callable, List, Optional, Set, Tuple, Type
+from typing import Any, Union, Callable, List, Optional, Set, Tuple, Type
 
 from absl import logging
 from chex._src import pytypes
