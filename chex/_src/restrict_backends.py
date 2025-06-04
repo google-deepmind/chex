@@ -101,9 +101,9 @@ def restrict_backends(
   with contextlib.ExitStack() as stack:
     # This is for compatibility with JAX both before and after
     # https://github.com/jax-ml/jax/commit/06448864abd6e8187e5b4d9b1ff08ab14fe3b8e0
-    if hasattr(compiler, 'backend_compile'):
-      stack.enter_context(_restrict_by_attr_name('backend_compile', is_allowed))
     if hasattr(compiler, 'backend_compile_and_load'):
       stack.enter_context(
           _restrict_by_attr_name('backend_compile_and_load', is_allowed))
+    elif hasattr(compiler, 'backend_compile'):
+      stack.enter_context(_restrict_by_attr_name('backend_compile', is_allowed))
     yield
