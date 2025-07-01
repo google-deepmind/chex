@@ -1082,15 +1082,74 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError, err_regex):
       asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
 
-  def test_assert_trees_all_close_ulp_fails_bfloat16(self):
-    tree_f32 = (jnp.array([0.0]),)
-    tree_bf16 = (jnp.array([0.0], dtype=jnp.bfloat16),)
-    err_msg = 'ULP assertions are not currently supported for bfloat16.'
+  def test_assert_trees_all_close_ulp_bfloat16_passes_values_within_maxulp(
+      self,
+  ):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 1.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    # Verify the difference is exactly 1 ULP
+    assert tree2[0][1] == value_where_ulp_is_1 + 1
+    try:
+      # Should pass since 1 ULP <= 2 ULP
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=2)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError for bfloat16')
+
+  def test_assert_trees_all_close_ulp_bfloat16_passes_values_maxulp_apart(self):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 1.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    try:
+      # Should pass since 1 ULP <= 1 ULP
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError for bfloat16')
+
+  def test_assert_trees_all_close_ulp_bfloat16_fails_values_gt_maxulp_apart(
+      self,
+  ):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    # This difference is 2 ULPs
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 2.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    err_msg = re.escape(
+        'Arrays are not almost equal up to 1 ULP for bfloat16 (max difference'
+        ' is 2.0 ULP)'
+    )
     err_regex = _get_err_regex(err_msg)
-    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
-      asserts.assert_trees_all_close_ulp(tree_bf16, tree_bf16)
-    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
-      asserts.assert_trees_all_close_ulp(tree_bf16, tree_f32)
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
 
   def test_assert_tree_has_only_ndarrays(self):
     # Check correct inputs.
