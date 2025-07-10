@@ -389,7 +389,7 @@ def assert_size(
     expected_sizes: Union[_ai.TShapeMatcher,
                           Sequence[_ai.TShapeMatcher]]) -> None:
   """Checks that the size of all inputs matches specified ``expected_sizes``.
-  
+
   Valid usages include:
 
   .. code-block:: python
@@ -404,7 +404,7 @@ def assert_size(
     inputs: An array or a sequence of arrays.
     expected_sizes: A sqeuence of expected sizes associated with each input,
       where the expected size is a sequence of integer and `None` dimensions;
-      if all inputs have same size, a single size may be passed as 
+      if all inputs have same size, a single size may be passed as
       ``expected_sizes``.
 
   Raises:
@@ -943,7 +943,7 @@ def assert_axis_dimension_lt(tensor: Array, axis: int, val: int) -> None:
 
   Args:
     tensor: A JAX Array.
-    axis: An integer specifiying with axis to assert.
+    axis: An integer specifiying which axis to assert.
     val: A value ``tensor.shape[axis]`` must be less than.
 
   Raises:
