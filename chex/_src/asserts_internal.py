@@ -377,11 +377,6 @@ def is_traceable(fn) -> bool:
         # api_boundary is a JAX wrapper for traced functions.
         return True
 
-      try:
-        if isinstance(fn_, jax.lib.xla_extension.PjitFunction):
-          return True
-      except AttributeError:
-        pass
     else:
       break
 
