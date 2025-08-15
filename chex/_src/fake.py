@@ -57,7 +57,7 @@ def set_n_cpu_devices(n: Optional[int] = None) -> None:
   This allows `jax.pmap` to be tested on a single-CPU platform.
   This utility only takes effect before XLA backends are initialized, i.e.
   before any JAX operation is executed (including `jax.devices()` etc.).
-  See https://github.com/google/jax/issues/1408.
+  See https://github.com/jax-ml/jax/issues/1408.
 
   Args:
     n: A required number of CPU devices (``FLAGS.chex_n_cpu_devices`` is used by
