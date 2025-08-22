@@ -1504,6 +1504,56 @@ class TreeAssertionsTest(parameterized.TestCase):
     self._assert_tree_structs_validation(asserts.assert_trees_all_equal_structs)
 
   @parameterized.named_parameters(
+      ('ints', [3, 2, 1]),
+      ('none', [3, None, 1]),
+      ('prefix1', [3, ...]),
+      ('prefix2', [3, 2, ...]),
+      ('prefix3', [3, 2, 1, ...]),
+      ('suffix1', [..., 1]),
+      ('suffix2', [..., 2, 1]),
+      ('suffix3', [..., 3, 2, 1]),
+  )
+  def test_assert_tree_shape_should_pass(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 1])}
+    asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('ints', [3, 4, 1]),
+      ('none', [2, None, 1]),
+      ('prefix', [3, 2]),
+      ('suffix', [2, 1]),
+  )
+  def test_assert_tree_shape_should_fail(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 1])}
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Tree leaf .+ has shape .+ but expected .+')):
+      asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('prefix', [3, 2, ...]),
+  )
+  def test_assert_tree_shape_mismatched_should_pass(self, shape):
+    tree = {
+        'x': {'y': np.zeros([3, 2, 1])},
+        'z': np.zeros([3, 2, 4]),
+        'w': np.zeros([3, 2]),
+    }
+    asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('matches_y', [3, 2, 1]),
+      ('matches_z', [3, 2, 4]),
+      ('matches_nothing', [3, 2, 5]),
+  )
+  def test_assert_tree_shape_mismatched_should_fail(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 4])}
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Tree leaf .+ has shape .+ but expected .+')):
+      asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
       ('scalars', ()),
       ('vectors', (3,)),
       ('matrices', (3, 2)),
