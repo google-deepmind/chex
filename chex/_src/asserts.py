@@ -1276,7 +1276,7 @@ def assert_tree_shape(
     if not _shape_matches(leaf.shape, expected_shape):
       errors.append((
           f"Tree leaf '{_ai.format_tree_path(path)}' has shape {leaf.shape}"
-          f" but expected {expected_shape}."
+          f" but expected {_ai.format_shape_matcher(expected_shape)}."
       ))
 
   for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
