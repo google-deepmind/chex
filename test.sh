@@ -27,10 +27,10 @@ source "${VENV_DIR}/bin/activate"
 python --version
 
 # Install dependencies.
-pip install --upgrade pip setuptools wheel
-pip install flake8 pytest-xdist pylint pylint-exit
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-test.txt
+python3 -m pip install --upgrade pip uv
+python3 -m uv pip install --upgrade pip setuptools wheel
+python3 -m uv pip install --upgrade flake8 pytest-xdist pylint pylint-exit
+python3 -m uv pip install --editable ".[test]"
 
 # Install the requested JAX version
 if [ "$JAX_VERSION" = "" ]; then
@@ -43,8 +43,13 @@ else
   pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 fi
 
+# Ensure chex was not installed by one of the dependencies above,
+# since if it is, the tests below will be run against that version instead of
+# the branch build.
+python3 -m uv pip uninstall chex
+
 # Lint with flake8.
-flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
+python3 -m flake8 `find chex -name '*.py' | xargs` --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 # Lint with pylint.
 PYLINT_ARGS="-efail -wfail -cfail -rfail"
@@ -62,34 +67,33 @@ pylint --rcfile=.pylintrc `find chex -name '*_test.py' | xargs` -d W0212,E1130,E
 rm .pylintrc
 
 # Build the package.
-python setup.py sdist
-pip wheel --verbose --no-deps --no-clean dist/chex*.tar.gz
-pip install chex*.whl
+python3 -m uv pip install build
+python3 -m build
+python3 -m pip wheel --no-deps dist/chex-*.tar.gz
+python3 -m pip install chex-*.whl
 
 # Check types with pytype.
 # Note: pytype does not support 3.11 as of 25.06.23
 # See https://github.com/google/pytype/issues/1308
 if [ `python -c 'import sys; print(sys.version_info.minor)'` -lt 11 ];
 then
-  pip install pytype
-  pytype `find chex/_src -name "*py" | xargs` -k
+  python3 -m pip install pytype
+  python3 -m pytype "chex" -j auto --keep-going --disable import-error
 fi;
 
 # Run tests using pytest.
 # Change directory to avoid importing the package from repo root.
-pip install -r requirements/requirements-test.txt
 cd _testing
 
 # Main tests.
-pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "not fake_set_n_cpu_devices_test"
+python3 -m pytest --numprocesses auto --pyargs chex -k "not fake_set_n_cpu_devices_test"
 
 # Isolate tests that use `chex.set_n_cpu_device()`.
-pytest -n "$(grep -c ^processor /proc/cpuinfo)" --pyargs chex -k "fake_set_n_cpu_devices_test"
+python3 -m pytest --numprocesses auto --pyargs chex -k "fake_set_n_cpu_devices_test"
 cd ..
 
 # Build Sphinx docs.
-
-pip install -r requirements/requirements-docs.txt
+python3 -m uv pip install --editable ".[docs]"
 cd docs
 make coverage_check
 make html

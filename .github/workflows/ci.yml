@@ -23,13 +23,10 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
         os: [ubuntu-latest]
         jax-version: ["newest"]
         include:
-          - python-version: "3.10"
-            os: "ubuntu-latest"
-            jax-version: "0.4.27"  # Keep this in sync with version in requirements.txt
           - python-version: "3.13"
             os: "ubuntu-latest"
             jax-version: "nightly"
