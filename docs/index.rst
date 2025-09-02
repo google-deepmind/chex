@@ -1,4 +1,4 @@
-:github_url: https://github.com/deepmind/chex/tree/master/docs
+:github_url: https://github.com/google-deepmind/chex/tree/main/docs
 
 Chex
 -----
@@ -11,14 +11,14 @@ This includes utils to help:
 * Debug (e.g. transforming pmaps in vmaps within a context manager).
 * Test JAX code across many variants (e.g. jitted vs non-jitted).
 
-Modules overview can be found `on GitHub <https://github.com/deepmind/chex#modules-overview>`_.
+Modules overview can be found `on GitHub <https://github.com/google-deepmind/chex#modules-overview>`_.
 
 Installation
 ------------
 
 Chex can be installed with pip directly from github, with the following command:
 
-``pip install git+git://github.com/deepmind/chex.git``
+``pip install git+git://github.com/google-deepmind/chex.git``
 
 or from PyPI:
 
@@ -35,19 +35,19 @@ Citing Chex
 
 This repository is part of the `DeepMind JAX Ecosystem <https://deepmind.com/blog/article/using-jax-to-accelerate-our-research>`_.
 
-To cite Chex please use the `DeepMind JAX Ecosystem citation <https://github.com/deepmind/jax/blob/main/deepmind2020jax.txt>`_.
+To cite Chex please use the `DeepMind JAX Ecosystem citation <https://github.com/google-deepmind/jax/blob/main/deepmind2020jax.txt>`_.
 
 Contribute
 ----------
 
-- `Issue tracker <https://github.com/deepmind/chex/issues>`_
-- `Source code <https://github.com/deepmind/chex/tree/master>`_
+- `Issue tracker <https://github.com/google-deepmind/chex/issues>`_
+- `Source code <https://github.com/google-deepmind/chex/tree/main>`_
 
 Support
 -------
 
 If you are having issues, please let us know by filing an issue on our
-`issue tracker <https://github.com/deepmind/chex/issues>`_.
+`issue tracker <https://github.com/google-deepmind/chex/issues>`_.
 
 License
 -------
