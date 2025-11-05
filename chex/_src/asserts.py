@@ -37,9 +37,11 @@ ArrayDType = pytypes.ArrayDType  # pylint:disable=invalid-name
 ArrayTree = pytypes.ArrayTree
 
 
+# pylint: disable=invalid-name
 _value_assertion = _ai.chex_assertion
 _static_assertion = functools.partial(
     _ai.chex_assertion, jittable_assert_fn=None)
+# pylint: enable=invalid-name
 
 
 def disable_asserts() -> None:

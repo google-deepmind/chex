@@ -109,6 +109,7 @@ def _ignore_axis_index_groups(fn):
   return _fake
 
 
+# pylint: disable=invalid-name
 _fake_all_gather = _ignore_axis_index_groups(jax.lax.all_gather)
 _fake_all_to_all = _ignore_axis_index_groups(jax.lax.all_to_all)
 _fake_psum = _ignore_axis_index_groups(jax.lax.psum)
@@ -116,6 +117,7 @@ _fake_pmean = _ignore_axis_index_groups(jax.lax.pmean)
 _fake_pmax = _ignore_axis_index_groups(jax.lax.pmax)
 _fake_pmin = _ignore_axis_index_groups(jax.lax.pmin)
 _fake_pswapaxes = _ignore_axis_index_groups(jax.lax.pswapaxes)
+# pylint: enable=invalid-name
 
 
 @functools.wraps(jax.pmap)

@@ -26,8 +26,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+# pylint: disable=invalid-name
 _get_err_regex = asserts_internal.get_err_regex
 _num_devices_available = asserts_internal.num_devices_available
+# pylint: enable=invalid-name
 
 
 def as_arrays(arrays):
