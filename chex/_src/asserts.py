@@ -1060,7 +1060,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree) -> None:
 # This is for backwards compatibility.
 def _check_sharding(x):
   if hasattr(jax, "Array") and isinstance(x, jax.Array):
-    if isinstance(x.sharding, jax.sharding.PmapSharding):
+    if not jax.typeof(x).sharding.is_fully_replicated:
       return True
     else:
       return len(x.sharding.device_set) > 1
