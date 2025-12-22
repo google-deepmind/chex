@@ -1860,7 +1860,15 @@ class EqualAssertionsTest(parameterized.TestCase):
     with self.assertRaises(AssertionError):
       asserts.assert_equal(first, second)
 
+class NotNoneAssertionsTest(parameterized.TestCase):
 
+    def test_assert_not_both_not_none(self):
+        asserts.assert_not_both_not_none(None, None)
+        asserts.assert_not_both_not_none(1, None)
+        asserts.assert_not_both_not_none(None, 1)
+
+        with self.assertRaises(AssertionError):
+            asserts.assert_not_both_not_none(1, 2)
 class IsDivisibleTest(parameterized.TestCase):
 
   def test_assert_is_divisible(self):
