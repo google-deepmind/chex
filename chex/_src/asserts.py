@@ -1060,10 +1060,13 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree) -> None:
 # This is for backwards compatibility.
 def _check_sharding(x):
   if hasattr(jax, "Array") and isinstance(x, jax.Array):
-    if not jax.typeof(x).sharding.is_fully_replicated:
-      return True
-    else:
-      return len(x.sharding.device_set) > 1
+    # Use x.sharding directly for concrete arrays.
+    sharding = getattr(x, 'sharding', None)
+    if sharding is not None:
+      if not sharding.is_fully_replicated:
+        return True
+      else:
+        return len(sharding.device_set) > 1
   # pytype: disable=attribute-error
   return (
       hasattr(jax, "pxla")
@@ -1184,8 +1187,8 @@ def assert_tree_is_on_device(tree: ArrayTree,
       if isinstance(leaf, jax.Array):
         if _check_sharding(leaf):
           errors.append((f"Tree leaf '{_ai.format_tree_path(path)}' is a "
-                         f"ShardedDeviceArray which are disallowed. "
-                         f" (type={type(leaf)})."))
+                         f"sharded JAX array (historically ShardedDeviceArray) "
+                         f"which are disallowed. (type={type(leaf)})."))
         else:  # DeviceArray and not ShardedDeviceArray
           # Check the platform.
           leaf_device = list(leaf.devices())[0]
