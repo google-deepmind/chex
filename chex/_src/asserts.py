@@ -830,7 +830,7 @@ def assert_type(
         f"got {len(inputs)} != {len(expected_types)}."
     )
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
-    dtype = np.result_type(x)
+    dtype = x.dtype if hasattr(x, "dtype") else np.result_type(x)
     if expected in {float, jnp.floating}:
       if not jnp.issubdtype(dtype, jnp.floating):
         errors.append((idx, dtype, expected))
