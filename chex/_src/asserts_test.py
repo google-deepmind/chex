@@ -1871,6 +1871,28 @@ class IsDivisibleTest(parameterized.TestCase):
       asserts.assert_is_divisible(7, 3)
 
 
+
+class NoneCheckTest(parameterized.TestCase):
+
+  def test_assert_not_both_not_none(self):
+    asserts.assert_not_both_not_none(None, None)
+    asserts.assert_not_both_not_none(1, None)
+    asserts.assert_not_both_not_none(None, 1)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('At most one')):
+      asserts.assert_not_both_not_none(1, 1)
+
+  def test_assert_not_both_none(self):
+    asserts.assert_not_both_none(1, None)
+    asserts.assert_not_both_none(None, 1)
+    asserts.assert_not_both_none(1, 1)
+
+    with self.assertRaisesRegex(AssertionError,
+                                _get_err_regex('At least one')):
+      asserts.assert_not_both_none(None, None)
+
+
 if __name__ == '__main__':
   jax.config.update('jax_numpy_rank_promotion', 'raise')
   absltest.main()
