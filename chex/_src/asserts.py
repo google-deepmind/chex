@@ -216,9 +216,30 @@ def assert_gpu_available(backend: Optional[str] = None) -> None:
     raise AssertionError(f"No GPU devices available in {jax.devices(backend)}.")
 
 
-@_static_assertion
-def assert_equal(first: Any, second: Any) -> None:
-  """Checks that the two objects are equal as determined by the `==` operator.
+def _assert_equal_static(first: Any, second: Any) -> None:
+  """Static (host) implementation of assert_equal."""
+  unittest.TestCase().assertEqual(first, second)
+
+
+def _assert_equal_jittable(first: Any, second: Any) -> Array:
+  """Jittable implementation of assert_equal for use with chexify."""
+  first_arr = jnp.asarray(first)
+  second_arr = jnp.asarray(second)
+  are_equal = jnp.array_equal(first_arr, second_arr)
+  checkify.check(are_equal, "Values are not equal: {first} != {second}.",
+                 first=first_arr, second=second_arr)
+  return are_equal
+
+
+assert_equal = _value_assertion(
+    assert_fn=_assert_equal_static,
+    jittable_assert_fn=_assert_equal_jittable,
+    name="assert_equal",
+)
+assert_equal.__doc__ = """Checks that the two objects are equal.
+
+  When used inside a ``@chex.chexify`` decorated function, this assertion
+  supports JAX tracing and can compare traced values.
 
   Arrays with more than one element cannot be compared.
   Use ``assert_trees_all_close`` to compare arrays.
@@ -230,7 +251,6 @@ def assert_equal(first: Any, second: Any) -> None:
   Raises:
     AssertionError: If not ``(first == second)``.
   """
-  unittest.TestCase().assertEqual(first, second)
 
 
 @_static_assertion
