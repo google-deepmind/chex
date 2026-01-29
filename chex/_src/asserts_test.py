@@ -1004,6 +1004,24 @@ class TreeAssertionsTest(parameterized.TestCase):
     self.assertTrue(
         asserts._assert_trees_all_close_jittable(tree1, tree2, rtol=1e-6))
 
+  def test_assert_trees_all_close_strict_mode(self):
+    # See 'notes' section of
+    # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
+    # for details about the 'strict' mode of `numpy.testing.assert_allclose`.
+    tree1 = {'a': jnp.array([1.0], dtype=jnp.float32), 'b': jnp.array(0.0)}
+    tree2 = {'a': jnp.array(1.0, dtype=jnp.float32), 'b': jnp.array(0.0)}
+
+    asserts.assert_trees_all_close(tree1, tree2)
+    asserts.assert_trees_all_close(tree1, tree2, strict=False)
+    err_regex = _get_err_regex(r'Trees 0 and 1 differ in leaves \'a\'')
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close(tree1, tree2, strict=True)
+
+    # strict=True raises NotImplementedError for jittable version
+    err_regex_not_impl = r'`strict=True` is not implemented'
+    with self.assertRaisesRegex(NotImplementedError, err_regex_not_impl):
+      asserts._assert_trees_all_close_jittable(tree1, tree2, strict=True)
+
   def test_assert_trees_all_close_bfloat16(self):
     tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
     tree2 = {

@@ -1641,9 +1641,12 @@ assert_trees_all_equal = _value_assertion(
 )
 
 
-def _assert_trees_all_close_static(*trees: ArrayTree,
-                                   rtol: float = 1e-06,
-                                   atol: float = .0) -> None:
+def _assert_trees_all_close_static(
+    *trees: ArrayTree,
+    rtol: float = 1e-06,
+    atol: float = 0.0,
+    strict: bool = False,
+) -> None:
   """Checks that all trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired up to
@@ -1653,6 +1656,9 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
     *trees: A sequence of (at least 2) trees with array leaves.
     rtol: A relative tolerance.
     atol: An absolute tolerance.
+    strict: If True, raise an AssertionError when either the shape or the data
+      type of the arguments does not match. The special handling for scalars
+      mentioned in the Notes section of `np.allclose` is disabled.
 
   Raises:
     AssertionError: If actual and desired values are not equal up to
@@ -1664,7 +1670,9 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
         _ai.jnp_to_np_array(arr_2),
         rtol=rtol,
         atol=atol,
-        err_msg="Error in value equality check: Values not approximately equal")
+        err_msg="Error in value equality check: Values not approximately equal",
+        strict=strict,
+    )
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:
@@ -1685,10 +1693,19 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
   assert_trees_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
 
 
-def _assert_trees_all_close_jittable(*trees: ArrayTree,
-                                     rtol: float = 1e-06,
-                                     atol: float = .0) -> Array:
+def _assert_trees_all_close_jittable(
+    *trees: ArrayTree,
+    rtol: float = 1e-06,
+    atol: float = 0.0,
+    strict: bool = False,
+) -> Array:
   """A jittable version of `_assert_trees_all_close_static`."""
+  if strict:
+    raise NotImplementedError(
+        "`strict=True` is not implemented by"
+        " `_assert_trees_all_close_jittable`."
+    )
+
   err_msg_template = (
       f"Values not approximately equal ({rtol=}, {atol=}): "
       + "{arr_1} != {arr_2}."
