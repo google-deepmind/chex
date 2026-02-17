@@ -37,9 +37,11 @@ ArrayDType = pytypes.ArrayDType  # pylint:disable=invalid-name
 ArrayTree = pytypes.ArrayTree
 
 
+# pylint: disable=invalid-name
 _value_assertion = _ai.chex_assertion
 _static_assertion = functools.partial(
     _ai.chex_assertion, jittable_assert_fn=None)
+# pylint: enable=invalid-name
 
 
 def disable_asserts() -> None:
@@ -389,7 +391,7 @@ def assert_size(
     expected_sizes: Union[_ai.TShapeMatcher,
                           Sequence[_ai.TShapeMatcher]]) -> None:
   """Checks that the size of all inputs matches specified ``expected_sizes``.
-  
+
   Valid usages include:
 
   .. code-block:: python
@@ -404,7 +406,7 @@ def assert_size(
     inputs: An array or a sequence of arrays.
     expected_sizes: A sqeuence of expected sizes associated with each input,
       where the expected size is a sequence of integer and `None` dimensions;
-      if all inputs have same size, a single size may be passed as 
+      if all inputs have same size, a single size may be passed as
       ``expected_sizes``.
 
   Raises:
@@ -828,7 +830,7 @@ def assert_type(
         f"got {len(inputs)} != {len(expected_types)}."
     )
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
-    dtype = np.result_type(x)
+    dtype = x.dtype if hasattr(x, "dtype") else np.result_type(x)
     if expected in {float, jnp.floating}:
       if not jnp.issubdtype(dtype, jnp.floating):
         errors.append((idx, dtype, expected))
@@ -943,7 +945,7 @@ def assert_axis_dimension_lt(tensor: Array, axis: int, val: int) -> None:
 
   Args:
     tensor: A JAX Array.
-    axis: An integer specifiying with axis to assert.
+    axis: An integer specifiying which axis to assert.
     val: A value ``tensor.shape[axis]`` must be less than.
 
   Raises:
@@ -1058,7 +1060,7 @@ def assert_tree_has_only_ndarrays(tree: ArrayTree) -> None:
 # This is for backwards compatibility.
 def _check_sharding(x):
   if hasattr(jax, "Array") and isinstance(x, jax.Array):
-    if isinstance(x.sharding, jax.sharding.PmapSharding):
+    if not jax.typeof(x).sharding.is_fully_replicated:
       return True
     else:
       return len(x.sharding.device_set) > 1
@@ -1250,6 +1252,34 @@ def assert_tree_is_sharded(tree: ArrayTree,
             f"Tree leaf '{_ai.format_tree_path(path)}' is not a "
             f"jax.Array (type={type(leaf)})."
         )
+
+  for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
+  if errors:
+    raise AssertionError("\n".join(errors))
+
+
+@_static_assertion
+def assert_tree_shape(
+    tree: ArrayTree, expected_shape: _ai.TShapeMatcher
+) -> None:
+  """Checks that all ``tree`` leaves match the ``expected_shape``.
+
+  Args:
+    tree: A tree to check.
+    expected_shape: An expected shape. See ``chex.assert_shape`` for details.
+
+  Raises:
+    AssertionError: If some leaf's shape doesn't match ``expected_shape``.
+  """
+  errors = []
+
+  def _assert_fn(path, leaf):
+    if not _shape_matches(leaf.shape, expected_shape):
+      errors.append((
+          f"Tree leaf '{_ai.format_tree_path(path)}' has shape {leaf.shape}"
+          f" but expected {_ai.format_shape_matcher(expected_shape)}."
+      ))
 
   for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
     _assert_fn(_ai.convert_jax_path_to_dm_path(path), leaf)
@@ -1611,9 +1641,12 @@ assert_trees_all_equal = _value_assertion(
 )
 
 
-def _assert_trees_all_close_static(*trees: ArrayTree,
-                                   rtol: float = 1e-06,
-                                   atol: float = .0) -> None:
+def _assert_trees_all_close_static(
+    *trees: ArrayTree,
+    rtol: float = 1e-06,
+    atol: float = 0.0,
+    strict: bool = False,
+) -> None:
   """Checks that all trees have leaves with approximately equal values.
 
   This compares the difference between values of actual and desired up to
@@ -1623,6 +1656,9 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
     *trees: A sequence of (at least 2) trees with array leaves.
     rtol: A relative tolerance.
     atol: An absolute tolerance.
+    strict: If True, raise an AssertionError when either the shape or the data
+      type of the arguments does not match. The special handling for scalars
+      mentioned in the Notes section of `np.allclose` is disabled.
 
   Raises:
     AssertionError: If actual and desired values are not equal up to
@@ -1634,7 +1670,9 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
         _ai.jnp_to_np_array(arr_2),
         rtol=rtol,
         atol=atol,
-        err_msg="Error in value equality check: Values not approximately equal")
+        err_msg="Error in value equality check: Values not approximately equal",
+        strict=strict,
+    )
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:
@@ -1655,10 +1693,19 @@ def _assert_trees_all_close_static(*trees: ArrayTree,
   assert_trees_all_equal_comparator(cmp_fn, err_msg_fn, *trees)
 
 
-def _assert_trees_all_close_jittable(*trees: ArrayTree,
-                                     rtol: float = 1e-06,
-                                     atol: float = .0) -> Array:
+def _assert_trees_all_close_jittable(
+    *trees: ArrayTree,
+    rtol: float = 1e-06,
+    atol: float = 0.0,
+    strict: bool = False,
+) -> Array:
   """A jittable version of `_assert_trees_all_close_static`."""
+  if strict:
+    raise NotImplementedError(
+        "`strict=True` is not implemented by"
+        " `_assert_trees_all_close_jittable`."
+    )
+
   err_msg_template = (
       f"Values not approximately equal ({rtol=}, {atol=}): "
       + "{arr_1} != {arr_2}."
@@ -1673,6 +1720,20 @@ assert_trees_all_close = _value_assertion(
     assert_fn=_assert_trees_all_close_static,
     jittable_assert_fn=_assert_trees_all_close_jittable,
     name="assert_trees_all_close")
+
+
+def _bfloat16_nulp_diff(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+  """Number of representable bf16 points between each item in x and y."""
+  rx = x.view(np.int16)
+  ry = y.view(np.int16)
+  # The constant for two's complement adjustment, same as for float16.
+  comp = np.int16(-(2**15))
+  # Transform the integer representations of negative numbers, to make the
+  # integer representation monotonic across the full range of floats.
+  rx = np.where(rx < 0, comp - rx, rx)
+  ry = np.where(ry < 0, comp - ry, ry)
+  diff = np.abs(rx.astype(np.int32) - ry.astype(np.int32))
+  return diff.astype(np.float64)
 
 
 def _assert_trees_all_close_ulp_static(
@@ -1709,8 +1770,7 @@ def _assert_trees_all_close_ulp_static(
   identical, while still allowing reasonable wiggle room for small differences
   due to e.g. different operator orderings.
 
-  Note that this function is not currently supported within JIT contexts,
-  and does not currently support bfloat16 dtypes.
+  Note that this function is not currently supported within JIT contexts.
 
   Args:
     *trees: A sequence of (at least 2) trees with array leaves.
@@ -1721,23 +1781,23 @@ def _assert_trees_all_close_ulp_static(
       specified tolerance.
   """
   def assert_fn(arr_1, arr_2):
-    if (
-        getattr(arr_1, "dtype", None) == jnp.bfloat16
-        or getattr(arr_2, "dtype", None) == jnp.bfloat16
-    ):
-      # jnp_to_np_array currently converts bfloat16 to float32, which will cause
-      # assert_array_max_ulp to give incorrect results -
-      # and assert_array_max_ulp itself does not currently support bfloat16:
-      # https://github.com/jax-ml/ml_dtypes/issues/56
-      raise ValueError(
-          f"{_ai.ERR_PREFIX}ULP assertions are not currently supported for "
-          "bfloat16."
-      )
-    np.testing.assert_array_max_ulp(
-        _ai.jnp_to_np_array(arr_1),
-        _ai.jnp_to_np_array(arr_2),
-        maxulp=maxulp,
-    )
+    # Get the dtype from the original JAX array, not the NumPy-converted one.
+    dtype = getattr(arr_1, "dtype", None)
+
+    # Convert JAX arrays to NumPy arrays for comparison.
+    np_arr_1 = _ai.jnp_to_np_array(arr_1)
+    np_arr_2 = _ai.jnp_to_np_array(arr_2)
+
+    if dtype == jnp.bfloat16:
+      ret = _bfloat16_nulp_diff(np_arr_1, np_arr_2)
+      if not np.all(ret <= maxulp):
+        raise AssertionError(
+            f"Arrays are not almost equal up to {maxulp} ULP for bfloat16 "
+            f"(max difference is {np.max(ret)} ULP)"
+        )
+    else:
+      # For all other supported float types, use NumPy's implementation.
+      np.testing.assert_array_max_ulp(np_arr_1, np_arr_2, maxulp=maxulp)
 
   def cmp_fn(arr_1, arr_2) -> bool:
     try:

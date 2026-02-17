@@ -40,6 +40,7 @@ Assertions
     assert_tree_is_on_host
     assert_tree_is_sharded
     assert_tree_no_nones
+    assert_tree_shape
     assert_tree_shape_prefix
     assert_tree_shape_suffix
     assert_trees_all_close
@@ -90,6 +91,7 @@ Tree Assertions
 .. autofunction:: assert_tree_is_on_host
 .. autofunction:: assert_tree_is_sharded
 .. autofunction:: assert_tree_no_nones
+.. autofunction:: assert_tree_shape
 .. autofunction:: assert_tree_shape_prefix
 .. autofunction:: assert_tree_shape_suffix
 .. autofunction:: assert_trees_all_close

@@ -83,7 +83,7 @@ def _check_if_hanging_assertions():
 
 
 # Public API.
-ChexifyChecks = _ChexifyChecks()
+ChexifyChecks = _ChexifyChecks()  # pylint: disable=invalid-name
 
 
 def chexify(

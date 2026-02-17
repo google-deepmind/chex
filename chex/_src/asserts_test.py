@@ -26,8 +26,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+# pylint: disable=invalid-name
 _get_err_regex = asserts_internal.get_err_regex
 _num_devices_available = asserts_internal.num_devices_available
+# pylint: enable=invalid-name
 
 
 def as_arrays(arrays):
@@ -1002,6 +1004,24 @@ class TreeAssertionsTest(parameterized.TestCase):
     self.assertTrue(
         asserts._assert_trees_all_close_jittable(tree1, tree2, rtol=1e-6))
 
+  def test_assert_trees_all_close_strict_mode(self):
+    # See 'notes' section of
+    # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
+    # for details about the 'strict' mode of `numpy.testing.assert_allclose`.
+    tree1 = {'a': jnp.array([1.0], dtype=jnp.float32), 'b': jnp.array(0.0)}
+    tree2 = {'a': jnp.array(1.0, dtype=jnp.float32), 'b': jnp.array(0.0)}
+
+    asserts.assert_trees_all_close(tree1, tree2)
+    asserts.assert_trees_all_close(tree1, tree2, strict=False)
+    err_regex = _get_err_regex(r'Trees 0 and 1 differ in leaves \'a\'')
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close(tree1, tree2, strict=True)
+
+    # strict=True raises NotImplementedError for jittable version
+    err_regex_not_impl = r'`strict=True` is not implemented'
+    with self.assertRaisesRegex(NotImplementedError, err_regex_not_impl):
+      asserts._assert_trees_all_close_jittable(tree1, tree2, strict=True)
+
   def test_assert_trees_all_close_bfloat16(self):
     tree1 = {'a': jnp.asarray([0.8, 1.6], dtype=jnp.bfloat16)}
     tree2 = {
@@ -1082,15 +1102,74 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError, err_regex):
       asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
 
-  def test_assert_trees_all_close_ulp_fails_bfloat16(self):
-    tree_f32 = (jnp.array([0.0]),)
-    tree_bf16 = (jnp.array([0.0], dtype=jnp.bfloat16),)
-    err_msg = 'ULP assertions are not currently supported for bfloat16.'
+  def test_assert_trees_all_close_ulp_bfloat16_passes_values_within_maxulp(
+      self,
+  ):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 1.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    # Verify the difference is exactly 1 ULP
+    assert tree2[0][1] == value_where_ulp_is_1 + 1
+    try:
+      # Should pass since 1 ULP <= 2 ULP
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=2)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError for bfloat16')
+
+  def test_assert_trees_all_close_ulp_bfloat16_passes_values_maxulp_apart(self):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 1.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    try:
+      # Should pass since 1 ULP <= 1 ULP
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
+    except AssertionError:
+      self.fail('assert_trees_all_close_ulp raised AssertionError for bfloat16')
+
+  def test_assert_trees_all_close_ulp_bfloat16_fails_values_gt_maxulp_apart(
+      self,
+  ):
+    # jnp.spacing(jnp.bfloat16(128.)) == 1.0
+    value_where_ulp_is_1 = jnp.bfloat16(128)
+    tree1 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1], dtype=jnp.bfloat16
+        ),
+    )
+    # This difference is 2 ULPs
+    tree2 = (
+        jnp.array(
+            [value_where_ulp_is_1, value_where_ulp_is_1 + 2.0],
+            dtype=jnp.bfloat16,
+        ),
+    )
+    err_msg = re.escape(
+        'Arrays are not almost equal up to 1 ULP for bfloat16 (max difference'
+        ' is 2.0 ULP)'
+    )
     err_regex = _get_err_regex(err_msg)
-    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
-      asserts.assert_trees_all_close_ulp(tree_bf16, tree_bf16)
-    with self.assertRaisesRegex(ValueError, err_regex):  # pylint: disable=g-error-prone-assert-raises
-      asserts.assert_trees_all_close_ulp(tree_bf16, tree_f32)
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      asserts.assert_trees_all_close_ulp(tree1, tree2, maxulp=1)
 
   def test_assert_tree_has_only_ndarrays(self):
     # Check correct inputs.
@@ -1156,18 +1235,20 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('\'b\' is not an ndarray')):
       asserts.assert_tree_is_on_host({'a': np.zeros(1), 'b': 1})
 
-    # ShardedArrays are disallowed.
+    # NOTE: With only a single device, device_put_replicated no longer creates
+    # a "sharded" array (device_set has length 1). Instead, the array is treated
+    # as a regular device array, so we get "CPU devices are disallowed" errors.
     with self.assertRaisesRegex(
-        AssertionError, _get_err_regex('sharded arrays are disallowed')
+        AssertionError, _get_err_regex("'a' resides on.*CPU.*disallowed")
     ):
       asserts.assert_tree_is_on_host(
           {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
           allow_cpu_device=False,
       )
 
-    # ShardedArrays on CPUs, CPUs disallowed.
+    # Same as above - single-device array is not considered sharded.
     with self.assertRaisesRegex(
-        AssertionError, _get_err_regex("'a' is sharded and resides on.*CPU")
+        AssertionError, _get_err_regex("'a' resides on.*CPU.*disallowed")
     ):
       asserts.assert_tree_is_on_host(
           {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
@@ -1256,11 +1337,10 @@ class TreeAssertionsTest(parameterized.TestCase):
                                 _get_err_regex('\'b\' has unexpected type')):
       asserts.assert_tree_is_on_device({'a': jnp.zeros(1), 'b': np.ones(3)})
 
-    with self.assertRaisesRegex(AssertionError,
-                                _get_err_regex('\'a\' is a ShardedDeviceArra')):
-      # ShardedArrays are disallowed.
-      asserts.assert_tree_is_on_device(
-          {'a': jax.device_put_replicated(np.zeros(1), (cpu,))}, device=cpu)
+    # NOTE: With only a single device, device_put_replicated no longer creates
+    # a "sharded" array (device_set has length 1), so it passes through as a
+    # regular device array. The ShardedDeviceArray rejection test requires
+    # multiple devices, which is covered in test_assert_tree_is_sharded.
 
   def test_assert_tree_is_sharded(self):
     np_tree = {'a': np.zeros(1), 'b': np.ones(3)}
@@ -1268,22 +1348,19 @@ class TreeAssertionsTest(parameterized.TestCase):
     def _format(*devs):
       return re.escape(f'{devs}')
 
-    # Check single-device case.
+    # NOTE: With only a single device, device_put_replicated no longer creates
+    # a "sharded" array (device_set has length 1). The array is treated as a
+    # regular single-device array.
     cpu = jax.local_devices(backend='cpu')[0]
     cpu_tree = jax.device_put_replicated(np_tree, (cpu,))
 
-    asserts.assert_tree_is_sharded(cpu_tree, devices=(cpu,))
+    # Single-device array is NOT considered sharded.
+    with self.assertRaisesRegex(
+        AssertionError, _get_err_regex(r"'a' is not sharded")):
+      asserts.assert_tree_is_sharded(cpu_tree, devices=(cpu,))
+
+    # Empty tree always passes.
     asserts.assert_tree_is_sharded((), devices=(cpu,))
-
-    with self.assertRaisesRegex(
-        AssertionError, _get_err_regex(r'\'a\' is sharded.*expected \(\)')):
-      asserts.assert_tree_is_sharded(cpu_tree, devices=())
-
-    with self.assertRaisesRegex(
-        AssertionError,
-        _get_err_regex(f'\'a\' is sharded across {_format(cpu)}.*'
-                       f'expected {_format(cpu, cpu)}')):
-      asserts.assert_tree_is_sharded(cpu_tree, devices=(cpu, cpu))
 
     # Check multiple-devices case (if available).
     if _num_devices_available('tpu') > 1:
@@ -1299,22 +1376,16 @@ class TreeAssertionsTest(parameterized.TestCase):
 
       # Wrong device.
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'a\' is sharded across {_format(tpu_1)}.*'
-                         f'expected {_format(tpu_2)}')):
+          AssertionError, _get_err_regex("'a' is not sharded")):
         asserts.assert_tree_is_sharded(tpu_1_tree, devices=(tpu_2,))
 
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'a\' is sharded across {_format(cpu)}.*'
-                         f'expected {_format(tpu_2)}')):
+          AssertionError, _get_err_regex("'a' is not sharded")):
         asserts.assert_tree_is_sharded(cpu_tree, devices=(tpu_2,))
 
       # Too many devices.
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'a\' is sharded across {_format(tpu_1)}.*'
-                         f'expected {_format(tpu_1, tpu_2)}')):
+          AssertionError, _get_err_regex("'a' is not sharded")):
         asserts.assert_tree_is_sharded(tpu_1_tree, devices=(tpu_1, tpu_2))
 
       with self.assertRaisesRegex(
@@ -1335,20 +1406,14 @@ class TreeAssertionsTest(parameterized.TestCase):
       mixed_tree = (tpu_1_tree, tpu_2_tree)
 
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'0/a\' is sharded across {_format(tpu_1)}.*'
-                         f'expected {_format(tpu_2)}')):
+          AssertionError, _get_err_regex("'0/a' is not sharded")):
         asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_2,))
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'1/a\' is sharded across {_format(tpu_2)}.*'
-                         f'expected {_format(tpu_1)}')):
+          AssertionError, _get_err_regex("'1/a' is not sharded")):
         asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_1,))
 
       with self.assertRaisesRegex(
-          AssertionError,
-          _get_err_regex(f'\'0/a\' is sharded across {_format(tpu_1)}.*'
-                         f'expected {_format(tpu_1, tpu_2)}')):
+          AssertionError, _get_err_regex("'0/a' is not sharded")):
         asserts.assert_tree_is_sharded(mixed_tree, devices=(tpu_1, tpu_2))
 
     # Check incorrect inputs.
@@ -1443,6 +1508,56 @@ class TreeAssertionsTest(parameterized.TestCase):
     asserts.assert_trees_all_equal_structs(tree1, tree2, tree2, tree1)
     asserts.assert_trees_all_equal_structs(tree3, tree3)
     self._assert_tree_structs_validation(asserts.assert_trees_all_equal_structs)
+
+  @parameterized.named_parameters(
+      ('ints', [3, 2, 1]),
+      ('none', [3, None, 1]),
+      ('prefix1', [3, ...]),
+      ('prefix2', [3, 2, ...]),
+      ('prefix3', [3, 2, 1, ...]),
+      ('suffix1', [..., 1]),
+      ('suffix2', [..., 2, 1]),
+      ('suffix3', [..., 3, 2, 1]),
+  )
+  def test_assert_tree_shape_should_pass(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 1])}
+    asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('ints', [3, 4, 1]),
+      ('none', [2, None, 1]),
+      ('prefix', [3, 2]),
+      ('suffix', [2, 1]),
+  )
+  def test_assert_tree_shape_should_fail(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 1])}
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Tree leaf .+ has shape .+ but expected .+')):
+      asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('prefix', [3, 2, ...]),
+  )
+  def test_assert_tree_shape_mismatched_should_pass(self, shape):
+    tree = {
+        'x': {'y': np.zeros([3, 2, 1])},
+        'z': np.zeros([3, 2, 4]),
+        'w': np.zeros([3, 2]),
+    }
+    asserts.assert_tree_shape(tree, shape)
+
+  @parameterized.named_parameters(
+      ('matches_y', [3, 2, 1]),
+      ('matches_z', [3, 2, 4]),
+      ('matches_nothing', [3, 2, 5]),
+  )
+  def test_assert_tree_shape_mismatched_should_fail(self, shape):
+    tree = {'x': {'y': np.zeros([3, 2, 1])}, 'z': np.zeros([3, 2, 4])}
+    with self.assertRaisesRegex(
+        AssertionError,
+        _get_err_regex('Tree leaf .+ has shape .+ but expected .+')):
+      asserts.assert_tree_shape(tree, shape)
 
   @parameterized.named_parameters(
       ('scalars', ()),

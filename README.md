@@ -1,5 +1,7 @@
 # Chex
 
+<!-- disableFinding(SNIPPET_INVALID_LANGUAGE) -->
+
 ![CI status](https://github.com/deepmind/chex/workflows/ci/badge.svg)
 ![docs](https://readthedocs.org/projects/chex/badge/?version=latest)
 ![pypi](https://img.shields.io/pypi/v/chex)
@@ -404,6 +406,26 @@ it in multi-device regime. Note that **all** tests within a module will have an
 access to `N` devices.
 
 More examples can be found in [variants_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/variants_test.py), [fake_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_test.py) and [fake_set_n_cpu_devices_test.py](https://github.com/deepmind/chex/blob/master/chex/_src/fake_set_n_cpu_devices_test.py).
+
+### Detecting Use of the Wrong Back-End ([restrict_backends.py](https://github.com/deepmind/chex/blob/master/chex/_src/restrict_backends.py))
+
+Sometimes, certain JAX code needs to run in an environment where an accelerator
+is present but reserved for other purposes. Typically one would use
+`jax.jit(..., backend='cpu')` to keep the code away from the accelerator, but
+it is hard to check by hand that this has been done without exception
+throughout an entire subsystem. Then, `restrict_backends()` can be used to
+detect any overlooked case and report it by raising an exception.
+
+`restrict_backends()` is a context manager that objects to JAX compilation for
+specified backends. For example:
+
+```python
+  with chex.restrict_backends(allowed=['cpu']):
+    call_some_jax_subsystem_that_must_only_run_on_cpu()
+
+  with chex.restrict_backends(forbidden=['tpu']):
+    call_some_other_subsystem_that_must_not_touch_any_tpu()
+```
 
 ### Using named dimension sizes.
 

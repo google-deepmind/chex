@@ -38,10 +38,12 @@ FLAGS = flags.FLAGS
 
 ArrayBatched = pytypes.ArrayBatched
 
+# pylint: disable=invalid-name
 DEFAULT_FN = lambda arg_0, arg_1: arg_1 - arg_0
 DEFAULT_PARAMS = ((1, 2, 1), (4, 6, 2))
 DEFAULT_NDARRAY_PARAMS_SHAPE = (5, 7)
 DEFAULT_NAMED_PARAMS = (('case_0', 1, 2, 1), ('case_1', 4, 6, 2))
+# pylint: enable=invalid-name
 
 make_suite = unittest.defaultTestLoader.loadTestsFromTestCase
 
