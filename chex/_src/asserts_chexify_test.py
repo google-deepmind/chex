@@ -37,6 +37,18 @@ chexify_async = functools.partial(asserts_chexify.chexify, async_check=True)
 chexify_sync = functools.partial(asserts_chexify.chexify, async_check=False)
 
 
+def _device_put_replicated(x, devices):
+  mesh = jax.sharding.Mesh(
+      np.array(devices), axis_names=('_device_put_replicated',)
+  )
+  sharding = jax.sharding.NamedSharding(
+      mesh, jax.sharding.PartitionSpec('_device_put_replicated')
+  )
+  return jax.tree_util.tree_map(
+      lambda v: jax.device_put(np.stack([v] * len(devices)), sharding), x
+  )
+
+
 def get_chexify_err_regex(name, msg):
   return re.escape(_ai.get_chexify_err_message(name, 'ANY')).replace(
       'ANY', f'.*{msg}.*'
@@ -401,8 +413,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
             'c': np.array([[5, -1] for _ in range(10)])
         }
     }
-    (x_pos, x_with_neg) = jax.device_put_replicated((x_pos, x_with_neg),
-                                                    devices)
+    x_pos, x_with_neg = _device_put_replicated((x_pos, x_with_neg), devices)
 
     all_valid_args = ((x_pos, x_pos),)
     all_invalid_args = (

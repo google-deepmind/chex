@@ -28,6 +28,7 @@ from chex._src import pytypes
 import jax
 from jax import tree_util
 import jax.numpy as jnp
+import numpy as np
 import toolz
 
 FLAGS = flags.FLAGS
@@ -550,7 +551,9 @@ def _with_pmap(fn,
       x = jnp.asarray(x)
       x = jnp.broadcast_to(x, (n_devices_,) + x.shape)
       if not isinstance(x, jax.core.Tracer):
-        return jax.device_put_sharded(list(x), devices_)
+        mesh = jax.sharding.Mesh(np.array(devices_), ("_device_put_sharded",))
+        sharding = jax.NamedSharding(mesh, jax.P("_device_put_sharded"))
+        return jax.device_put(jnp.stack(list(x)), sharding)
       return x
 
     if broadcast_args_to_devices:

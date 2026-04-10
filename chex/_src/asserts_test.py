@@ -44,6 +44,18 @@ def emplace(arrays, dtype):
   return jnp.array(arrays, dtype=dtype)
 
 
+def _device_put_replicated(x, devices):
+  mesh = jax.sharding.Mesh(
+      np.array(devices), axis_names=('_device_put_replicated',)
+  )
+  sharding = jax.sharding.NamedSharding(
+      mesh, jax.sharding.PartitionSpec('_device_put_replicated')
+  )
+  return jax.tree_util.tree_map(
+      lambda v: jax.device_put(np.stack([v] * len(devices)), sharding), x
+  )
+
+
 class AssertsSwitchTest(parameterized.TestCase):
   """Tests for enable/disable_asserts."""
 
@@ -1214,7 +1226,7 @@ class TreeAssertionsTest(parameterized.TestCase):
 
     # Check sharded Jax arrays on CPUs.
     asserts.assert_tree_is_on_host(
-        {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
+        {'a': _device_put_replicated(np.zeros(1), (cpu,))},
         allow_cpu_device=True,
         allow_sharded_arrays=True,
     )
@@ -1242,7 +1254,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         AssertionError, _get_err_regex("'a' resides on.*CPU.*disallowed")
     ):
       asserts.assert_tree_is_on_host(
-          {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
+          {'a': _device_put_replicated(np.zeros(1), (cpu,))},
           allow_cpu_device=False,
       )
 
@@ -1251,7 +1263,7 @@ class TreeAssertionsTest(parameterized.TestCase):
         AssertionError, _get_err_regex("'a' resides on.*CPU.*disallowed")
     ):
       asserts.assert_tree_is_on_host(
-          {'a': jax.device_put_replicated(np.zeros(1), (cpu,))},
+          {'a': _device_put_replicated(np.zeros(1), (cpu,))},
           allow_cpu_device=False,
           allow_sharded_arrays=True,
       )
@@ -1352,7 +1364,7 @@ class TreeAssertionsTest(parameterized.TestCase):
     # a "sharded" array (device_set has length 1). The array is treated as a
     # regular single-device array.
     cpu = jax.local_devices(backend='cpu')[0]
-    cpu_tree = jax.device_put_replicated(np_tree, (cpu,))
+    cpu_tree = _device_put_replicated(np_tree, (cpu,))
 
     # Single-device array is NOT considered sharded.
     with self.assertRaisesRegex(
@@ -1366,10 +1378,10 @@ class TreeAssertionsTest(parameterized.TestCase):
     if _num_devices_available('tpu') > 1:
       tpu_1, tpu_2 = jax.devices('tpu')[:2]
 
-      tpu_1_tree = jax.device_put_replicated(np_tree, (tpu_1,))
-      tpu_2_tree = jax.device_put_replicated(np_tree, (tpu_2,))
-      tpu_1_2_tree = jax.device_put_replicated(np_tree, (tpu_1, tpu_2))
-      tpu_2_1_tree = jax.device_put_replicated(np_tree, (tpu_2, tpu_1))
+      tpu_1_tree = _device_put_replicated(np_tree, (tpu_1,))
+      tpu_2_tree = _device_put_replicated(np_tree, (tpu_2,))
+      tpu_1_2_tree = _device_put_replicated(np_tree, (tpu_1, tpu_2))
+      tpu_2_1_tree = _device_put_replicated(np_tree, (tpu_2, tpu_1))
 
       asserts.assert_tree_is_sharded(tpu_1_2_tree, devices=(tpu_1, tpu_2))
       asserts.assert_tree_is_sharded(tpu_2_1_tree, devices=(tpu_2, tpu_1))
