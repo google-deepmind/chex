@@ -1606,7 +1606,7 @@ def _assert_trees_all_equal_static(
       dtype_2 = (
           arr_2.dtype
           if isinstance(arr_2, jax.Array)
-          else np.asarray(arr_1).dtype
+          else np.asarray(arr_2).dtype
       )
       return f"{str(e)} \nOriginal dtypes: {dtype_1}, {dtype_2}"
     return ""

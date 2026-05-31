@@ -946,6 +946,13 @@ class TreeAssertionsTest(parameterized.TestCase):
     with self.assertRaisesRegex(AssertionError, err_regex):
       asserts.assert_trees_all_equal(tree1, tree2)  # Fail: not equal
 
+  def test_assert_trees_all_equal_reports_both_dtypes(self):
+    # The "Original dtypes" line must report each operand's own dtype.
+    tree1 = np.array([1, 2, 3], dtype=np.int8)
+    tree2 = np.array([1, 2, 9], dtype=np.float64)
+    with self.assertRaisesRegex(AssertionError, r'Original dtypes: int8, float64'):
+      asserts.assert_trees_all_equal(tree1, tree2)
+
   def test_assert_trees_all_equal_passes_same_tree(self):
     tree = {
         'a': [jnp.zeros((1,))],
