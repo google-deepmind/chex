@@ -27,9 +27,6 @@ jobs:
         os: [ubuntu-latest]
         jax-version: ["newest"]
         include:
-          - python-version: "3.13"
-            os: "ubuntu-latest"
-            jax-version: "nightly"
           - python-version: "3.14"
             os: "ubuntu-latest"
             jax-version: "nightly"
