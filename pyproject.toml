@@ -47,7 +47,7 @@ documentation = "https://chex.readthedocs.io/"
 
 [project.optional-dependencies]
 test = [
-    "cloudpickle==3.1.0",
+    "cloudpickle>=3.1.2",
     "dm-tree>=0.1.9",
 ]
 
