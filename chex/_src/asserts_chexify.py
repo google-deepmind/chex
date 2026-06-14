@@ -20,7 +20,8 @@ from concurrent import futures
 import dataclasses
 import functools
 import re
-from typing import Any, Callable, FrozenSet
+from collections.abc import Callable
+from typing import Any
 
 from absl import logging
 from chex._src import asserts_internal as _ai
@@ -32,13 +33,13 @@ from jax.experimental import checkify
 class _ChexifyChecks:
   """A set of checks imported from checkify."""
 
-  user: FrozenSet[checkify.ErrorCategory] = checkify.user_checks
-  nan: FrozenSet[checkify.ErrorCategory] = checkify.nan_checks
-  index: FrozenSet[checkify.ErrorCategory] = checkify.index_checks
-  div: FrozenSet[checkify.ErrorCategory] = checkify.div_checks
-  float: FrozenSet[checkify.ErrorCategory] = checkify.float_checks
-  automatic: FrozenSet[checkify.ErrorCategory] = checkify.automatic_checks
-  all: FrozenSet[checkify.ErrorCategory] = checkify.all_checks
+  user: frozenset[checkify.ErrorCategory] = checkify.user_checks
+  nan: frozenset[checkify.ErrorCategory] = checkify.nan_checks
+  index: frozenset[checkify.ErrorCategory] = checkify.index_checks
+  div: frozenset[checkify.ErrorCategory] = checkify.div_checks
+  float: frozenset[checkify.ErrorCategory] = checkify.float_checks
+  automatic: frozenset[checkify.ErrorCategory] = checkify.automatic_checks
+  all: frozenset[checkify.ErrorCategory] = checkify.all_checks
 
 
 _chexify_error_pattern = re.compile(
@@ -89,7 +90,7 @@ ChexifyChecks = _ChexifyChecks()  # pylint: disable=invalid-name
 def chexify(
     fn: Callable[..., Any],
     async_check: bool = True,
-    errors: FrozenSet[checkify.ErrorCategory] = ChexifyChecks.user,
+    errors: frozenset[checkify.ErrorCategory] = ChexifyChecks.user,
 ) -> Callable[..., Any]:
   """Wraps a transformed function `fn` to enable Chex value assertions.
 

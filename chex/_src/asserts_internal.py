@@ -29,7 +29,8 @@ import functools
 import re
 import threading
 import traceback
-from typing import Any, Sequence, Union, Callable, List, Optional, Set, Tuple, Type
+from collections.abc import Callable, Sequence
+from typing import Any, Optional, Union
 
 from absl import logging
 from chex._src import pytypes
@@ -56,7 +57,7 @@ TAssertFn = Callable[..., None]
 TJittableAssertFn = Callable[..., pytypes.Array]  # a predicate function
 
 # Matchers.
-TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
+TDimMatcher = Optional[Union[int, set[int], type(Ellipsis)]]
 TShapeMatcher = Sequence[TDimMatcher]
 
 
@@ -101,7 +102,7 @@ def deprecation_wrapper(new_fn, old_name, new_name):
   return inner_fn
 
 
-def get_stacktrace_without_chex_internals() -> List[traceback.FrameSummary]:
+def get_stacktrace_without_chex_internals() -> list[traceback.FrameSummary]:
   """Returns the latest non-chex frame from the call stack."""
   stacktrace = list(traceback.extract_stack())
   for i in reversed(range(len(stacktrace))):
@@ -160,7 +161,7 @@ def _make_host_assertion(assert_fn: TAssertFn,
                       custom_message: Optional[str] = None,
                       custom_message_format_vars: Sequence[Any] = (),
                       include_default_message: bool = True,
-                      exception_type: Type[Exception] = AssertionError,
+                      exception_type: type[Exception] = AssertionError,
                       **kwargs) -> None:
     # Format error's stack trace to remove Chex' internal frames.
     assertion_exc = None
@@ -233,7 +234,7 @@ def chex_assertion(
                       custom_message: Optional[str] = None,
                       custom_message_format_vars: Sequence[Any] = (),
                       include_default_message: bool = True,
-                      exception_type: Type[Exception] = AssertionError,
+                      exception_type: type[Exception] = AssertionError,
                       **kwargs) -> None:
     if DISABLE_ASSERTIONS:
       return
@@ -314,7 +315,7 @@ def num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
   return sum(d.platform == devtype for d in jax.devices(backend))
 
 
-def get_tracers(tree: pytypes.ArrayTree) -> Tuple[jax.core.Tracer]:
+def get_tracers(tree: pytypes.ArrayTree) -> tuple[jax.core.Tracer]:
   """Returns a tuple with tracers from a tree."""
   return tuple(
       x for x in jax.tree_util.tree_leaves(tree)
@@ -408,7 +409,7 @@ def assert_trees_all_eq_comparator_jittable(
         "forgot the `error_msg_fn` arg to `assert_trees_xxx`?")
 
   def _tree_error_msg_fn(
-      path: Tuple[Union[int, str, Hashable]], i_1: int, i_2: int):
+      path: tuple[Union[int, str, Hashable]], i_1: int, i_2: int):
     if path:
       return (
           f"Trees {i_1} and {i_2} differ in leaves '{path}':"
@@ -458,7 +459,7 @@ JaxKeyType = Union[
 
 def convert_jax_path_to_dm_path(
     jax_tree_path: Sequence[JaxKeyType],
-) -> Tuple[Union[int, str, Hashable]]:
+) -> tuple[Union[int, str, Hashable]]:
   """Converts a path from jax.tree_util to one from dm-tree."""
 
   # pytype:disable=attribute-error
