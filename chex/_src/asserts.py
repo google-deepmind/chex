@@ -19,7 +19,8 @@ import collections.abc
 import functools
 import inspect
 import traceback
-from typing import Any, Callable, List, Optional, Sequence, Set, Union, cast
+from collections.abc import Callable, Sequence
+from typing import Any, Optional, Union, cast
 import unittest
 from unittest import mock
 
@@ -539,7 +540,7 @@ def assert_equal_shape_suffix(inputs: Sequence[Array], suffix_len: int) -> None:
 
 def _unelided_shape_matches(
     actual_shape: Sequence[int],
-    expected_shape: Sequence[Optional[Union[int, Set[int]]]]) -> bool:
+    expected_shape: Sequence[Optional[Union[int, set[int]]]]) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   if len(actual_shape) != len(expected_shape):
     return False
@@ -558,8 +559,8 @@ def _shape_matches(actual_shape: Sequence[int],
                    expected_shape: _ai.TShapeMatcher) -> bool:
   """Returns True if `actual_shape` is compatible with `expected_shape`."""
   # Splits `expected_shape` based on the position of the ellipsis, if present.
-  expected_prefix: List[_ai.TDimMatcher] = []
-  expected_suffix: Optional[List[_ai.TDimMatcher]] = None
+  expected_prefix: list[_ai.TDimMatcher] = []
+  expected_suffix: Optional[list[_ai.TDimMatcher]] = None
   for dim in expected_shape:
     if dim is Ellipsis:
       if expected_suffix is not None:
@@ -701,8 +702,8 @@ def assert_equal_rank(inputs: Sequence[Array]) -> None:
 @_static_assertion
 def assert_rank(
     inputs: Union[Scalar, Union[Array, Sequence[Array]]],
-    expected_ranks: Union[int, Set[int], Sequence[Union[int,
-                                                        Set[int]]]]) -> None:
+    expected_ranks: Union[int, set[int], Sequence[Union[int,
+                                                        set[int]]]]) -> None:
   """Checks that the rank of all inputs matches specified ``expected_ranks``.
 
   Valid usages include:

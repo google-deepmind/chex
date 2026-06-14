@@ -19,7 +19,8 @@ import re
 import sys
 import threading
 import time
-from typing import Any, Optional, Sequence, Type
+from collections.abc import Sequence
+from typing import Any, Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -60,7 +61,7 @@ def _assert_noop(*args,
                  custom_message: Optional[str] = None,
                  custom_message_format_vars: Sequence[Any] = (),
                  include_default_message: bool = True,
-                 exception_type: Type[Exception] = AssertionError,
+                 exception_type: type[Exception] = AssertionError,
                  **kwargs) -> None:
   """No-op."""
   del args, custom_message, custom_message_format_vars

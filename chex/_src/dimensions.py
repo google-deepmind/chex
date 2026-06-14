@@ -17,10 +17,11 @@
 from collections.abc import Sized
 import math
 import re
-from typing import Any, Collection, Dict, Optional, Tuple
+from collections.abc import Collection
+from typing import Any, Optional
 
 
-Shape = Tuple[Optional[int], ...]
+Shape = tuple[Optional[int], ...]
 
 
 class Dimensions:
@@ -198,7 +199,7 @@ class Dimensions:
     args = ', '.join(f'{k}={v}' for k, v in sorted(self._asdict().items()))
     return f'{type(self).__name__}({args})'
 
-  def _asdict(self) -> Dict[str, Optional[int]]:
+  def _asdict(self) -> dict[str, Optional[int]]:
     return {k: v for k, v in self.__dict__.items()
             if re.fullmatch(r'[a-zA-Z]', k)}
 

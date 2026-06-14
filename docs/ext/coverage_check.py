@@ -16,7 +16,8 @@
 
 import inspect
 import types
-from typing import Any, Mapping, Sequence, Tuple
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import chex as _module
 from sphinx import application
@@ -25,7 +26,7 @@ from sphinx import errors
 
 
 def find_internal_python_modules(
-    root_module: types.ModuleType,) -> Sequence[Tuple[str, types.ModuleType]]:
+    root_module: types.ModuleType,) -> Sequence[tuple[str, types.ModuleType]]:
   """Returns `(name, module)` for all submodules under `root_module`."""
   modules = set([(root_module.__name__, root_module)])
   visited = set()
