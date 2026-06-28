@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities to hold expected dimension sizes."""
 
+"""Utilities to hold expected dimension sizes."""
 from collections.abc import Sized
 import math
 import re
 from typing import Any, Collection, Dict, Optional, Tuple
+from typing import TYPE_CHECKING
 
 
 Shape = Tuple[Optional[int], ...]
@@ -129,6 +130,13 @@ class Dimensions:
   """
   # Tell static type checker not to worry about attribute errors.
   _HAS_DYNAMIC_ATTRIBUTES = True
+  if TYPE_CHECKING:
+
+    def __getattr__(self, name: str) -> Any:
+      ...
+
+    def __setattr__(self, name: str, value: Any) -> None:
+      ...
 
   def __init__(self, **dim_sizes) -> None:
     for dim, size in dim_sizes.items():
