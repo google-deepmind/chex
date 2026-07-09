@@ -150,7 +150,7 @@ class Dimensions:
           f"cannot take product of shape '{key}' = {shape}, "
           'because it contains non-positive sized dimensions'
       )
-    return math.prod(shape)
+    return math.prod(shape)  # pyrefly: ignore[no-matching-overload]
 
   def __getitem__(self, key: str) -> Shape:
     self._validate_key(key)

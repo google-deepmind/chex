@@ -49,7 +49,7 @@ def disable_asserts() -> None:
 
   Use wisely.
   """
-  _ai.DISABLE_ASSERTIONS = True
+  _ai.DISABLE_ASSERTIONS = True  # pyrefly: ignore[bad-assignment]
 
 
 def enable_asserts() -> None:
@@ -416,9 +416,10 @@ def assert_size(
   """
   # Ensure inputs and expected sizes are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
-    inputs = [inputs]
+    inputs = [inputs]  # pyrefly: ignore[bad-assignment]
 
   if isinstance(expected_sizes, int):
+    # pyrefly: ignore[bad-argument-type]
     expected_sizes = [expected_sizes] * len(inputs)
 
   if not isinstance(expected_sizes, (list, tuple)):
@@ -426,12 +427,14 @@ def assert_size(
         "Error in size compatibility check: expected sizes should be an int, "
         f"list, or tuple of ints, got {expected_sizes}.")
 
-  if len(inputs) != len(expected_sizes):
+  if len(inputs) != len(expected_sizes):  # pyrefly: ignore[bad-argument-type]
     raise AssertionError(
+        # pyrefly: ignore[bad-argument-type]
         "Length of `inputs` and `expected_sizes` must match: "
         f"{len(inputs)} is not equal to {len(expected_sizes)}.")
 
   errors = []
+  # pyrefly: ignore[bad-argument-type]
   for idx, (x, expected) in enumerate(zip(inputs, expected_sizes)):
     size = getattr(x, "size", 1)  # scalars have size 1 by definition.
     # Allow any size for the ellipsis case and allow handling of integer
@@ -575,6 +578,7 @@ def _shape_matches(actual_shape: Sequence[int],
   # If there is no ellipsis, just compare to the full `actual_shape`.
   if expected_suffix is None:
     assert len(expected_prefix) == len(expected_shape)
+    # pyrefly: ignore[bad-argument-type]
     return _unelided_shape_matches(actual_shape, expected_prefix)
 
   # Checks that the actual rank is least the number of non-elided dimensions.
@@ -583,11 +587,13 @@ def _shape_matches(actual_shape: Sequence[int],
 
   if expected_prefix:
     actual_prefix = actual_shape[:len(expected_prefix)]
+    # pyrefly: ignore[bad-argument-type]
     if not _unelided_shape_matches(actual_prefix, expected_prefix):
       return False
 
   if expected_suffix:
     actual_suffix = actual_shape[-len(expected_suffix):]
+    # pyrefly: ignore[bad-argument-type]
     if not _unelided_shape_matches(actual_suffix, expected_suffix):
       return False
 
@@ -632,17 +638,20 @@ def assert_shape(
 
   # Ensure inputs and expected shapes are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
-    inputs = [inputs]
+    inputs = [inputs]  # pyrefly: ignore[bad-assignment]
 
   # Shapes are always lists or tuples, not scalars.
   if (not expected_shapes or not isinstance(expected_shapes[0], (list, tuple))):
     expected_shapes = [expected_shapes] * len(inputs)
-  if len(inputs) != len(expected_shapes):
+  # pyrefly: ignore[bad-argument-type, bad-assignment]
+  if len(inputs) != len(expected_shapes):  # pyrefly: ignore[bad-argument-type]
     raise AssertionError(
+        # pyrefly: ignore[bad-argument-type]
         "Length of `inputs` and `expected_shapes` must match: "
         f"{len(inputs)} is not equal to {len(expected_shapes)}.")
 
   errors = []
+  # pyrefly: ignore[bad-argument-type]
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
     if not _shape_matches(shape, expected):
@@ -743,16 +752,19 @@ def assert_rank(
 
   # Ensure inputs and expected ranks are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
-    inputs = [inputs]
+    inputs = [inputs]  # pyrefly: ignore[bad-assignment]
   if (not isinstance(expected_ranks, collections.abc.Sequence) or
       isinstance(expected_ranks, collections.abc.Set)):
     expected_ranks = [expected_ranks] * len(inputs)
-  if len(inputs) != len(expected_ranks):
+  # pyrefly: ignore[bad-argument-type]
+  if len(inputs) != len(expected_ranks):  # pyrefly: ignore[bad-argument-type]
     raise AssertionError(
+        # pyrefly: ignore[bad-argument-type]
         "Length of inputs and expected_ranks must match: inputs has length "
         f"{len(inputs)}, expected_ranks has length {len(expected_ranks)}.")
 
   errors = []
+  # pyrefly: ignore[bad-argument-type]
   for idx, (x, expected) in enumerate(zip(inputs, expected_ranks)):
     if hasattr(x, "shape"):
       shape = x.shape
@@ -819,16 +831,19 @@ def assert_type(
       if the types of inputs do not match the expected types.
   """
   if not isinstance(inputs, (list, tuple)):
-    inputs = [inputs]
+    inputs = [inputs]  # pyrefly: ignore[bad-assignment]
   if not isinstance(expected_types, (list, tuple)):
+    # pyrefly: ignore[bad-argument-type]
     expected_types = [expected_types] * len(inputs)
 
   errors = []
-  if len(inputs) != len(expected_types):
+  if len(inputs) != len(expected_types):  # pyrefly: ignore[bad-argument-type]
     raise AssertionError(
+        # pyrefly: ignore[bad-argument-type]
         "Length of `inputs` and `expected_types` must match, "
         f"got {len(inputs)} != {len(expected_types)}."
     )
+  # pyrefly: ignore[bad-argument-type]
   for idx, (x, expected) in enumerate(zip(inputs, expected_types)):
     dtype = x.dtype if hasattr(x, "dtype") else np.result_type(x)
     if expected in {float, jnp.floating}:
@@ -1630,7 +1645,7 @@ def _assert_trees_all_equal_jittable(
   err_msg_template = "Values not exactly equal: {arr_1} != {arr_2}."
   cmp_fn = lambda x, y: jnp.array_equal(x, y, equal_nan=True)
   return _ai.assert_trees_all_eq_comparator_jittable(
-      cmp_fn, err_msg_template, *trees
+      cmp_fn, err_msg_template, *trees  # pyrefly: ignore[bad-argument-type]
   )
 
 
@@ -1712,7 +1727,7 @@ def _assert_trees_all_close_jittable(
   )
   cmp_fn = lambda x, y: jnp.isclose(x, y, rtol=rtol, atol=atol).all()
   return _ai.assert_trees_all_eq_comparator_jittable(
-      cmp_fn, err_msg_template, *trees
+      cmp_fn, err_msg_template, *trees  # pyrefly: ignore[bad-argument-type]
   )
 
 

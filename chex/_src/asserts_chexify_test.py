@@ -361,6 +361,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
       if run_pure:
         # Test all versions return the same outputs.
         asserts.assert_trees_all_equal(
+            # pyrefly: ignore[unbound-name]
             fn_no_assert(*valid_args), fn_static_assert(*valid_args))
         asserts.assert_trees_all_equal(
             fn_no_assert(*valid_args), fn_value_assert(*valid_args))
@@ -384,7 +385,7 @@ class AssertsChexifyTestSuite(variants.TestCase):
       if run_pure:
         # Static assertion fails on incorrect inputs (without transformations).
         with self.assertRaisesRegex(AssertionError, re.escape(label)):
-          fn_static_assert(*invalid_args)
+          fn_static_assert(*invalid_args)  # pyrefly: ignore[unbound-name]
 
       # Value assertion fails on incorrect inputs (with transformations).
       err_regex = get_chexify_err_regex('assert_tree_positive_test', label)

@@ -192,7 +192,7 @@ class _Dataclass():
         **version_dependent_args,
     )
     # pytype: enable=wrong-keyword-args
-
+    # pyrefly: ignore[bad-argument-type]
     fields_names = set(f.name for f in dataclasses.fields(dcls))
     invalid_fields = fields_names.intersection(_RESERVED_DCLS_FIELD_NAMES)
     if invalid_fields:
@@ -203,6 +203,7 @@ class _Dataclass():
       dcls = mappable_dataclass(dcls)
 
     def _from_tuple(args):
+      # pyrefly: ignore[bad-argument-type, missing-attribute]
       return dcls(zip(dcls.__dataclass_fields__.keys(), args))
 
     def _to_tuple(self):
@@ -247,6 +248,7 @@ class _Dataclass():
     @functools.wraps(orig_init)
     def _init(self, *args, **kwargs):
       register_dataclass_type_with_jax_tree_util(dcls)
+      # pyrefly: ignore[bad-argument-count]
       return orig_init(self, *args, **kwargs)
 
     setattr(dcls, "from_tuple", _from_tuple)

@@ -232,6 +232,7 @@ def chexify(
 
   # Add the callback to the chexified funtion's properties.
   if not hasattr(_chexified_fn, 'wait_checks'):
+    # pyrefly: ignore[missing-attribute]
     _chexified_fn.wait_checks = _wait_checks
   else:
     logging.warning(

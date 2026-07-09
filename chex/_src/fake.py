@@ -156,7 +156,7 @@ def _fake_pmap(fn,
       else:
         vmap_in_axes = list(in_axes)
       for argnum in static_broadcasted_argnums:
-        vmap_in_axes[argnum] = None
+        vmap_in_axes[argnum] = None  # pyrefly: ignore[unsupported-operation]
 
       # To protect the arguments from `static_broadcasted_argnums`,
       # from turning into tracers (because of vmap), we capture the original
@@ -398,6 +398,7 @@ class OnCallOfTransformedFunction():
     """
     self._fn_transformation = fn_transformation
     self._callback_fn = callback_fn
+    # pyrefly: ignore[bad-assignment]
     self._patch: mock._patch[Callable[[Any], Any]] = None  # pylint: disable=unsubscriptable-object
     self._original_fn_transformation = None
 
@@ -405,6 +406,7 @@ class OnCallOfTransformedFunction():
 
     def _new_fn_transformation(fn, *args, **kwargs):
       """Returns a transformed version of the given function."""
+      # pyrefly: ignore[not-callable]
       transformed_fn = self._original_fn_transformation(fn, *args, **kwargs)
 
       @functools.wraps(transformed_fn)

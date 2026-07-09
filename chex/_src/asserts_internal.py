@@ -273,6 +273,7 @@ def chex_assertion(
       # In particular, this check fails when `pred` is False and no
       # `checkify.check` calls took place in `jittable_assert_fn`, which would
       # be a bug in the assertion's implementation.
+      # pyrefly: ignore[bad-argument-type]
       checkify.check(pred, "assertion failed!")
     else:
       try:
@@ -316,7 +317,7 @@ def num_devices_available(devtype: str, backend: Optional[str] = None) -> int:
 
 def get_tracers(tree: pytypes.ArrayTree) -> Tuple[jax.core.Tracer]:
   """Returns a tuple with tracers from a tree."""
-  return tuple(
+  return tuple(  # pyrefly: ignore[bad-return]
       x for x in jax.tree_util.tree_leaves(tree)
       if isinstance(x, jax.core.Tracer))
 
@@ -476,4 +477,5 @@ def convert_jax_path_to_dm_path(
     raise ValueError(f"Jax tree key '{key}' of type '{type(key)}' not valid.")
   # pytype:enable=attribute-error
 
+  # pyrefly: ignore[bad-return]
   return tuple(_convert_key_fn(key) for key in jax_tree_path)

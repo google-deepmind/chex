@@ -476,6 +476,7 @@ class VariantTypesTest(absltest.TestCase):
     @variants.all_variants()
     def test_var_type(self):
       self.variant(lambda: None)
+      # pyrefly: ignore[missing-attribute]
       self.var_types.add(self.variant.type)
 
   def test_var_type_fetch(self):
@@ -546,13 +547,13 @@ class MultipleVariantsTest(parameterized.TestCase):
   @variants.all_variants()
   def test_all_variants(self):
     # self.variant must be used at least once.
-    self.variant(lambda x: x)(0)
+    self.variant(lambda x: x)(0)  # pyrefly: ignore[missing-attribute]
     self.assertNotEqual('meaning of life', 1337)
 
   @variants.all_variants
   def test_all_variants_no_parens(self):
     # self.variant must be used at least once.
-    self.variant(lambda x: x)(0)
+    self.variant(lambda x: x)(0)  # pyrefly: ignore[missing-attribute]
     self.assertNotEqual('meaning of life', 1337)
 
   @variants.variants(
@@ -560,7 +561,7 @@ class MultipleVariantsTest(parameterized.TestCase):
   @parameterized.named_parameters(*DEFAULT_NAMED_PARAMS)
   def test_many_variants(self, arg_0, arg_1, expected):
 
-    @self.variant
+    @self.variant  # pyrefly: ignore[missing-attribute]
     def fn(arg_0, arg_1):
       return arg_1 - arg_0
 
@@ -577,6 +578,7 @@ class VmappedFunctionTest(parameterized.TestCase):
         _scalar_to_ndarray(x) for x in (arg_0, arg_1, expected))
 
     vmapped_fn = jax.vmap(DEFAULT_FN)
+    # pyrefly: ignore[missing-attribute]
     actual = self.variant(vmapped_fn)(varg_0, varg_1)
     # pmap variant.
     if len(actual.shape) == len(DEFAULT_NDARRAY_PARAMS_SHAPE) + 1:
@@ -608,6 +610,7 @@ class WithJitTest(parameterized.TestCase):
     kwarg_0_type = type(kwarg_0)
     kwarg_1_type = type(kwarg_1)
 
+    # pyrefly: ignore[missing-attribute]
     @self.variant(static_argnums=(0,), static_argnames=('kwarg_1',))
     def fn_0(arg_0, arg_1, kwarg_0, kwarg_1):
       self.assertIsInstance(arg_0, arg_0_type)
@@ -619,6 +622,7 @@ class WithJitTest(parameterized.TestCase):
     actual_0 = fn_0(arg_0, arg_1, kwarg_0=kwarg_0, kwarg_1=kwarg_1)
     self.assertEqual(actual_0, 2 * expected)
 
+    # pyrefly: ignore[missing-attribute]
     @self.variant(static_argnums=(1, 3), static_argnames=('kwarg_1',))
     def fn_1(arg_0, arg_1, kwarg_0, kwarg_1):
       self.assertNotIsInstance(arg_0, arg_0_type)
@@ -630,6 +634,7 @@ class WithJitTest(parameterized.TestCase):
     actual_1 = fn_1(arg_0, arg_1, kwarg_0=kwarg_0, kwarg_1=kwarg_1)
     self.assertEqual(actual_1, 2 * expected)
 
+    # pyrefly: ignore[missing-attribute]
     @self.variant(static_argnums=(), static_argnames=('kwarg_0',))
     def fn_2(arg_0, arg_1, kwarg_0, kwarg_1):
       self.assertNotIsInstance(arg_0, arg_0_type)
@@ -646,8 +651,11 @@ class WithJitTest(parameterized.TestCase):
       self.assertNotIsInstance(arg_1, arg_1_type)
       return DEFAULT_FN(arg_0, arg_1)
 
+    # pyrefly: ignore[missing-attribute]
     fn_3_v0 = self.variant(static_argnums=0, static_argnames='arg_0')(fn_3)
+    # pyrefly: ignore[missing-attribute]
     fn_3_v1 = self.variant(static_argnums=0)(fn_3)
+    # pyrefly: ignore[missing-attribute]
     fn_3_v2 = self.variant(static_argnums=(), static_argnames='arg_0')(fn_3)
     self.assertEqual(fn_3_v0(arg_0, arg_1), expected)
     self.assertEqual(fn_3_v1(arg_0=arg_0, arg_1=arg_1), expected)
@@ -672,6 +680,7 @@ class WithoutDeviceTest(parameterized.TestCase):
   @variants.variants(without_device=True)
   @parameterized.named_parameters(*DEFAULT_NAMED_PARAMS)
   def test_emplace(self, arg_0, arg_1, expected):
+    # pyrefly: ignore[missing-attribute]
     (arg_0, arg_1) = self.variant(lambda x: x)((arg_0, arg_1))
     actual = _test_fn_without_device(arg_0, arg_1)
     self.assertEqual(actual, expected)
@@ -694,6 +703,7 @@ class WithDeviceTest(parameterized.TestCase):
   @variants.variants(with_device=True)
   @parameterized.named_parameters(*DEFAULT_NAMED_PARAMS)
   def test_emplace(self, arg_0, arg_1, expected):
+    # pyrefly: ignore[missing-attribute]
     (arg_0, arg_1) = self.variant(lambda x: x)((arg_0, arg_1))
     actual = _test_fn_with_device(arg_0, arg_1)
     self.assertEqual(actual, expected)
@@ -703,7 +713,7 @@ class WithDeviceTest(parameterized.TestCase):
   def test_ignore_argnums(self, arg_0, arg_1, expected):
     static_type = type(arg_0)
 
-    @self.variant(ignore_argnums=(0, 2))
+    @self.variant(ignore_argnums=(0, 2))  # pyrefly: ignore[missing-attribute]
     def fn(arg_0, arg_1, float_arg):
       self.assertIsInstance(arg_0, static_type)
       self.assertIsInstance(arg_1, jax.Array)
@@ -756,6 +766,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     arg_0_type = type(arg_0)
     arg_1_type = type(arg_1)
 
+    # pyrefly: ignore[missing-attribute]
     @self.variant(reduce_fn=None, n_devices=n_devices, backend=backend)
     def fn(arg_0, arg_1):
       self.assertNotIsInstance(arg_0, arg_0_type)
@@ -774,6 +785,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     # Exponents of `n_devices`:
     # +1: psum() inside fn()
     # +1: jnp.sum() to aggregate results
+    # pyrefly: ignore[unsupported-operation]
     self.assertEqual(jnp.sum(actual), n_copies * n_devices**2 * expected)
 
   @variants.variants(with_pmap=True)
@@ -789,6 +801,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     arg_0_type = type(varg_0)
     arg_1_type = type(varg_1)
 
+    # pyrefly: ignore[missing-attribute]
     @self.variant(reduce_fn=None, n_devices=n_devices, backend=backend)
     def fn(arg_0, arg_1):
       self.assertNotIsInstance(arg_0, arg_0_type)
@@ -815,6 +828,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     # Exponents of `n_devices`:
     # +1: psum() inside fn()
     # +1: jnp.sum() to aggregate results
+    # pyrefly: ignore[unsupported-operation]
     np.testing.assert_array_equal(actual, n_copies * n_devices**2 * vexpected)
 
   @variants.variants(with_pmap=True)
@@ -828,7 +842,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     arg_0_type = type(varg_0)
     arg_1_type = type(arg_1)
 
-    @self.variant(
+    @self.variant(  # pyrefly: ignore[missing-attribute]
         reduce_fn=None,
         n_devices=n_devices,
         backend=backend,
@@ -844,6 +858,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
 
       arg_1 = np.array(arg_1)  # don't stage out operations on arg_1
       psum_arg_1 = np.sum(jax.lax.psum(arg_1, axis_name='j'))
+      # pyrefly: ignore[unsupported-operation]
       self.assertEqual(psum_arg_1, arg_1[0] * (n_copies * n_devices))
       res = arg_1 - arg_0
       psum_res = jax.lax.psum(res, axis_name='j')
@@ -854,6 +869,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     # Exponents of `n_devices`:
     # +1: psum() inside fn()
     # +1: jnp.sum() to aggregate results
+    # pyrefly: ignore[unsupported-operation]
     self.assertEqual(jnp.sum(actual), n_copies * n_devices**2 * expected)
 
   @variants.variants(with_pmap=True)
@@ -866,7 +882,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     arg_0_type = type(varg_0)
     arg_1_type = type(varg_1)
 
-    @self.variant(
+    @self.variant(  # pyrefly: ignore[missing-attribute]
         reduce_fn=None,
         n_devices=n_devices,
         backend=backend,
@@ -887,6 +903,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     # Exponents of `n_devices`:
     # +1: psum() inside fn()
     # +1: jnp.sum() to aggregate results
+    # pyrefly: ignore[unsupported-operation]
     self.assertEqual(jnp.sum(actual), n_copies * n_devices**2 * 10)
 
   @variants.variants(with_pmap=True)
@@ -899,7 +916,7 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     arg_0_type = type(varg_0)
     arg_1_type = type(varg_1)
 
-    @self.variant(
+    @self.variant(  # pyrefly: ignore[missing-attribute]
         broadcast_args_to_devices=False,
         reduce_fn=None,
         n_devices=n_devices,
@@ -919,13 +936,14 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
 
     actual = fn(varg_0, varg_1)
     self.assertEqual(actual.shape, (n_devices, n_devices, n_copies))
+    # pyrefly: ignore[unsupported-operation]
     self.assertEqual(jnp.sum(actual), n_copies * n_devices**3)
 
   @variants.variants(with_pmap=True)
   def test_pmap_wrong_axis_size(self):
     n_devices, backend = self.n_devices, self.backend
 
-    @self.variant(
+    @self.variant(  # pyrefly: ignore[missing-attribute]
         broadcast_args_to_devices=False,
         n_devices=n_devices,
         backend=backend,
@@ -935,8 +953,8 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
     def fn(arg_0, arg_1):
       raise RuntimeError('This line should not be executed.')
 
-    varg_0 = jnp.zeros(n_devices + 1)
-    varg_1 = jnp.zeros(n_devices + 2)
+    varg_0 = jnp.zeros(n_devices + 1)  # pyrefly: ignore[unsupported-operation]
+    varg_1 = jnp.zeros(n_devices + 2)  # pyrefly: ignore[unsupported-operation]
     with self.assertRaisesRegex(
         ValueError, 'Pmappable.* axes size must be equal to number of devices.*'
         f'expected the first dim to be {n_devices}'):

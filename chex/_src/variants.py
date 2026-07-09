@@ -101,10 +101,10 @@ def params_product(*params_lists: Sequence[Sequence[Any]],
       if named:
         name = "_".join(t[0] for t in combination)
         args_tuples = (t[1:] for t in combination)
-        args = sum(args_tuples, ())
+        args = sum(args_tuples, ())  # pyrefly: ignore[no-matching-overload]
         yield (name, *args)
       else:
-        yield sum(combination, ())
+        yield sum(combination, ())  # pyrefly: ignore[no-matching-overload]
 
   return list(generate())
 
@@ -557,7 +557,7 @@ def _with_pmap(fn,
       return x
 
     if broadcast_args_to_devices:
-      args = [
+      args = [  # pyrefly: ignore[bad-assignment]
           tree_map(bcast_fn, arg) if idx not in static_argnums else arg
           for idx, arg in enumerate(args)
       ]
@@ -596,7 +596,7 @@ def _with_pmap(fn,
       pmapped_fn = jax.pmap(fn, **pmap_kwargs)
 
     res = pmapped_fn(*args, **kwargs)
-    return reduce_fn(res)
+    return reduce_fn(res)  # pyrefly: ignore[not-callable]
 
   return wrapper
 

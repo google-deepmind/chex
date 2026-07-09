@@ -685,6 +685,7 @@ class TypeAssertTest(parameterized.TestCase):
       ('float32_array', [1, 2], jnp.float32, np.integer),
   )
   def test_type_should_fail_array(self, array, dtype, wrong_type):
+    # pyrefly: ignore[missing-attribute]
     array = self.variant(emplace)(array, dtype)
     with self.assertRaisesRegex(
         AssertionError, _get_err_regex('input .+ has type .+ but expected .+')):
@@ -708,6 +709,7 @@ class TypeAssertTest(parameterized.TestCase):
       ('one_bool_array', [True], bool, bool),
   )
   def test_type_should_pass_array(self, array, dtype, expected_type):
+    # pyrefly: ignore[missing-attribute]
     array = self.variant(emplace)(array, dtype)
     asserts.assert_type(array, expected_type)
 
