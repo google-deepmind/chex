@@ -128,7 +128,7 @@ See `asserts.py`
 find all supported assertions.
 
 If you cannot find a specific assertion, please consider making a pull request
-or openning an issue on
+or opening an issue on
 [the bug tracker](https://github.com/deepmind/chex/issues).
 
 #### Optional Arguments
