@@ -642,6 +642,7 @@ def assert_shape(
 
   # Shapes are always lists or tuples, not scalars.
   if (not expected_shapes or not isinstance(expected_shapes[0], (list, tuple))):
+    # pyrefly: ignore[bad-argument-type, bad-assignment]
     expected_shapes = [expected_shapes] * len(inputs)
   # pyrefly: ignore[bad-argument-type, bad-assignment]
   if len(inputs) != len(expected_shapes):  # pyrefly: ignore[bad-argument-type]
@@ -755,6 +756,7 @@ def assert_rank(
     inputs = [inputs]  # pyrefly: ignore[bad-assignment]
   if (not isinstance(expected_ranks, collections.abc.Sequence) or
       isinstance(expected_ranks, collections.abc.Set)):
+    # pyrefly: ignore[bad-argument-type]
     expected_ranks = [expected_ranks] * len(inputs)
   # pyrefly: ignore[bad-argument-type]
   if len(inputs) != len(expected_ranks):  # pyrefly: ignore[bad-argument-type]
