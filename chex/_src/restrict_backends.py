@@ -29,7 +29,8 @@ at the end of the first iteration, the system can detect any overlooked cases.
 """
 import contextlib
 import functools
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional
+from collections.abc import Sequence
 
 from jax._src import compiler
 
