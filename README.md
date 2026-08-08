@@ -167,7 +167,7 @@ assertions.
 
 2.  ***value*** assertions require access to tensor values, which are not
     available during JAX tracing (see
-    [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)),
+    [How JAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)),
     thus such assertion need special treatment in a *jitted* code.
 
 To enable value assertions in a jitted function, it can be decorated with
