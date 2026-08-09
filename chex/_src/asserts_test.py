@@ -547,6 +547,15 @@ class ShapeAssertTest(parameterized.TestCase):
         '`expected_shape` may not contain more than one ellipsis, but got .+'):
       asserts.assert_shape(array, expected_shape)
 
+  def test_bare_ellipsis_message_suggests_tuple_form(self):
+    array = array_from_shape(2, 3)
+    with self.assertRaisesRegex(
+        AssertionError,
+        'expected shapes should be a list or tuple of ints, got Ellipsis. '
+        r'For a wildcard shape, pass a tuple, e.g. \(\.\.\.,\) instead of a '
+        'bare Ellipsis \\(...\\)'):
+      asserts.assert_shape(array, Ellipsis)
+
 
 def rank_array(n):
   return np.zeros(shape=[2] * n)

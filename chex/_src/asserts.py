@@ -632,9 +632,12 @@ def assert_shape(
       not match ``expected_shapes``.
   """
   if not isinstance(expected_shapes, (list, tuple)):
+    suffix = ""
+    if expected_shapes is Ellipsis:
+      suffix = " For a wildcard shape, pass a tuple, e.g. (...,) instead of a bare Ellipsis (...)."
     raise AssertionError(
         "Error in shape compatibility check: expected shapes should be a list "
-        f"or tuple of ints, got {expected_shapes}.")
+        f"or tuple of ints, got {expected_shapes}.{suffix}")
 
   # Ensure inputs and expected shapes are sequences.
   if not isinstance(inputs, collections.abc.Sequence):
