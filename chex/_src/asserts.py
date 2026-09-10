@@ -655,7 +655,9 @@ def assert_shape(
   # pyrefly: ignore[bad-argument-type]
   for idx, (x, expected) in enumerate(zip(inputs, expected_shapes)):
     shape = getattr(x, "shape", ())  # scalars have shape () by definition.
+    # pyrefly: ignore[bad-argument-type]
     if not _shape_matches(shape, expected):
+      # pyrefly: ignore[bad-argument-type]
       errors.append((idx, shape, _ai.format_shape_matcher(expected)))
 
   if errors:

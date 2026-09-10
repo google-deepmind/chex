@@ -95,6 +95,7 @@ def restrict_backends(
     return (
         (backend_platform in allowed)
         if allowed is not None
+        # pyrefly: ignore[not-iterable]
         else (backend_platform not in forbidden)
     )
 
