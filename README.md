@@ -128,7 +128,7 @@ See `asserts.py`
 find all supported assertions.
 
 If you cannot find a specific assertion, please consider making a pull request
-or openning an issue on
+or opening an issue on
 [the bug tracker](https://github.com/deepmind/chex/issues).
 
 #### Optional Arguments
@@ -229,7 +229,7 @@ See
 [HowJAX primitives work](https://jax.readthedocs.io/en/latest/notebooks/How_JAX_primitives_work.html)
 section for more information about tracing.
 
-### Warnings ([warnigns.py](https://github.com/deepmind/chex/blob/master/chex/_src/warnings.py))
+### Warnings ([warnings.py](https://github.com/deepmind/chex/blob/master/chex/_src/warnings.py))
 
 In addition to hard assertions Chex also offers utilities to add common
 warnings, such as specific types of deprecation warnings.
