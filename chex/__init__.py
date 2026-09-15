@@ -33,6 +33,7 @@ from chex._src.asserts import assert_is_broadcastable
 from chex._src.asserts import assert_is_divisible
 from chex._src.asserts import assert_max_traces
 from chex._src.asserts import assert_not_both_none
+from chex._src.asserts import assert_not_both_not_none
 from chex._src.asserts import assert_numerical_grads
 from chex._src.asserts import assert_rank
 from chex._src.asserts import assert_scalar
@@ -138,6 +139,7 @@ __all__ = (
     "assert_is_divisible",
     "assert_max_traces",
     "assert_not_both_none",
+    "assert_not_both_not_none",
     "assert_numerical_grads",
     "assert_rank",
     "assert_scalar",
