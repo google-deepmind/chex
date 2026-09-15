@@ -21,6 +21,7 @@ import sys
 
 from absl import logging
 import jax
+from typing import Any, Callable, Optional, Type, Union
 from typing_extensions import dataclass_transform  # pytype: disable=not-supported-yet
 
 
@@ -92,17 +93,17 @@ def mappable_dataclass(cls):
 
 @dataclass_transform()
 def dataclass(
-    cls=None,
+    cls: Optional[Type[Any]] = None,
     *,
-    init=True,
-    repr=True,  # pylint: disable=redefined-builtin
-    eq=True,
-    order=False,
-    unsafe_hash=False,
-    frozen=False,
+    init: bool = True,
+    repr: bool = True,  # pylint: disable=redefined-builtin
+    eq: bool = True,
+    order: bool = False,
+    unsafe_hash: bool = False,
+    frozen: bool = False,
     kw_only: bool = False,
-    mappable_dataclass=True,  # pylint: disable=redefined-outer-name
-):
+    mappable_dataclass: bool = True,  # pylint: disable=redefined-outer-name
+) -> Union[Type[Any], Callable[[Type[Any]], Type[Any]]]:
   """JAX-friendly wrapper for :py:func:`dataclasses.dataclass`.
 
   This wrapper class registers new dataclasses with JAX so that tree utils
@@ -148,14 +149,14 @@ class _Dataclass():
 
   def __init__(
       self,
-      init=True,
-      repr=True,  # pylint: disable=redefined-builtin
-      eq=True,
-      order=False,
-      unsafe_hash=False,
-      frozen=False,
-      kw_only=False,
-      mappable_dataclass=True,  # pylint: disable=redefined-outer-name
+      init: bool = True,
+      repr: bool = True,  # pylint: disable=redefined-builtin
+      eq: bool = True,
+      order: bool = False,
+      unsafe_hash: bool = False,
+      frozen: bool = False,
+      kw_only: bool = False,
+      mappable_dataclass: bool = True,  # pylint: disable=redefined-outer-name
   ):
     self.init = init
     self.repr = repr  # pylint: disable=redefined-builtin
