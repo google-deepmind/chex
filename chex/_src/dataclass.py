@@ -204,7 +204,7 @@ class _Dataclass():
 
     def _from_tuple(args):
       # pyrefly: ignore[bad-argument-type, missing-attribute]
-      return dcls(zip(dcls.__dataclass_fields__.keys(), args))
+      return dcls(**dict(zip(dcls.__dataclass_fields__.keys(), args)))
 
     def _to_tuple(self):
       return tuple(getattr(self, k) for k in self.__dataclass_fields__.keys())
