@@ -149,6 +149,44 @@ class PmapFakeTest(parameterized.TestCase):
     _assert_pmapped(foo, fn_input, is_pmapped, jit_result)
     ctx.stop()
 
+  @parameterized.product(out_axes=(0, 1, 2), jit_result=(False, True))
+  def test_fake_pmap_out_axes(self, out_axes, jit_result):
+    num_devices = len(jax.devices())
+    inputs = jnp.arange(num_devices * 6).reshape(num_devices, 2, 3)
+    fn = lambda x: x * 2
+    expected = jax.pmap(fn, out_axes=out_axes)(inputs)
+    with fake.fake_pmap(jit_result=jit_result):
+      actual = jax.pmap(fn, out_axes=out_axes)(inputs)
+    asserts.assert_trees_all_equal(actual, expected)
+
+  @parameterized.parameters(False, True)
+  def test_fake_pmap_out_axes_tree(self, jit_result):
+    num_devices = len(jax.devices())
+    inputs = jnp.arange(num_devices * 6).reshape(num_devices, 2, 3)
+
+    def fn(x):
+      return {'mapped': x * 2, 'constant': jnp.array(7), 'nested': (x, x + 1)}
+
+    out_axes = {'mapped': 1, 'constant': None, 'nested': 2}
+    expected = jax.pmap(fn, out_axes=out_axes)(inputs)
+    with fake.fake_pmap(jit_result=jit_result):
+      actual = jax.pmap(fn, out_axes=out_axes)(inputs)
+    asserts.assert_trees_all_equal(actual, expected)
+
+  @parameterized.product(
+      out_axes=(0, 1, 2, {'mapped': 1, 'constant': None, 'nested': 2}),
+      jit_result=(False, True),
+  )
+  def test_fake_parallel_axis_out_axes(self, out_axes, jit_result):
+    inputs = jnp.arange(6).reshape(2, 3)
+
+    def fn(x):
+      return {'mapped': x * 2, 'constant': jnp.ones((2, 3)), 'nested': (x, x + 1)}
+
+    with fake.fake_pmap(fake_parallel_axis=True, jit_result=jit_result):
+      actual = jax.pmap(fn, out_axes=out_axes)(inputs)
+    asserts.assert_trees_all_equal(actual, fn(inputs))
+
   def test_fake_pmap_axis_name(self):
 
     with fake.fake_pmap():
