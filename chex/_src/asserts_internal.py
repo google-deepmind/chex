@@ -56,7 +56,7 @@ TAssertFn = Callable[..., None]
 TJittableAssertFn = Callable[..., pytypes.Array]  # a predicate function
 
 # Matchers.
-TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]
+TDimMatcher = Optional[Union[int, Set[int], type(Ellipsis)]]  # pyrefly: ignore[invalid-annotation]
 TShapeMatcher = Sequence[TDimMatcher]
 
 
