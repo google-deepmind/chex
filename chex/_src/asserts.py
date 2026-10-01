@@ -138,17 +138,70 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
       tuple(frame.name for frame in traceback.extract_stack()[:-1]) +
       (inspect.getsource(fn), fn.__name__))
   fn_hash = hash(fn_footprint)
+  previous_trace_signature = None
+
+  def _trace_signature(args, kwargs):
+    bound_args = inspect.signature(fn).bind_partial(*args, **kwargs).arguments
+    signature = {}
+    for name, value in bound_args.items():
+      leaves = []
+      for leaf in jax.tree_util.tree_leaves(value):
+        if hasattr(leaf, "shape") and hasattr(leaf, "dtype"):
+          leaves.append((tuple(leaf.shape), str(leaf.dtype)))
+      if leaves:
+        signature[name] = tuple(leaves)
+    return signature
+
+  def _trace_signature_diff(previous, current):
+    differences = []
+    for name in sorted(set(previous) | set(current)):
+      old = previous.get(name)
+      new = current.get(name)
+      if old == new:
+        continue
+      if old is None or new is None:
+        differences.append(
+            f"Argument '{name}' array structure changed: {old} -> {new}.")
+      elif len(old) == len(new) == 1:
+        old_shape, old_dtype = old[0]
+        new_shape, new_dtype = new[0]
+        changes = []
+        if old_shape != new_shape:
+          changes.append(f"shape {old_shape} -> {new_shape}")
+        if old_dtype != new_dtype:
+          changes.append(f"dtype {old_dtype} -> {new_dtype}")
+        differences.append(f"Argument '{name}' changed: {', '.join(changes)}.")
+      else:
+        differences.append(
+            f"Argument '{name}' array signature changed: {old} -> {new}.")
+    return differences
 
   @functools.wraps(fn)
   def fn_wrapped(*args, **kwargs):
+    nonlocal previous_trace_signature
     # We assume that a function without arguments is not being traced.
     # That is, case of n=0 for no-arguments function won't raise a error.
     has_tracers_in_args = _ai.has_tracers((args, kwargs))
+    current_trace_signature = (
+        _trace_signature(args, kwargs) if has_tracers_in_args else None
+    )
 
     _ai.TRACE_COUNTER[fn_hash] += int(has_tracers_in_args)
     if not _ai.DISABLE_ASSERTIONS and _ai.TRACE_COUNTER[fn_hash] > n:
+      differences = (
+          _trace_signature_diff(previous_trace_signature, current_trace_signature)
+          if previous_trace_signature is not None
+          else []
+      )
+      difference_message = (
+          "\nTrace arguments differ from the previous trace:\n  "
+          + "\n  ".join(differences)
+          if differences
+          else ""
+      )
       raise AssertionError(
-          f"{_ai.ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!\n"
+          f"{_ai.ERR_PREFIX}Function '{fn.__name__}' is traced > {n} times!"
+          f"{difference_message}\n"
           "It often happens when a jitted function is defined inside another "
           "function that is called multiple times (i.e. the jitted f-n is a "
           "new object every time). Make sure that your code does not exploit "
@@ -156,6 +209,8 @@ def assert_max_traces(fn: Optional[Union[Callable[..., Any], int]] = None,
           " See `chex.clear_trace_counter()` if `@chex.assert_max_traces` is "
           "used in any unit tests (especially @parameterized tests).")
 
+    if current_trace_signature is not None:
+      previous_trace_signature = current_trace_signature
     return fn(*args, **kwargs)
 
   return fn_wrapped
