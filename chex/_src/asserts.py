@@ -333,7 +333,7 @@ def assert_scalar_positive(x: Scalar) -> None:
     AssertionError: If ``x`` is not a scalar or strictly positive.
   """
   assert_scalar(x)
-  if x <= 0:
+  if not x > 0:
     raise AssertionError(f"The argument must be positive, got {x}.")
 
 
@@ -348,7 +348,7 @@ def assert_scalar_non_negative(x: Scalar) -> None:
     AssertionError: If ``x`` is not a scalar or negative.
   """
   assert_scalar(x)
-  if x < 0:
+  if not x >= 0:
     raise AssertionError(f"The argument must be non-negative, was {x}.")
 
 
@@ -363,7 +363,7 @@ def assert_scalar_negative(x: Scalar) -> None:
     AssertionError: If ``x`` is not a scalar or strictly negative.
   """
   assert_scalar(x)
-  if x >= 0:
+  if not x < 0:
     raise AssertionError(f"The argument must be negative, was {x}.")
 
 
