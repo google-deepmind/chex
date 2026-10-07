@@ -1738,8 +1738,9 @@ assert_trees_all_close = _value_assertion(
 
 def _bfloat16_nulp_diff(x: np.ndarray, y: np.ndarray) -> np.ndarray:
   """Number of representable bf16 points between each item in x and y."""
-  rx = x.view(np.int16)
-  ry = y.view(np.int16)
+  # NumPy disallows changing itemsize through a dtype view on a 0D array.
+  rx = np.atleast_1d(x).view(np.int16)
+  ry = np.atleast_1d(y).view(np.int16)
   # The constant for two's complement adjustment, same as for float16.
   comp = np.int16(-(2**15))
   # Transform the integer representations of negative numbers, to make the
