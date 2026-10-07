@@ -14,7 +14,6 @@
 # ==============================================================================
 """Tests for `dataclass.py`."""
 
-# pytype: disable=wrong-keyword-args  # dataclass_transform
 
 import copy
 import dataclasses
@@ -81,9 +80,9 @@ def dummy_dataclass(factor=1., frozen=False):
   class_ctor = FrozenDataclass if frozen else Dataclass
   return class_ctor(
       a=NestedDataclass(
-          c=factor * np.ones((3,), dtype=np.float32),
-          d=factor * np.ones((4,), dtype=np.float32)),
-      b=factor * 2 * np.ones((5,), dtype=np.float32))
+          c=factor * np.ones((3,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
+          d=factor * np.ones((4,), dtype=np.float32)),  # pyrefly: ignore[bad-argument-type]
+      b=factor * 2 * np.ones((5,), dtype=np.float32))  # pyrefly: ignore[bad-argument-type]
 
 
 def _dataclass_instance_fields(dcls_instance):
@@ -405,9 +404,7 @@ class DataclassesTest(parameterized.TestCase):
     self.assertEqual(out.b, (jax.tree_util.GetAttrKey('b'),))
 
   def test_tree_map_with_keys_traversal_order(self):
-    # pytype: disable=wrong-arg-types
-    obj = ReverseOrderNestedDataclass(d=1, c=2)
-    # pytype: enable=wrong-arg-types
+    obj = ReverseOrderNestedDataclass(d=1, c=2)  # pyrefly: ignore[bad-argument-type]
     leaves = []
     def f(_, x):
       leaves.append(x)
@@ -419,13 +416,11 @@ class DataclassesTest(parameterized.TestCase):
   def test_dataclass_replace(self, frozen):
     factor = 5.
     obj = dummy_dataclass(frozen=frozen)
-    # pytype: disable=attribute-error  # dataclass_transform
     obj = obj.replace(a=obj.a.replace(c=factor * obj.a.c))
     obj = obj.replace(a=obj.a.replace(d=factor * obj.a.d))
     obj = obj.replace(b=factor * obj.b)
     target_obj = dummy_dataclass(factor=factor, frozen=frozen)
     asserts.assert_trees_all_close(obj, target_obj)
-    # pytype: enable=attribute-error
 
   def test_dataclass_requires_kwargs_by_default(self):
     factor = 1.0
@@ -435,10 +430,10 @@ class DataclassesTest(parameterized.TestCase):
     ):
       Dataclass(
           NestedDataclass(
-              c=factor * np.ones((3,), dtype=np.float32),
-              d=factor * np.ones((4,), dtype=np.float32),
+              c=factor * np.ones((3,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
+              d=factor * np.ones((4,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
           ),
-          factor * 2 * np.ones((5,), dtype=np.float32),
+          factor * 2 * np.ones((5,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
       )
 
   def test_dataclass_mappable_dataclass_false(self):
@@ -451,10 +446,10 @@ class DataclassesTest(parameterized.TestCase):
 
     NonMappableDataclass(
         NestedDataclass(
-            c=factor * np.ones((3,), dtype=np.float32),
-            d=factor * np.ones((4,), dtype=np.float32),
+            c=factor * np.ones((3,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
+            d=factor * np.ones((4,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
         ),
-        factor * 2 * np.ones((5,), dtype=np.float32),
+        factor * 2 * np.ones((5,), dtype=np.float32),  # pyrefly: ignore[bad-argument-type]
     )
 
   def test_inheritance_is_possible_thanks_to_kw_only(self):
@@ -513,7 +508,7 @@ class DataclassesTest(parameterized.TestCase):
 
     SimpleDataclass(a=1, b=3)
     with self.assertRaisesRegex(ValueError, 'init.*got unexpected kwargs'):
-      SimpleDataclass(a=1, b=3, c=4)  # pytype: disable=wrong-keyword-args
+      SimpleDataclass(a=1, b=3, c=4)  # pyrefly: ignore[unexpected-keyword]
 
   @parameterized.product(
       mappable=[False, True], frozen=[False, True], kw_only=[False, True]
@@ -556,7 +551,7 @@ class DataclassesTest(parameterized.TestCase):
   def test_tuple_rev_conversion(self, frozen):
     obj = dummy_dataclass(frozen=frozen)
     asserts.assert_trees_all_close(
-        type(obj).from_tuple(obj.to_tuple()),  # pytype: disable=attribute-error
+        type(obj).from_tuple(obj.to_tuple()),
         obj,
     )
 
@@ -600,7 +595,7 @@ class DataclassesTest(parameterized.TestCase):
 
       # pylint:disable=unused-variable
       @chex_dataclass
-      class DerivedMutable(FrozenBase):
+      class DerivedMutable(FrozenBase):  # pyrefly: ignore[invalid-inheritance]
         j: int
 
       # pylint:enable=unused-variable
@@ -637,10 +632,8 @@ class DataclassesTest(parameterized.TestCase):
     @chex_dataclass(mappable_dataclass=is_mappable)
     class _Dcls:
       str_val: str
-      # pytype: disable=invalid-annotation  # enable-bare-annotations
       inner_dcls: _InnerDcls
       dct: Mapping[str, _InnerDcls]
-      # pytype: enable=invalid-annotation  # enable-bare-annotations
 
     dcls = _Dcls(
         str_val='test',
@@ -690,7 +683,7 @@ class DataclassesTest(parameterized.TestCase):
 
     @chex_dataclass(mappable_dataclass=mappable)
     class GenericDataclass(Generic[T]):
-      a: T  # pytype: disable=invalid-annotation  # enable-bare-annotations
+      a: T
 
     obj = GenericDataclass(a=np.array([1.0, 1.0]))
     asserts.assert_trees_all_close(obj.a, 1.0)
@@ -706,9 +699,9 @@ class DataclassesTest(parameterized.TestCase):
           return other.a[0] == self.a[0]
         return False
 
-    obj1 = EqDataclass(a=np.array([1.0, 1.0]))
-    obj2 = EqDataclass(a=np.array([1.0, 0.0]))
-    obj3 = EqDataclass(a=np.array([0.0, 1.0]))
+    obj1 = EqDataclass(a=np.array([1.0, 1.0]))  # pyrefly: ignore[bad-argument-type]
+    obj2 = EqDataclass(a=np.array([1.0, 0.0]))  # pyrefly: ignore[bad-argument-type]
+    obj3 = EqDataclass(a=np.array([0.0, 1.0]))  # pyrefly: ignore[bad-argument-type]
     self.assertEqual(obj1, obj2)
     self.assertNotEqual(obj1, obj3)
 
@@ -747,7 +740,7 @@ class DataclassesTest(parameterized.TestCase):
     self.assertSequenceEqual(dataclasses.fields(obj2), dataclasses.fields(obj))
 
   def test_flatten_respects_post_init(self):
-    obj = PostInitDataclass(a=1)  # pytype: disable=wrong-arg-types
+    obj = PostInitDataclass(a=1)  # pyrefly: ignore[bad-argument-type]
     with self.assertRaises(ValueError):
       _ = jax.tree_util.tree_map(lambda x: 0, obj)
 
@@ -755,11 +748,11 @@ class DataclassesTest(parameterized.TestCase):
   def test_keys_and_values_type(self, frozen):
     obj = dummy_dataclass(frozen=frozen)
     self.assertEqual(
-        type(obj.keys()),  # pytype: disable=attribute-error
+        type(obj.keys()),
         type({}.keys()),
     )
     self.assertEqual(
-        type(obj.values()),  # pytype: disable=attribute-error
+        type(obj.values()),
         type({}.values()),
     )
 
@@ -772,7 +765,7 @@ class DataclassesTest(parameterized.TestCase):
 
     obj = _Dataclass(x=1, values=2)
     self.assertEqual(
-        list(obj.keys()),  # pytype: disable=attribute-error
+        list(obj.keys()),  # pyrefly: ignore[missing-attribute]
         ['x', 'values'],
     )
     self.assertEqual(obj.values, 2)

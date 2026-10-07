@@ -260,7 +260,7 @@ class FailedTestsTest(absltest.TestCase):
     super().setUp()
     self.chex_info = str(variants.ChexVariantType.WITHOUT_JIT)
     self.res = unittest.TestResult()
-    ts = make_suite(self.FailedTest)  # pytype: disable=module-attr
+    ts = make_suite(self.FailedTest)
     ts.run(self.res)
 
   def test_useful_failures(self):
@@ -295,7 +295,7 @@ class OneFailedVariantTest(variants.TestCase):
     unexpected_info = str(variants.ChexVariantType.WITH_DEVICE)
 
     res = unittest.TestResult()
-    ts = make_suite(self.MaybeFailedTest)  # pytype: disable=module-attr
+    ts = make_suite(self.MaybeFailedTest)
     ts.run(res)
     self.assertLen(res.failures, 1)
 
@@ -315,7 +315,7 @@ class WrongBaseClassTest(variants.TestCase):
 
   def test_wrong_base_class(self):
     res = unittest.TestResult()
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(res)
     self.assertLen(res.errors, 1)
 
@@ -351,7 +351,7 @@ class BaseClassesTest(parameterized.TestCase):
     test_class = self.generate_test_class(*base_classes)
     for base_class in base_classes:
       self.assertTrue(issubclass(test_class, base_class))
-    ts = make_suite(test_class)  # pytype: disable=module-attr
+    ts = make_suite(test_class)
     ts.run(res)
     self.assertEqual(res.testsRun, 8)
     self.assertEmpty(res.errors or res.failures)
@@ -370,7 +370,7 @@ class VariantsTestCaseWithParameterizedTest(absltest.TestCase):
 
   def test_should_pass(self):
     res = unittest.TestResult()
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(res)
     self.assertEqual(res.testsRun, 8)
     self.assertEmpty(res.errors or res.failures)
@@ -427,7 +427,7 @@ class UnusedVariantTest(absltest.TestCase):
 
   def test_unused_variant(self):
     res = unittest.TestResult()
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(res)
     self.assertLen(res.errors, 4)
     for _, msg in res.errors:
@@ -460,7 +460,7 @@ class UnknownVariantArgumentsTest(absltest.TestCase):
 
   def test_unknown_argument(self):
     res = unittest.TestResult()
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(res)
     self.assertLen(res.errors, 4)
     for _, msg in res.errors:
@@ -480,7 +480,7 @@ class VariantTypesTest(absltest.TestCase):
       self.var_types.add(self.variant.type)
 
   def test_var_type_fetch(self):
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(unittest.TestResult())
     expected_types = set(variants.ChexVariantType)
     if jax.device_count() == 1:
@@ -526,7 +526,7 @@ class CountVariantsTest(absltest.TestCase):
 
   def test_counters(self):
     res = unittest.TestResult()
-    ts = make_suite(self.InnerTest)  # pytype: disable=module-attr
+    ts = make_suite(self.InnerTest)
     ts.run(res)
 
     active_pmap = int(jax.device_count() > 1)

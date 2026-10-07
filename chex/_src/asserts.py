@@ -578,7 +578,6 @@ def _shape_matches(actual_shape: Sequence[int],
   # If there is no ellipsis, just compare to the full `actual_shape`.
   if expected_suffix is None:
     assert len(expected_prefix) == len(expected_shape)
-    # pyrefly: ignore[bad-argument-type]
     return _unelided_shape_matches(actual_shape, expected_prefix)
 
   # Checks that the actual rank is least the number of non-elided dimensions.
@@ -587,13 +586,11 @@ def _shape_matches(actual_shape: Sequence[int],
 
   if expected_prefix:
     actual_prefix = actual_shape[:len(expected_prefix)]
-    # pyrefly: ignore[bad-argument-type]
     if not _unelided_shape_matches(actual_prefix, expected_prefix):
       return False
 
   if expected_suffix:
     actual_suffix = actual_shape[-len(expected_suffix):]
-    # pyrefly: ignore[bad-argument-type]
     if not _unelided_shape_matches(actual_suffix, expected_suffix):
       return False
 
@@ -642,9 +639,9 @@ def assert_shape(
 
   # Shapes are always lists or tuples, not scalars.
   if (not expected_shapes or not isinstance(expected_shapes[0], (list, tuple))):
-    # pyrefly: ignore[bad-argument-type, bad-assignment]
+    # pyrefly: ignore[bad-argument-type]
     expected_shapes = [expected_shapes] * len(inputs)
-  # pyrefly: ignore[bad-argument-type, bad-assignment]
+  # pyrefly: ignore[bad-argument-type]
   if len(inputs) != len(expected_shapes):  # pyrefly: ignore[bad-argument-type]
     raise AssertionError(
         # pyrefly: ignore[bad-argument-type]
@@ -1083,13 +1080,11 @@ def _check_sharding(x):
       return True
     else:
       return len(x.sharding.device_set) > 1
-  # pytype: disable=attribute-error
   return (
       hasattr(jax, "pxla")
       and hasattr(jax.pxla, "ShardedDeviceArray")
       and isinstance(x, jax.pxla.ShardedDeviceArray)
   )
-  # pytype: enable=attribute-error
 
 
 @_static_assertion
