@@ -174,6 +174,34 @@ class AssertMaxTracesTest(variants.TestCase):
       arg = jnp.zeros(max_traces + 1)
       fn_jitted(arg, 2)
 
+  def test_error_reports_retrace_shape_change(self):
+
+    @jax.jit
+    @asserts.assert_max_traces(1)
+    def fn(x):
+      return x
+
+    fn(jnp.zeros((2, 1)))
+    with self.assertRaisesRegex(
+        AssertionError,
+        r"Argument 'x' changed: shape \(2, 1\) -> \(3, 1\)\.",
+    ):
+      fn(jnp.zeros((3, 1)))
+
+  def test_error_reports_retrace_dtype_change(self):
+
+    @jax.jit
+    @asserts.assert_max_traces(1)
+    def fn(x):
+      return x
+
+    fn(jnp.zeros((2,), dtype=jnp.float32))
+    with self.assertRaisesRegex(
+        AssertionError,
+        r"Argument 'x' changed: dtype float32 -> int32\.",
+    ):
+      fn(jnp.zeros((2,), dtype=jnp.int32))
+
   def test_incorrect_ordering(self):
     # pylint:disable=g-error-prone-assert-raises,unused-variable
     with self.assertRaisesRegex(ValueError, 'change wrappers ordering'):
