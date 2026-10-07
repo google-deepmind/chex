@@ -254,7 +254,7 @@ class ScalarAssertTest(parameterized.TestCase):
     asserts.assert_scalar(1.)
     with self.assertRaisesRegex(AssertionError,
                                 _get_err_regex('must be a scalar')):
-      asserts.assert_scalar(np.array(1.))  # pytype: disable=wrong-arg-types
+      asserts.assert_scalar(np.array(1.))
 
   def test_scalar_positive(self):
     asserts.assert_scalar_positive(0.5)
@@ -587,7 +587,6 @@ class RankAssertTest(parameterized.TestCase):
       asserts.assert_rank(rank_array(2), np.array([2]))
 
   def test_rank_should_fail_wrong_expectation_structure(self):
-    # pytype: disable=wrong-arg-types
     with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
         ValueError, 'Expected ranks should be integers or sets of integers'):
       asserts.assert_rank(rank_array(2), [[1, 2]])
@@ -595,7 +594,6 @@ class RankAssertTest(parameterized.TestCase):
     with self.assertRaisesRegex(  # pylint: disable=g-error-prone-assert-raises
         ValueError, 'Expected ranks should be integers or sets of integers'):
       asserts.assert_rank([rank_array(1), rank_array(2)], [[1], [2]])
-    # pytype: enable=wrong-arg-types
 
   @parameterized.named_parameters(
       ('rank_1', rank_array(1), 2),

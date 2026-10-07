@@ -462,7 +462,6 @@ def convert_jax_path_to_dm_path(
 ) -> Tuple[Union[int, str, Hashable]]:
   """Converts a path from jax.tree_util to one from dm-tree."""
 
-  # pytype:disable=attribute-error
   def _convert_key_fn(key: JaxKeyType) -> Union[int, str, Hashable]:
     if isinstance(key, (str, int)):
       return key  # int | str.
@@ -475,7 +474,6 @@ def convert_jax_path_to_dm_path(
     if isinstance(key, jax.tree_util.GetAttrKey):
       return key.name  # str.
     raise ValueError(f"Jax tree key '{key}' of type '{type(key)}' not valid.")
-  # pytype:enable=attribute-error
 
   # pyrefly: ignore[bad-return]
   return tuple(_convert_key_fn(key) for key in jax_tree_path)

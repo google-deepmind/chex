@@ -179,7 +179,7 @@ class AssertsChexifyTest(variants.TestCase):
     async_check(invalid_x)  # enqueued
     with self.assertRaisesRegex(AssertionError, 'err_label'):
       # Retrieve the error.
-      async_check.wait_checks()  # pytype: disable=attribute-error
+      async_check.wait_checks()  # pyrefly: ignore[missing-attribute]
 
     # Explicit wait, through module-level wait.
     async_check(invalid_x)  # enqueued
@@ -231,7 +231,7 @@ class AssertsChexifyTest(variants.TestCase):
     err_regex = re.escape(_ai.get_chexify_err_message('assert_tree_all_finite'))
     with self.assertRaisesRegex(AssertionError, f'{err_regex}.*chexify_test'):
       logp1_abs_safe(jnp.array([jnp.nan, 3]))  # FAILS
-      logp1_abs_safe.wait_checks()  # pytype: disable=attribute-error
+      logp1_abs_safe.wait_checks()  # pyrefly: ignore[missing-attribute]
 
   def test_checkify_errors(self):
     @jax.jit
@@ -287,12 +287,12 @@ class AssertsChexifyTest(variants.TestCase):
     chexified_fn = chexify_async(partial_fn)  # note: fn is not transformed
 
     chexified_fn(jnp.array([1]))
-    chexified_fn.wait_checks()  # pytype: disable=attribute-error
+    chexified_fn.wait_checks()  # pyrefly: ignore[missing-attribute]
 
     with self.assertRaisesRegex(AssertionError, '0 and 1 differ'):
       chexified_fn(jnp.array([2]))
       # Fail: not equal.
-      chexified_fn.wait_checks()  # pytype: disable=attribute-error
+      chexified_fn.wait_checks()  # pyrefly: ignore[missing-attribute]
 
   def test_wrong_order_of_wrapping(self):
 
