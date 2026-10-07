@@ -510,9 +510,14 @@ class DataclassesTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'init.*got unexpected kwargs'):
       SimpleDataclass(a=1, b=3, c=4)  # pyrefly: ignore[unexpected-keyword]
 
-  def test_tuple_conversion(self):
+  @parameterized.product(
+      mappable=[False, True], frozen=[False, True], kw_only=[False, True]
+  )
+  def test_tuple_conversion(self, mappable, frozen, kw_only):
 
-    @chex_dataclass()
+    @chex_dataclass(
+        mappable_dataclass=mappable, frozen=frozen, kw_only=kw_only
+    )
     class SimpleDataclass:
       b: int
       a: int
@@ -523,6 +528,21 @@ class DataclassesTest(parameterized.TestCase):
     obj2 = getattr(SimpleDataclass, 'from_tuple')((1, 2))
     self.assertEqual(obj.a, obj2.a)
     self.assertEqual(obj.b, obj2.b)
+
+  def test_single_field_non_mappable_tuple_conversion(self):
+
+    @chex_dataclass(mappable_dataclass=False)
+    class State:
+      weights: pytypes.ArrayDevice
+
+    weights = jax.numpy.arange(3.)
+    state = State(weights=weights)
+    restored = getattr(State, 'from_tuple')(getattr(state, 'to_tuple')())
+
+    self.assertIs(restored.weights, weights)
+    asserts.assert_trees_all_equal(
+        jax.jit(lambda x: x.weights * 2)(restored), weights * 2
+    )
 
   @parameterized.named_parameters(
       ('frozen', True),
