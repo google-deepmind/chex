@@ -249,6 +249,15 @@ class AssertMaxTracesTest(variants.TestCase):
 
 class ScalarAssertTest(parameterized.TestCase):
 
+  @parameterized.named_parameters(
+      ('positive', asserts.assert_scalar_positive, 'must be positive'),
+      ('non_negative', asserts.assert_scalar_non_negative, 'must be non-negative'),
+      ('negative', asserts.assert_scalar_negative, 'must be negative'),
+  )
+  def test_scalar_sign_rejects_nan(self, assertion, message):
+    with self.assertRaisesRegex(AssertionError, _get_err_regex(message)):
+      assertion(float('nan'))
+
   def test_scalar(self):
     asserts.assert_scalar(1)
     asserts.assert_scalar(1.)
