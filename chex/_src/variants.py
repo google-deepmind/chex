@@ -457,6 +457,7 @@ def _with_pmap(fn,
                in_axes=0,
                static_broadcasted_argnums=(),
                static_argnums=(),
+               static_argnames=None,
                backend=None,
                **unused_kwargs):
   """Variant that applies `jax.pmap` to fn.
@@ -472,6 +473,7 @@ def _with_pmap(fn,
     in_axes: An argument for `pmap`.
     static_broadcasted_argnums: An argument for `pmap`.
     static_argnums: An alias of ``static_broadcasted_argnums``.
+    static_argnames: Unsupported for `pmap`; raises `ValueError` if set.
     backend: An argument for `pmap`.
     **unused_kwargs: Unused kwargs (e.g. related to other variants).
 
@@ -487,6 +489,14 @@ def _with_pmap(fn,
     SkipTest: If the flag ``chex_skip_pmap_variant_if_single_device`` is set and
       there is only one device available.
   """
+  # JAX pmap does not support named static arguments. Do not silently ignore
+  # this option, which can mask test failures in shared variant configurations.
+  if static_argnames:
+    raise ValueError(
+        "The with_pmap variant does not support `static_argnames`. "
+        "Pass static values positionally using `static_argnums`, or "
+        "disable the pmap variant.")
+
   if (FLAGS["chex_skip_pmap_variant_if_single_device"].value and
       jax.device_count() < 2):
     raise unittest.SkipTest(f"Only 1 device is available ({jax.devices()}).")

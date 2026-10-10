@@ -20,6 +20,7 @@ To run tests in multi-cpu regime, one need to set the flag `--n_cpu_devices=N`.
 import inspect
 import itertools
 import unittest
+from unittest import mock
 
 from absl import flags
 from absl.testing import absltest
@@ -740,6 +741,25 @@ class WithPmapSingleDeviceTest(parameterized.TestCase):
       is_jit_context=True,
       which_variants=dict(with_pmap=True),
       n_devices=1)
+
+
+class WithPmapUnsupportedArgumentTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('name_tuple', ('mode',)),
+      ('name_string', 'mode'),
+  )
+  def test_static_argnames_is_rejected(self, names):
+    with self.assertRaisesRegex(
+        ValueError, 'with_pmap.*does not support.*static_argnames'):
+      variants._with_pmap(  # pylint: disable=protected-access
+          lambda _: None, static_argnames=names)
+
+  def test_empty_static_argnames_is_allowed(self):
+    with mock.patch.object(jax, 'device_count', return_value=2):
+      wrapped = variants._with_pmap(  # pylint: disable=protected-access
+          lambda x: x, static_argnames=())
+    self.assertTrue(callable(wrapped))
 
 
 class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
