@@ -180,6 +180,22 @@ class PmapFakeTest(parameterized.TestCase):
           'enable_pmap_patching': True,
           'enable_jit_patching': True
       }, False, False),
+      ('explicit_fake_nothing', {
+          'disable_pmap': False,
+          'disable_jit': False,
+      }, True, True),
+      ('explicit_fake_pmap', {
+          'disable_pmap': True,
+          'disable_jit': False,
+      }, False, True),
+      ('explicit_fake_jit', {
+          'disable_pmap': False,
+          'disable_jit': True,
+      }, True, False),
+      ('explicit_fake_both', {
+          'disable_pmap': True,
+          'disable_jit': True,
+      }, False, False),
   ])
   def test_pmap_and_jit(self, fake_kwargs, is_pmapped, is_jitted):
     fn_input = jnp.ones((4,))
@@ -198,6 +214,40 @@ class PmapFakeTest(parameterized.TestCase):
     _assert_jitted(foo, fn_input, is_jitted)
     ctx.stop()
 
+  def test_single_legacy_positional_arg_warns_about_jit(self):
+    original_jit_disabled = jax.config.jax_disable_jit
+    with self.assertWarnsRegex(DeprecationWarning, 'disable_jit'):
+      context = fake.fake_pmap_and_jit(False)
+    with context:
+      # A single historical positional flag disables pmap patching only;
+      # the JIT transformation is still disabled by default.
+      self.assertTrue(jax.config.jax_disable_jit)
+    self.assertEqual(jax.config.jax_disable_jit, original_jit_disabled)
+
+  def test_two_legacy_positional_flags_still_work(self):
+    original_jit_disabled = jax.config.jax_disable_jit
+    with self.assertWarnsRegex(DeprecationWarning, 'disable_pmap'):
+      context = fake.fake_pmap_and_jit(False, False)
+    with context:
+      self.assertFalse(jax.config.jax_disable_jit)
+    self.assertEqual(jax.config.jax_disable_jit, original_jit_disabled)
+
+  def test_new_and_legacy_keyword_names_conflict(self):
+    with self.assertRaisesRegex(TypeError, 'either disable_pmap'):
+      fake.fake_pmap_and_jit(
+          disable_pmap=True, enable_pmap_patching=False)
+    with self.assertRaisesRegex(TypeError, 'either disable_jit'):
+      fake.fake_pmap_and_jit(
+          disable_jit=False, enable_jit_patching=True)
+    with self.assertRaisesRegex(TypeError, 'pmap patching flag'):
+      fake.fake_pmap_and_jit(True, disable_pmap=False)
+    with self.assertRaisesRegex(TypeError, 'jit patching flag'):
+      fake.fake_pmap_and_jit(True, False, disable_jit=True)
+
+  def test_too_many_legacy_positional_flags(self):
+    with self.assertRaisesRegex(TypeError, 'at most two positional'):
+      fake.fake_pmap_and_jit(True, False, True)
+
   @parameterized.named_parameters([
       ('fake_nothing', False, False),
       ('fake_pmap', True, False),
@@ -205,7 +255,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_kwargs(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        disable_pmap=fake_pmap, disable_jit=fake_jit):
       num_devices = len(jax.devices())
 
       @functools.partial(jax.pmap, axis_size=num_devices)
@@ -227,7 +278,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_pmap_no_static_args', True, ()),
   ])
   def test_with_static_broadcasted_argnums(self, fake_pmap, static_argnums):
-    with fake.fake_pmap_and_jit(fake_pmap, enable_jit_patching=False):
+    with fake.fake_pmap_and_jit(
+        disable_pmap=fake_pmap, disable_jit=False):
       num_devices = len(jax.devices())
 
       # Note: mode='bar' is intended to test that we correctly handle kwargs
@@ -315,7 +367,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_partial(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        disable_pmap=fake_pmap, disable_jit=fake_jit):
       num_devices = len(jax.devices())
 
       # Testing a common use-case where non-parallel arguments are partially
@@ -342,7 +395,8 @@ class PmapFakeTest(parameterized.TestCase):
       ('fake_both', True, True),
   ])
   def test_with_default_params(self, fake_pmap, fake_jit):
-    with fake.fake_pmap_and_jit(fake_pmap, fake_jit):
+    with fake.fake_pmap_and_jit(
+        disable_pmap=fake_pmap, disable_jit=fake_jit):
       num_devices = len(jax.devices())
 
       # Default flag specified at definition time

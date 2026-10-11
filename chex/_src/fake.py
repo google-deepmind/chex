@@ -25,6 +25,7 @@ import functools
 import inspect
 import os
 import re
+import warnings
 from typing import Any, Callable, Iterable, Optional, Union
 from unittest import mock
 from absl import flags
@@ -327,28 +328,87 @@ def fake_pmap(
   return stack
 
 
-def fake_pmap_and_jit(enable_pmap_patching: bool = True,
-                      enable_jit_patching: bool = True) -> FakeContext:
-  """Context manager for patching `jax.jit` and `jax.pmap`.
+def fake_pmap_and_jit(
+    *legacy_patching_flags: bool,
+    disable_pmap: Optional[bool] = None,
+    disable_jit: Optional[bool] = None,
+    enable_pmap_patching: Optional[bool] = None,
+    enable_jit_patching: Optional[bool] = None,
+) -> FakeContext:
+  """Context manager for disabling jax.pmap and jax.jit.
 
-  This is a convenience function, equivalent to nested `chex.fake_pmap` and
-  `chex.fake_jit` contexts.
+  This is a convenience function equivalent to nested chex.fake_pmap
+  and chex.fake_jit contexts. Both transformations are faked by default.
 
-  Note that calling (the true implementation of) `jax.pmap` will compile the
-  function, so faking `jax.jit` in this case will not stop the function from
-  being compiled.
+  Use the explicit disable_pmap and disable_jit keyword arguments to
+  avoid accidentally disabling JIT when only one flag is supplied.
+  The old enable_*_patching keywords remain supported for compatibility.
+  Positional patching flags are deprecated because a single positional
+  argument only controls pmap, *not* jit.
+
+  For example, to fake both transformations in debug mode:
+
+  .. code-block:: python
+
+    with chex.fake_pmap_and_jit(
+        disable_pmap=debug_mode, disable_jit=debug_mode):
+      run()
+
+  Note that a real jax.pmap still compiles the function even when jit
+  is faked.
 
   Args:
-    enable_pmap_patching: Whether to patch `jax.pmap`.
-    enable_jit_patching: Whether to patch `jax.jit`.
+    *legacy_patching_flags: Deprecated positional pmap/jit patching flags.
+    disable_pmap: Whether to fake jax.pmap using jax.vmap.
+    disable_jit: Whether to fake jax.jit using the identity function.
+    enable_pmap_patching: Legacy name for disable_pmap.
+    enable_jit_patching: Legacy name for disable_jit.
 
   Returns:
-    Context where jax.pmap and jax.jit are patched with jax.vmap and the
-    identity function
+    Context where the selected JAX transformations are patched.
+
+  Raises:
+    TypeError: If too many positional flags or conflicting names are supplied.
   """
+  if len(legacy_patching_flags) > 2:
+    raise TypeError(
+        "fake_pmap_and_jit accepts at most two positional flags."
+    )
+
+  if legacy_patching_flags:
+    if disable_pmap is not None or enable_pmap_patching is not None:
+      raise TypeError("pmap patching flag was specified more than once.")
+    disable_pmap = legacy_patching_flags[0]
+  if len(legacy_patching_flags) == 2:
+    if disable_jit is not None or enable_jit_patching is not None:
+      raise TypeError("jit patching flag was specified more than once.")
+    disable_jit = legacy_patching_flags[1]
+
+  if disable_pmap is not None and enable_pmap_patching is not None:
+    raise TypeError("Use either disable_pmap or enable_pmap_patching.")
+  if disable_jit is not None and enable_jit_patching is not None:
+    raise TypeError("Use either disable_jit or enable_jit_patching.")
+
+  if legacy_patching_flags:
+    warnings.warn(
+        "Positional arguments to fake_pmap_and_jit are deprecated. Use "
+        "disable_pmap=... and disable_jit=... explicitly.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+  if disable_pmap is None:
+    disable_pmap = (
+        True if enable_pmap_patching is None else enable_pmap_patching
+    )
+  if disable_jit is None:
+    disable_jit = (
+        True if enable_jit_patching is None else enable_jit_patching
+    )
+
   stack = FakeContext()
-  stack.enter_context(fake_pmap(enable_pmap_patching))
-  stack.enter_context(fake_jit(enable_jit_patching))
+  stack.enter_context(fake_pmap(disable_pmap))
+  stack.enter_context(fake_jit(disable_jit))
   return stack
 
 
