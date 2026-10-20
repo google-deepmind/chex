@@ -627,6 +627,56 @@ class AssertsLibraryTest(parameterized.TestCase):
     ):
       chexified_fn(tree_1, tree_2)  # Fail: not equal
 
+  @parameterized.product(
+      dtypes=[
+          (jnp.int32, jnp.float32),
+          (jnp.float16, jnp.float32),
+          (jnp.bfloat16, jnp.float32),
+          (jnp.bool_, jnp.int32),
+          (jnp.float32, jnp.complex64),
+      ],
+      mismatch_index=[1, 2],
+  )
+  def test_assert_trees_all_equal_strict_dtype(self, dtypes, mismatch_index):
+    @jax.jit
+    def fn(*trees):
+      asserts.assert_trees_all_equal(*trees, strict=True)
+      return trees[0]
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+
+    def make_tree(dtype):
+      return {
+          'a': jnp.array([3]),
+          'nested': {'value': jnp.array([1, 0], dtype=dtype)},
+      }
+
+    tree_1, tree_2 = map(make_tree, dtypes)
+    chexified_fn(tree_1, tree_1, tree_1)
+    chexified_fn(tree_2, tree_2, tree_2)
+    trees = [tree_1, tree_1, tree_1]
+    trees[mismatch_index] = tree_2
+    err_regex = get_chexify_err_regex(
+        'assert_trees_all_equal',
+        re.escape(
+            f'Trees 0 and {mismatch_index} differ in leaves '
+            "'('nested', 'value')'"
+        ),
+    )
+    with self.assertRaisesRegex(AssertionError, err_regex):
+      chexified_fn(*trees)
+
+  @parameterized.parameters(True, 1, 1.0, 1.0 + 0.0j)
+  def test_assert_trees_all_equal_strict_scalar(self, scalar):
+    @jax.jit
+    def fn(x, y):
+      asserts.assert_trees_all_equal(x, y, strict=True)
+      return x
+
+    chexified_fn = asserts_chexify.chexify(fn, async_check=False)
+    chexified_fn(scalar, scalar)
+    chexified_fn(jnp.array(scalar, dtype=jnp.asarray(scalar).dtype), scalar)
+
   def test_assert_trees_all_equal_with_prng_keys(self):
     @jax.jit
     def fn(x, y):

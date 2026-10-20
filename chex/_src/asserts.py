@@ -1642,7 +1642,12 @@ def _assert_trees_all_equal_jittable(
     )
 
   err_msg_template = "Values not exactly equal: {arr_1} != {arr_2}."
-  cmp_fn = lambda x, y: jnp.array_equal(x, y, equal_nan=True)
+
+  def cmp_fn(x, y):
+    if jnp.asarray(x).dtype != jnp.asarray(y).dtype:
+      return jnp.array(False)
+    return jnp.array_equal(x, y, equal_nan=True)
+
   return _ai.assert_trees_all_eq_comparator_jittable(
       cmp_fn, err_msg_template, *trees  # pyrefly: ignore[bad-argument-type]
   )
