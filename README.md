@@ -1,5 +1,9 @@
 # Chex
 
+<p align="center">
+  <b>English</b> · <a href="https://github.com/google-deepmind/chex/blob/main/README.zh.md">简体中文</a>
+</p>
+
 <!-- disableFinding(SNIPPET_INVALID_LANGUAGE) -->
 
 ![CI status](https://github.com/deepmind/chex/workflows/ci/badge.svg)
