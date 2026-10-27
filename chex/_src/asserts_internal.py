@@ -408,6 +408,15 @@ def assert_trees_all_eq_comparator_jittable(
         "`assert_trees_xxx([a, b])` instead of `assert_trees_xxx(a, b)`, or "
         "forgot the `error_msg_fn` arg to `assert_trees_xxx`?")
 
+  first_treedef = jax.tree_util.tree_structure(trees[0])
+  for i, tree in enumerate(trees[1:], start=1):
+    if first_treedef != jax.tree_util.tree_structure(tree):
+      checkify.check(
+          jnp.array(False),
+          f"Error in tree structs equality check: trees 0 and {i} do not match."
+      )
+      return jnp.array(False)
+
   def _tree_error_msg_fn(
       path: Tuple[Union[int, str, Hashable]], i_1: int, i_2: int):
     if path:
