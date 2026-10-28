@@ -564,22 +564,38 @@ def _with_pmap(fn,
       kwargs = tree_map(bcast_fn, kwargs)
     else:
       # Pmappable axes size must be equal to number of devices.
-      in_axes_ = in_axes if isinstance(in_axes,
-                                       (tuple, list)) else [in_axes] * len(args)
-      is_pmappable_arg = [
-          idx not in static_argnums and in_axes_[idx] is not None
-          for idx in range(len(args))
-      ]
-      for is_pmappable_arg, arg in zip(is_pmappable_arg, args):
-        if not is_pmappable_arg:
+      in_axes_ = (
+          in_axes
+          if isinstance(in_axes, (tuple, list))
+          else [in_axes] * len(args)
+      )
+      for idx, arg in enumerate(args):
+        if idx in static_argnums:
           continue
-        if not all(
-            x.shape[0] == n_devices_ for x in jax.tree_util.tree_leaves(arg)):
+        axes = in_axes_[idx]
+        if axes is None:
+          continue
+        sizes_match = tree_map(
+            lambda axis, subtree: axis is None
+            or all(
+                x.shape[axis] == n_devices_
+                for x in jax.tree_util.tree_leaves(subtree)
+            ),
+            axes,
+            arg,
+            is_leaf=lambda x: x is None,
+        )
+        if not all(jax.tree_util.tree_leaves(sizes_match)):
           shapes = tree_map(jnp.shape, arg)
+          axis_description = (
+              "the first dim" if axes == 0 else "each mapped axis"
+          )
           raise ValueError(
               f"Pmappable arg axes size must be equal to number of devices, "
-              f"got: {shapes} (expected the first dim to be {n_devices_}). "
-              "Consider setting `broadcast_args_to_devices=True`.")
+              f"got: {shapes} "
+              f"(expected {axis_description} to be {n_devices_}). "
+              "Consider setting `broadcast_args_to_devices=True`."
+          )
 
     new_kwargs = dict(
         axis_name=axis_name,

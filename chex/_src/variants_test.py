@@ -921,7 +921,6 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
         reduce_fn=None,
         n_devices=n_devices,
         backend=backend,
-        # Only 0 or None are supported (06/2020).
         in_axes=(0, None),
     )
     def fn(arg_0, arg_1):
@@ -947,7 +946,6 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
         broadcast_args_to_devices=False,
         n_devices=n_devices,
         backend=backend,
-        # Only 0 or None are supported (06/2020).
         in_axes=(None, 0),
     )
     def fn(arg_0, arg_1):
@@ -959,6 +957,126 @@ class WithPmapAllAvailableDeviceTest(parameterized.TestCase):
         ValueError, 'Pmappable.* axes size must be equal to number of devices.*'
         f'expected the first dim to be {n_devices}'):
       fn(varg_0, varg_1)
+
+  @variants.variants(with_pmap=True)
+  def test_pmap_nonleading_axis(self):
+    devices = jax.devices(self.backend)[: self.n_devices]
+    inputs = np.arange(3 * self.n_devices).reshape(3, self.n_devices)
+
+    def fn(value):
+      return value + jax.lax.psum(value, axis_name='i')
+
+    expected = inputs.T + inputs.sum(axis=1)
+    native = jax.pmap(fn, devices=devices, in_axes=1, axis_name='i')
+    np.testing.assert_array_equal(native(inputs), expected)
+    wrapped = self.variant(
+        fn,
+        broadcast_args_to_devices=False,
+        reduce_fn=None,
+        n_devices=self.n_devices,
+        backend=self.backend,
+        in_axes=1,
+    )
+    np.testing.assert_array_equal(wrapped(inputs), expected)
+
+  @variants.variants(with_pmap=True)
+  def test_pmap_mixed_input_axes(self):
+    devices = jax.devices(self.backend)[: self.n_devices]
+    first = np.arange(3 * self.n_devices).reshape(3, self.n_devices)
+    second = np.arange(3 * self.n_devices).reshape(self.n_devices, 3)
+
+    def fn(value, offset, scale):
+      return scale * (value + offset)
+
+    expected = 7 * (first.T + second)
+    native = jax.pmap(
+        fn,
+        devices=devices,
+        in_axes=(1, 0, None),
+        static_broadcasted_argnums=(2,),
+    )
+    np.testing.assert_array_equal(native(first, second, 7), expected)
+    wrapped = self.variant(
+        fn,
+        broadcast_args_to_devices=False,
+        reduce_fn=None,
+        n_devices=self.n_devices,
+        backend=self.backend,
+        in_axes=(1, 0, None),
+        static_argnums=(2,),
+    )
+    np.testing.assert_array_equal(wrapped(first, second, 7), expected)
+
+  @variants.variants(with_pmap=True)
+  @parameterized.named_parameters(('per_leaf', False), ('prefix', True))
+  def test_pmap_nested_input_axes(self, use_prefix):
+    devices = jax.devices(self.backend)[: self.n_devices]
+    first = np.arange(3 * self.n_devices).reshape(3, self.n_devices)
+    second = first + 1 if use_prefix else first.T + 1
+    bias = np.ones_like(first) if use_prefix else np.ones(3, dtype=int)
+    inputs = {'x': first, 'y': second, 'bias': bias}
+    axes = 1 if use_prefix else ({'x': 1, 'y': 0, 'bias': None},)
+
+    def fn(values):
+      return values['x'] + values['y'] + values['bias']
+
+    expected = first.T + (second.T if use_prefix else second) + 1
+    native = jax.pmap(fn, devices=devices, in_axes=axes)
+    np.testing.assert_array_equal(native(inputs), expected)
+    wrapped = self.variant(
+        fn,
+        broadcast_args_to_devices=False,
+        reduce_fn=None,
+        n_devices=self.n_devices,
+        backend=self.backend,
+        in_axes=axes,
+    )
+    np.testing.assert_array_equal(wrapped(inputs), expected)
+
+  @variants.variants(with_pmap=True)
+  @parameterized.named_parameters(('positive', 1), ('negative', -1))
+  def test_pmap_wrong_nonleading_axis_size(self, axis):
+    inputs = np.zeros((self.n_devices, self.n_devices + 1))
+
+    def fn(value):
+      del value
+      raise RuntimeError('This line should not be executed.')
+
+    wrapped = self.variant(
+        fn,
+        broadcast_args_to_devices=False,
+        n_devices=self.n_devices,
+        backend=self.backend,
+        in_axes=axis,
+    )
+    with self.assertRaisesRegex(
+        ValueError, 'Pmappable arg axes size must be equal to number of devices'
+    ):
+      wrapped(inputs)
+
+  @variants.variants(with_pmap=True)
+  def test_pmap_trailing_static_without_axis(self):
+    devices = jax.devices(self.backend)[: self.n_devices]
+    inputs = np.arange(3 * self.n_devices).reshape(self.n_devices, 3)
+
+    def fn(value, scale):
+      return scale * value
+
+    expected = 7 * inputs
+    native = jax.pmap(
+        fn, devices=devices, in_axes=(0,), static_broadcasted_argnums=(1,)
+    )
+    np.testing.assert_array_equal(native(inputs, 7), expected)
+    wrapped = self.variant(
+        fn,
+        broadcast_args_to_devices=False,
+        reduce_fn=None,
+        n_devices=self.n_devices,
+        backend=self.backend,
+        in_axes=(0,),
+        static_argnums=(1,),
+    )
+    np.testing.assert_array_equal(wrapped(inputs, 7), expected)
 
 
 if __name__ == '__main__':
