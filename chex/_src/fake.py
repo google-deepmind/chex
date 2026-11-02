@@ -82,12 +82,6 @@ def set_n_cpu_devices(n: Optional[int] = None) -> None:
       [f'--xla_force_host_platform_device_count={n}'] + xla_flags.split())
 
 
-def convert_to_varargs(sig, *args, **kwargs):
-  """Converts varargs+kwargs function arguments into varargs only."""
-  bound_args = sig.bind(*args, **kwargs)
-  return bound_args.args
-
-
 def _ignore_axis_index_groups(fn):
   """Wrapper that forces axis_index_groups to be None.
 
@@ -145,9 +139,10 @@ def _fake_pmap(fn,
 
   @functools.wraps(fn)
   def wrapped_fn(*args, **kwargs):
-    # Convert kwargs to varargs
-    # This is a workaround for vmapped functions not working with kwargs
-    call_args = convert_to_varargs(fn_signature, *args, **kwargs)
+    # Convert positional keywords to varargs, retaining keyword-only arguments
+    # and keywords after an omitted default. vmap maps these over axis 0.
+    bound_args = fn_signature.bind(*args, **kwargs)
+    call_args, call_kwargs = bound_args.args, bound_args.kwargs
 
     if static_broadcasted_argnums:
       # Make sure vmap does not try to map over `static_broadcasted_argnums`.
@@ -165,12 +160,12 @@ def _fake_pmap(fn,
 
       # A function passed to vmap, that will simply replace the static args
       # with their original values.
-      def fn_without_statics(*args):
+      def fn_without_statics(*args, **kwargs):
         args_with_original_statics = [
             orig_arg if i in static_broadcasted_argnums else arg
             for i, (arg, orig_arg) in enumerate(zip(args, original_call_args))
         ]
-        return fn(*args_with_original_statics)
+        return fn(*args_with_original_statics, **kwargs)
 
       # Make sure to avoid turning static args into tracers: Some python objects
       # might not survive vmap. Just replace with an unused constant.
@@ -190,10 +185,10 @@ def _fake_pmap(fn,
       vmapped_fn = jax.jit(vmapped_fn)
 
     if fake_parallel_axis:
-      call_args = jax.tree_util.tree_map(
-          lambda x: jnp.expand_dims(x, axis=0), call_args)
+      call_args, call_kwargs = jax.tree_util.tree_map(
+          lambda x: jnp.expand_dims(x, axis=0), (call_args, call_kwargs))
 
-    output = vmapped_fn(*call_args)
+    output = vmapped_fn(*call_args, **call_kwargs)
 
     if fake_parallel_axis:
       output = jax.tree_util.tree_map(lambda x: jnp.squeeze(x, axis=0), output)
