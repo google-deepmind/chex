@@ -87,6 +87,63 @@ def _assert_pmapped(fn, fn_input, is_pmapped, should_jit=False):
 
 class PmapFakeTest(parameterized.TestCase):
 
+  @parameterized.product(
+      signature=('keyword_only', 'var_keyword', 'default_gap'),
+      jit_result=(False, True),
+  )
+  def test_fake_pmap_preserves_remaining_kwargs(self, signature, jit_result):
+    def keyword_only(params, *, gradient=0):
+      return params - 0.25 * jax.lax.pmean(gradient, 'devices')
+
+    def var_keyword(params, **kwargs):
+      return params - 0.25 * jax.lax.pmean(
+          kwargs.get('gradient', 0), 'devices')
+
+    def default_gap(params, learning_rate=0.25, gradient=0):
+      return params - learning_rate * jax.lax.pmean(gradient, 'devices')
+
+    step = {
+        'keyword_only': keyword_only,
+        'var_keyword': var_keyword,
+        'default_gap': default_gap,
+    }[signature]
+    num_devices = len(jax.devices())
+    params = jnp.broadcast_to(jnp.array([1., 2.]), (num_devices, 2))
+    replica = jnp.arange(num_devices)
+    gradient = jnp.stack((2. + 2. * replica, 6. + 4. * replica), axis=-1)
+    # The mean of the arithmetic progression gives [n + 1, 2n + 4].
+    expected = jnp.broadcast_to(
+        jnp.array([1. - 0.25 * (num_devices + 1),
+                   2. - 0.25 * (2 * num_devices + 4)]), params.shape)
+    actual = jax.pmap(step, axis_name='devices')(params, gradient=gradient)
+    asserts.assert_trees_all_equal(actual, expected)
+
+    with fake.fake_pmap(jit_result=jit_result):
+      actual = jax.pmap(step, axis_name='devices')(params, gradient=gradient)
+    asserts.assert_trees_all_equal(actual, expected)
+
+  @parameterized.product(jit_result=(False, True), enabled=(False, True))
+  def test_fake_pmap_remaining_kwargs_with_static_arg(self, jit_result, enabled):
+    def step(params, enabled, *, gradient):
+      return params - gradient if enabled else params
+
+    params = jnp.ones((len(jax.devices()), 2))
+    gradient = 0.25 * params
+    expected = 0.75 * params if enabled else params
+    with fake.fake_pmap(jit_result=jit_result):
+      actual = jax.pmap(step, static_broadcasted_argnums=1)(
+          params, enabled, gradient=gradient)
+    asserts.assert_trees_all_equal(actual, expected)
+
+  @parameterized.parameters(False, True)
+  def test_fake_parallel_axis_remaining_kwargs(self, jit_result):
+    def add(*, x, y):
+      return x + y
+
+    with fake.fake_pmap(jit_result=jit_result, fake_parallel_axis=True):
+      actual = jax.pmap(add)(x=jnp.array([1., 2.]), y=jnp.array([3., 4.]))
+    asserts.assert_trees_all_equal(actual, jnp.array([4., 6.]))
+
   def test_assert_pmapped(self):
     def foo(x):
       return x * 2
