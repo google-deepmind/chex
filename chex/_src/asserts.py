@@ -322,9 +322,56 @@ def assert_scalar_in(x: Any,
           f"The argument must be in ({min_}, {max_}), got {x}.")
 
 
-@_static_assertion
-def assert_scalar_positive(x: Scalar) -> None:
-  """Checks that a scalar is positive.
+def _jittable_assert_scalar_positive(x: Scalar) -> Array:
+  """Jittable version of assert_scalar_positive."""
+  pred = x > 0
+  checkify.check(pred, "The argument must be positive, got {}.", x)
+  return pred
+
+
+def _jittable_assert_scalar_non_negative(x: Scalar) -> Array:
+  """Jittable version of assert_scalar_non_negative."""
+  pred = x >= 0
+  checkify.check(pred, "The argument must be non-negative, was {}.", x)
+  return pred
+
+
+def _jittable_assert_scalar_negative(x: Scalar) -> Array:
+  """Jittable version of assert_scalar_negative."""
+  pred = x < 0
+  checkify.check(pred, "The argument must be negative, was {}.", x)
+  return pred
+
+
+def _assert_scalar_positive_impl(x: Scalar) -> None:
+  """Host implementation of assert_scalar_positive."""
+  assert_scalar(x)
+  if x <= 0:
+    raise AssertionError(f"The argument must be positive, got {x}.")
+
+
+def _assert_scalar_non_negative_impl(x: Scalar) -> None:
+  """Host implementation of assert_scalar_non_negative."""
+  assert_scalar(x)
+  if x < 0:
+    raise AssertionError(f"The argument must be non-negative, was {x}.")
+
+
+def _assert_scalar_negative_impl(x: Scalar) -> None:
+  """Host implementation of assert_scalar_negative."""
+  assert_scalar(x)
+  if x >= 0:
+    raise AssertionError(f"The argument must be negative, was {x}.")
+
+
+assert_scalar_positive = _ai.chex_assertion(
+    assert_fn=_assert_scalar_positive_impl,
+    jittable_assert_fn=_jittable_assert_scalar_positive,
+    name='assert_scalar_positive')
+assert_scalar_positive.__doc__ = """Checks that a scalar is positive.
+
+  This assertion is compatible with JAX transformations (jit, vmap, pmap)
+  when used inside a function wrapped with ``@chex.chexify``.
 
   Args:
     x: A value to check.
@@ -332,14 +379,15 @@ def assert_scalar_positive(x: Scalar) -> None:
   Raises:
     AssertionError: If ``x`` is not a scalar or strictly positive.
   """
-  assert_scalar(x)
-  if x <= 0:
-    raise AssertionError(f"The argument must be positive, got {x}.")
 
+assert_scalar_non_negative = _ai.chex_assertion(
+    assert_fn=_assert_scalar_non_negative_impl,
+    jittable_assert_fn=_jittable_assert_scalar_non_negative,
+    name='assert_scalar_non_negative')
+assert_scalar_non_negative.__doc__ = """Checks that a scalar is non-negative.
 
-@_static_assertion
-def assert_scalar_non_negative(x: Scalar) -> None:
-  """Checks that a scalar is non-negative.
+  This assertion is compatible with JAX transformations (jit, vmap, pmap)
+  when used inside a function wrapped with ``@chex.chexify``.
 
   Args:
     x: A value to check.
@@ -347,14 +395,15 @@ def assert_scalar_non_negative(x: Scalar) -> None:
   Raises:
     AssertionError: If ``x`` is not a scalar or negative.
   """
-  assert_scalar(x)
-  if x < 0:
-    raise AssertionError(f"The argument must be non-negative, was {x}.")
 
+assert_scalar_negative = _ai.chex_assertion(
+    assert_fn=_assert_scalar_negative_impl,
+    jittable_assert_fn=_jittable_assert_scalar_negative,
+    name='assert_scalar_negative')
+assert_scalar_negative.__doc__ = """Checks that a scalar is negative.
 
-@_static_assertion
-def assert_scalar_negative(x: Scalar) -> None:
-  """Checks that a scalar is negative.
+  This assertion is compatible with JAX transformations (jit, vmap, pmap)
+  when used inside a function wrapped with ``@chex.chexify``.
 
   Args:
     x: A value to check.
@@ -362,9 +411,6 @@ def assert_scalar_negative(x: Scalar) -> None:
   Raises:
     AssertionError: If ``x`` is not a scalar or strictly negative.
   """
-  assert_scalar(x)
-  if x >= 0:
-    raise AssertionError(f"The argument must be negative, was {x}.")
 
 
 @_static_assertion
