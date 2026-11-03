@@ -250,6 +250,22 @@ def assert_not_both_none(first: Any, second: Any) -> None:
 
 
 @_static_assertion
+def assert_not_both_not_none(first: Any, second: Any) -> None:
+  """Checks that at most one of the arguments is not `None`.
+
+  Args:
+    first: A first object.
+    second: A second object.
+
+  Raises:
+    AssertionError: If ``(first is not None) and (second is not None)``.
+  """
+  if first is not None and second is not None:
+    raise AssertionError(
+        "At most one of the arguments must be different from `None`.")
+
+
+@_static_assertion
 def assert_exactly_one_is_none(first: Any, second: Any) -> None:
   """Checks that one and only one of the arguments is `None`.
 
