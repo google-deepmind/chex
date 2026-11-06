@@ -14,6 +14,8 @@
 # ==============================================================================
 """Tests for chex."""
 
+from importlib import resources
+
 from absl.testing import absltest
 import chex
 
@@ -23,6 +25,10 @@ class ChexTest(absltest.TestCase):
 
   def test_import(self):
     self.assertTrue(hasattr(chex, 'assert_devices_available'))
+
+  def test_typing_marker(self):
+    # CI runs this test against the wheel rebuilt from the source distribution.
+    self.assertTrue(resources.files(chex).joinpath('py.typed').is_file())
 
 
 if __name__ == '__main__':
