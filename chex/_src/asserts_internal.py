@@ -266,8 +266,10 @@ def chex_assertion(
 
       # Mock during the assertion's execution time.
       checkify.check = _check
-      pred = jittable_assert_fn(*args, **kwargs)  # execute the assertion
-      checkify.check = original_check  # return the original implementation
+      try:
+        pred = jittable_assert_fn(*args, **kwargs)  # execute the assertion
+      finally:
+        checkify.check = original_check  # return the original implementation
 
       # A safeguard to ensure that the results of a check are not ignored.
       # In particular, this check fails when `pred` is False and no

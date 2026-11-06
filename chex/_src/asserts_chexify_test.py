@@ -28,6 +28,7 @@ from chex._src import asserts_chexify
 from chex._src import asserts_internal as _ai
 from chex._src import variants
 import jax
+from jax.experimental import checkify
 import jax.numpy as jnp
 import numpy as np
 
@@ -95,6 +96,76 @@ chex_value_assert_positive = _ai.chex_assertion(
 
 class AssertsChexifyTest(variants.TestCase):
   """Simple tests for chexify assertions."""
+
+  @parameterized.product(
+      failure=('unsupported_strict', 'unsupported_ulp'),
+      async_check=(False, True),
+  )
+  def test_checkify_restored_after_tracing_error(self, failure, async_check):
+    original_check = checkify.check
+    # Keep failure-on-base runs isolated from later tests in this process.
+    self.addCleanup(setattr, checkify, 'check', original_check)
+
+    def invalid_comparison(x, y):
+      if failure == 'unsupported_strict':
+        asserts.assert_trees_all_close(
+            x, y, strict=True, custom_message='previous tracing failure'
+        )
+      else:
+        asserts.assert_trees_all_close_ulp(
+            x, y, custom_message='previous tracing failure'
+        )
+      return x
+
+    checked = asserts_chexify.chexify(
+        jax.jit(invalid_comparison), async_check=async_check
+    )
+    if failure == 'unsupported_strict':
+      error_message = '`strict=True` is not implemented'
+    else:
+      error_message = 'not supported within JIT'
+    with self.assertRaisesRegex(NotImplementedError, error_message):
+      checked(jnp.ones(2), jnp.ones(2))
+
+    def raw_check(x):
+      checkify.check(jnp.all(x > 0), 'independent raw check')
+      return x
+
+    err, _ = checkify.checkify(jax.jit(raw_check))(jnp.array([-1.0]))
+    self.assertEqual(err.get(), 'independent raw check (`check` failed)')
+    self.assertIs(checkify.check, original_check)
+
+    def current_check(x):
+      asserts.assert_tree_all_finite(x, custom_message='current check')
+      return x + 1
+
+    current = asserts_chexify.chexify(
+        jax.jit(current_check), async_check=async_check
+    )
+    np.testing.assert_array_equal(current(jnp.ones(2)), jnp.full((2,), 2.0))
+    current.wait_checks()
+    with self.assertRaisesRegex(AssertionError, 'current check') as context:
+      current(jnp.array([jnp.nan, 1.0]))
+      current.wait_checks()
+    message = str(context.exception)
+    self.assertNotIn('previous tracing failure', message)
+    self.assertEqual(message.count('[Chex] chexify assertion'), 1)
+    self.assertIs(checkify.check, original_check)
+
+  @parameterized.parameters(False, True)
+  def test_checkify_restored_after_successful_trace(self, async_check):
+    original_check = checkify.check
+
+    def checked_sum(x):
+      asserts.assert_tree_all_finite(x)
+      return x.sum()
+
+    checked = asserts_chexify.chexify(
+        jax.jit(checked_sum), async_check=async_check
+    )
+    self.assertEqual(checked(jnp.ones(2)), 2.0)
+    checked.wait_checks()
+    self.assertIs(checkify.check, original_check)
 
   @variants.variants(with_jit=True, without_jit=True)
   def test_static_assertion(self):
