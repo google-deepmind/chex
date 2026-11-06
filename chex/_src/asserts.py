@@ -1665,6 +1665,7 @@ def _assert_trees_all_close_static(
 
   This compares the difference between values of actual and desired up to
    ``atol + rtol * abs(desired)``.
+  Non-scalar leaves must have equal shapes. Scalars may be compared to arrays.
 
   Args:
     *trees: A sequence of (at least 2) trees with array leaves.
@@ -1724,7 +1725,13 @@ def _assert_trees_all_close_jittable(
       f"Values not approximately equal ({rtol=}, {atol=}): "
       + "{arr_1} != {arr_2}."
   )
-  cmp_fn = lambda x, y: jnp.isclose(x, y, rtol=rtol, atol=atol).all()
+
+  def cmp_fn(x, y):
+    x_shape, y_shape = jnp.shape(x), jnp.shape(y)
+    if x_shape and y_shape and x_shape != y_shape:
+      return jnp.array(False)
+    return jnp.isclose(x, y, rtol=rtol, atol=atol).all()
+
   return _ai.assert_trees_all_eq_comparator_jittable(
       cmp_fn, err_msg_template, *trees  # pyrefly: ignore[bad-argument-type]
   )
