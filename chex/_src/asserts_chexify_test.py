@@ -98,7 +98,7 @@ class AssertsChexifyTest(variants.TestCase):
   """Simple tests for chexify assertions."""
 
   @parameterized.product(
-      failure=('incompatible_shapes', 'unsupported_ulp'),
+      failure=('unsupported_strict', 'unsupported_ulp'),
       async_check=(False, True),
   )
   def test_checkify_restored_after_tracing_error(self, failure, async_check):
@@ -107,9 +107,9 @@ class AssertsChexifyTest(variants.TestCase):
     self.addCleanup(setattr, checkify, 'check', original_check)
 
     def invalid_comparison(x, y):
-      if failure == 'incompatible_shapes':
+      if failure == 'unsupported_strict':
         asserts.assert_trees_all_close(
-            x, y, custom_message='previous tracing failure'
+            x, y, strict=True, custom_message='previous tracing failure'
         )
       else:
         asserts.assert_trees_all_close_ulp(
@@ -120,14 +120,12 @@ class AssertsChexifyTest(variants.TestCase):
     checked = asserts_chexify.chexify(
         jax.jit(invalid_comparison), async_check=async_check
     )
-    if failure == 'incompatible_shapes':
-      with self.assertRaises(TypeError):
-        checked(jnp.ones(2), jnp.ones(3))
+    if failure == 'unsupported_strict':
+      error_message = '`strict=True` is not implemented'
     else:
-      with self.assertRaisesRegex(
-          NotImplementedError, 'not supported within JIT'
-      ):
-        checked(jnp.ones(2), jnp.ones(2))
+      error_message = 'not supported within JIT'
+    with self.assertRaisesRegex(NotImplementedError, error_message):
+      checked(jnp.ones(2), jnp.ones(2))
 
     def raw_check(x):
       checkify.check(jnp.all(x > 0), 'independent raw check')
