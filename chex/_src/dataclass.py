@@ -100,7 +100,7 @@ def dataclass(
     order=False,
     unsafe_hash=False,
     frozen=False,
-    kw_only: bool = False,
+    kw_only: bool = True,
     mappable_dataclass=True,  # pylint: disable=redefined-outer-name
 ):
   """JAX-friendly wrapper for :py:func:`dataclasses.dataclass`.
@@ -154,7 +154,7 @@ class _Dataclass():
       order=False,
       unsafe_hash=False,
       frozen=False,
-      kw_only=False,
+      kw_only=True,
       mappable_dataclass=True,  # pylint: disable=redefined-outer-name
   ):
     self.init = init
