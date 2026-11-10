@@ -57,9 +57,8 @@ docs = [
     "sphinxcontrib-katex",
 ]
 
-[tool.setuptools.packages.find]
-include = ["README.md", "LICENSE"]
-exclude = ["*_test.py"]
+[tool.flit.sdist]
+exclude = ["**/*_test.py", "**/test_*.py"]
 
 [tool.ruff]
 line-length = 80
